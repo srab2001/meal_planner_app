@@ -3,12 +3,13 @@
 require('dotenv').config();
 
 const {
-  NODE_ENV = PRODUCTION
-  SESSION_SECRET=d801eb87c325d2e6147056e716d3c4cc46a1740be2c4a9e13d1a52b048b2eabf
-  GOOGLE_CLIENT_ID=72766863605-p5uqeeh3jlemcml92k1k72duh9bpgtl6.apps.googleusercontent.com 
-  GOOGLE_CLIENT_SECRET=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
-  GOOGLE_CALLBACK_URL=http://localhost:5000/auth/google/callback
-  FRONTEND_BASE=
+  PORT,
+  NODE_ENV,
+  SESSION_SECRET,
+  GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET,
+  GOOGLE_CALLBACK_URL,
+  FRONTEND_BASE,
   OPENAI_API_KEY
 } = process.env;
 
@@ -23,7 +24,7 @@ if (!SESSION_SECRET) {
   process.exit(1);
 }
 
-// debug logs (safe, only show prefix)
+// debug logs
 console.log('GOOGLE_CLIENT_ID set?', !!GOOGLE_CLIENT_ID);
 console.log(
   'GOOGLE_CLIENT_ID prefix:',
@@ -86,7 +87,7 @@ passport.deserializeUser((user, done) => {
   done(null, user);
 });
 
-// Google OAuth strategy (no DB)
+// Google OAuth strategy
 passport.use(
   new GoogleStrategy(
     {
@@ -130,7 +131,6 @@ function requireAuth(req, res, next) {
 
 // routes
 
-// health
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
@@ -180,7 +180,7 @@ app.post('/auth/logout', (req, res, next) => {
   });
 });
 
-// placeholder protected route
+// protected example
 app.get('/api/profile', requireAuth, (req, res) => {
   res.json({
     id: req.user.id,
@@ -189,7 +189,7 @@ app.get('/api/profile', requireAuth, (req, res) => {
   });
 });
 
-// your meal planner routes go here
+// meal routes go here
 // app.post('/api/find-stores', requireAuth, async (req, res) => { ... });
 // app.post('/api/generate-meals', requireAuth, async (req, res) => { ... });
 
