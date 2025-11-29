@@ -1,0 +1,267 @@
+const express = require('express');
+const cors = require('cors');
+const session = require('express-session');
+const passport = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const OpenAI = require('openai');
+require('dotenv').config();
+
+const app = express();
+
+// Middleware
+app.use(cors({
+  origin: 'http://localhost:3000',
+  credentials: true
+}));
+app.use(express.json());
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your-secret-key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Initialize OpenAI
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
+
+// Passport serialization
+passport.serializeUser((user, done) => {
+  done(null, user);
+});
+
+passport.deserializeUser((user, done) => {
+  done(null, user);
+});
+
+// Google OAuth Strategy
+passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: '/auth/google/callback'
+  },
+  (accessToken, refreshToken, profile, done) => {
+    const user = {
+      id: profile.id,
+      email: profile.emails[0].value,
+      name: profile.displayName,
+      picture: profile.photos[0].value
+    };
+    return done(null, user);
+  }
+));
+
+// Authentication middleware
+const isAuthenticated = (req, res, next) => {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.status(401).json({ error: 'Not authenticated' });
+};
+
+// Routes
+app.get('/auth/google',
+  passport.authenticate('google', { scope: ['profile', 'email'] })
+);
+
+app.get('/auth/google/callback',
+  passport.authenticate('google', { failureRedirect: 'http://localhost:3000' }),
+  (req, res) => {
+    res.redirect('http://localhost:3000/questionnaire');
+  }
+);
+
+app.get('/auth/user', (req, res) => {
+  if (req.isAuthenticated()) {
+    res.json(req.user);
+  } else {
+    res.status(401).json({ error: 'Not authenticated' });
+  }
+});
+
+app.post('/auth/logout', (req, res) => {
+  req.logout((err) => {
+    if (err) {
+      return res.status(500).json({ error: 'Logout failed' });
+    }
+    res.json({ message: 'Logged out successfully' });
+  });
+});
+
+// Generate meal plan
+app.post('/api/generate-meals', isAuthenticated, async (req, res) => {
+  try {
+    const { cuisines, numberOfPeople, meals } = req.body;
+
+    const prompt = `Create a detailed 7-day meal plan with the following requirements:
+- Cuisines: ${cuisines.join(', ')}
+- Number of people: ${numberOfPeople}
+- Meals to include: ${meals.join(', ')}
+
+For each day and meal, provide:
+1. Meal name
+2. Brief description
+3. Estimated prep time
+4. Estimated cook time
+
+Return the response as a JSON object with this structure:
+{
+  "mealPlan": [
+    {
+      "day": 1,
+      "breakfast": { "name": "...", "description": "...", "prepTime": "...", "cookTime": "..." },
+      "lunch": { "name": "...", "description": "...", "prepTime": "...", "cookTime": "..." },
+      "dinner": { "name": "...", "description": "...", "prepTime": "...", "cookTime": "..." }
+    },
+    // ... 7 days total
+  ]
+}
+
+Only include meals that were requested (${meals.join(', ')}). Set unused meal slots to null.`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: "You are a professional meal planning assistant. Always respond with valid JSON only, no additional text."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.8,
+    });
+
+    const responseText = completion.choices[0].message.content;
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    const mealPlan = JSON.parse(jsonMatch ? jsonMatch[0] : responseText);
+
+    res.json(mealPlan);
+  } catch (error) {
+    console.error('Error generating meals:', error);
+    res.status(500).json({ error: 'Failed to generate meal plan' });
+  }
+});
+
+// Regenerate specific meals
+app.post('/api/regenerate-meals', isAuthenticated, async (req, res) => {
+  try {
+    const { cuisines, numberOfPeople, mealsToRegenerate } = req.body;
+
+    const prompt = `Regenerate the following specific meals with different options:
+- Cuisines: ${cuisines.join(', ')}
+- Number of people: ${numberOfPeople}
+- Meals to regenerate: ${JSON.stringify(mealsToRegenerate)}
+
+For each meal, provide:
+1. Meal name (different from before)
+2. Brief description
+3. Estimated prep time
+4. Estimated cook time
+
+Return the response as a JSON object with this structure:
+{
+  "regeneratedMeals": [
+    {
+      "day": 1,
+      "mealType": "breakfast",
+      "meal": { "name": "...", "description": "...", "prepTime": "...", "cookTime": "..." }
+    },
+    // ... for each meal to regenerate
+  ]
+}`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: "You are a professional meal planning assistant. Always respond with valid JSON only."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.9,
+    });
+
+    const responseText = completion.choices[0].message.content;
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    const regeneratedMeals = JSON.parse(jsonMatch ? jsonMatch[0] : responseText);
+
+    res.json(regeneratedMeals);
+  } catch (error) {
+    console.error('Error regenerating meals:', error);
+    res.status(500).json({ error: 'Failed to regenerate meals' });
+  }
+});
+
+// Get detailed recipes
+app.post('/api/get-recipes', isAuthenticated, async (req, res) => {
+  try {
+    const { mealPlan, numberOfPeople } = req.body;
+
+    const prompt = `Create detailed step-by-step recipes for the following meal plan:
+${JSON.stringify(mealPlan, null, 2)}
+
+Number of people: ${numberOfPeople}
+
+For each meal, provide:
+1. Ingredients list (with quantities)
+2. Detailed step-by-step instructions
+3. Cooking tips
+
+Return as JSON with this structure:
+{
+  "recipes": [
+    {
+      "day": 1,
+      "mealType": "breakfast",
+      "name": "...",
+      "ingredients": ["...", "..."],
+      "instructions": ["Step 1: ...", "Step 2: ..."],
+      "tips": ["...", "..."]
+    },
+    // ... for all meals
+  ]
+}`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: "You are a professional chef. Provide detailed, easy-to-follow recipes. Always respond with valid JSON only."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.7,
+    });
+
+    const responseText = completion.choices[0].message.content;
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    const recipes = JSON.parse(jsonMatch ? jsonMatch[0] : responseText);
+
+    res.json(recipes);
+  } catch (error) {
+    console.error('Error getting recipes:', error);
+    res.status(500).json({ error: 'Failed to get recipes' });
+  }
+});
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});

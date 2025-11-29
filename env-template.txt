@@ -1,0 +1,74 @@
+# ==================================================
+# AI Meal Planner - Environment Variables Template
+# ==================================================
+#
+# INSTRUCTIONS:
+# 1. Copy this file's contents
+# 2. Create a new file named ".env" (with the dot)
+# 3. Paste the contents and fill in your actual values
+# 4. Save the file
+#
+# OR use this command:
+# Windows: copy env-template.txt .env
+# Mac/Linux: cp env-template.txt .env
+#
+# ==================================================
+
+# Google OAuth Configuration
+# Get these from: https://console.cloud.google.com/
+GOOGLE_CLIENT_ID=your-google-client-id-here
+GOOGLE_CLIENT_SECRET=your-google-client-secret-here
+
+# OpenAI Configuration
+# Get this from: https://platform.openai.com/
+OPENAI_API_KEY=your-openai-api-key-here
+
+# Session Configuration
+# Create a random string (any characters you want)
+SESSION_SECRET=create-a-random-secret-string-here
+
+# Server Configuration
+# These can stay as-is
+PORT=5000
+NODE_ENV=development
+
+# ==================================================
+# IMPORTANT NOTES:
+# ==================================================
+#
+# 1. The final .env file must start with a dot: ".env"
+# 2. Never commit .env to Git (it's in .gitignore)
+# 3. Replace ALL placeholder values with your real credentials
+# 4. Don't share your .env file - it contains secrets!
+#
+# ==================================================
+# GETTING YOUR API KEYS:
+# ==================================================
+#
+# GOOGLE OAUTH (5 minutes, FREE):
+# 1. Go to: https://console.cloud.google.com/
+# 2. Create a new project (or select existing)
+# 3. Enable Google+ API
+# 4. Go to "Credentials" → "Create Credentials" → "OAuth 2.0 Client ID"
+# 5. Application type: "Web application"
+# 6. Add Authorized JavaScript origins:
+#    - http://localhost:3000
+#    - http://localhost:5000
+# 7. Add Authorized redirect URIs:
+#    - http://localhost:5000/auth/google/callback
+# 8. Copy the Client ID and Client Secret
+#
+# OPENAI API KEY (2 minutes, FREE $5 credit):
+# 1. Go to: https://platform.openai.com/
+# 2. Sign up or log in
+# 3. Navigate to "API Keys" section
+# 4. Click "Create new secret key"
+# 5. Copy the key (you won't see it again!)
+#
+# SESSION SECRET:
+# Just make up any random string. Examples:
+# - my-super-secret-key-12345
+# - random-string-for-security-xyz789
+# - any-long-random-text-you-want
+#
+# ==================================================
