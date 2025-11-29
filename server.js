@@ -1,5 +1,3 @@
-// server.js
-
 require('dotenv').config();
 
 const {
@@ -13,18 +11,16 @@ const {
   OPENAI_API_KEY
 } = process.env;
 
-// basic env checks
 if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_CALLBACK_URL) {
-  console.error('Google OAuth env values missing');
+  console.error('Google OAuth env values not set');
   process.exit(1);
 }
 
 if (!SESSION_SECRET) {
-  console.error('SESSION_SECRET missing');
+  console.error('SESSION_SECRET not set');
   process.exit(1);
 }
 
-// debug logs
 console.log('GOOGLE_CLIENT_ID set?', !!GOOGLE_CLIENT_ID);
 console.log(
   'GOOGLE_CLIENT_ID prefix:',
@@ -41,7 +37,6 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
 const app = express();
 
-// CORS
 const allowedOrigins = [
   'http://localhost:3000',
   FRONTEND_BASE
@@ -59,7 +54,6 @@ app.use(
   })
 );
 
-// core middleware
 app.use(express.json());
 
 app.use(
@@ -78,7 +72,6 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-// passport session storage (no DB)
 passport.serializeUser((user, done) => {
   done(null, user);
 });
@@ -87,7 +80,6 @@ passport.deserializeUser((user, done) => {
   done(null, user);
 });
 
-// Google OAuth strategy
 passport.use(
   new GoogleStrategy(
     {
@@ -101,7 +93,7 @@ passport.use(
           profile.emails && profile.emails[0] && profile.emails[0].value;
 
         if (!email) {
-          return done(new Error('email missing from Google profile'));
+          return done(new Error('email not in Google profile'));
         }
 
         const user = {
@@ -121,7 +113,6 @@ passport.use(
   )
 );
 
-// auth guard
 function requireAuth(req, res, next) {
   if (!req.user) {
     return res.status(401).json({ error: 'not_authenticated' });
@@ -129,19 +120,15 @@ function requireAuth(req, res, next) {
   next();
 }
 
-// routes
-
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// Google login
 app.get(
   '/auth/google',
   passport.authenticate('google', { scope: ['profile', 'email'] })
 );
 
-// Google callback
 app.get(
   '/auth/google/callback',
   passport.authenticate('google', {
@@ -154,7 +141,6 @@ app.get(
   }
 );
 
-// current user
 app.get('/auth/user', (req, res) => {
   if (!req.user) {
     return res.status(401).json({ user: null });
@@ -169,7 +155,6 @@ app.get('/auth/user', (req, res) => {
   });
 });
 
-// logout
 app.post('/auth/logout', (req, res, next) => {
   req.logout(err => {
     if (err) return next(err);
@@ -180,7 +165,6 @@ app.post('/auth/logout', (req, res, next) => {
   });
 });
 
-// protected example
 app.get('/api/profile', requireAuth, (req, res) => {
   res.json({
     id: req.user.id,
@@ -189,9 +173,7 @@ app.get('/api/profile', requireAuth, (req, res) => {
   });
 });
 
-// meal routes go here
-// app.post('/api/find-stores', requireAuth, async (req, res) => { ... });
-// app.post('/api/generate-meals', requireAuth, async (req, res) => { ... });
+// TODO: add meal routes here
 
 const port = PORT || 5000;
 app.listen(port, () => {
