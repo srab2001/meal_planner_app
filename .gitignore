@@ -7,3 +7,7 @@ client/.env.local
 .env.local
 client/.env
 client/.env.local
+.env
+.env.local
+client/.env
+client/.env.local
