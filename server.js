@@ -5,7 +5,7 @@ const cors = require('cors');
 const session = require('express-session');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
-// const OpenAI = require('openai'); // uncomment and wire /api/generate-meals when ready
+const OpenAI = require('openai');
 
 const {
   PORT,
@@ -38,6 +38,11 @@ if (!SESSION_SECRET) {
 }
 
 const app = express();
+
+// Initialize OpenAI
+const openai = new OpenAI({
+  apiKey: OPENAI_API_KEY
+});
 
 // behind Render proxy
 app.set('trust proxy', 1);
@@ -190,6 +195,70 @@ app.get('/api/profile', requireAuth, (req, res) => {
     email: req.user.email,
     full_name: req.user.full_name
   });
+});
+
+// Store finder endpoint
+app.post('/api/find-stores', requireAuth, async (req, res) => {
+  try {
+    const { zipCode } = req.body;
+
+    if (!zipCode || !/^\d{5}(-\d{4})?$/.test(zipCode)) {
+      return res.status(400).json({ error: 'Invalid ZIP code' });
+    }
+
+    // Use GPT to find common stores in the area
+    const prompt = `Given the ZIP code ${zipCode}, list major grocery stores commonly found in this area of the United States.
+
+For each store, provide:
+- name: The official store name
+- type: Category like "Organic", "Discount", "Conventional", "Specialty"
+- typical_distance: Range like "1-3 miles", "2-5 miles", etc.
+
+List 6-8 major chains that would realistically be in this area. Include a mix of:
+- National chains (Walmart, Kroger, Target)
+- Regional chains appropriate for this area
+- Specialty stores (Whole Foods, Trader Joe's)
+
+Return ONLY valid JSON in this exact format:
+{
+  "stores": [
+    {
+      "name": "Store Name",
+      "address": "Typical location within 5 miles",
+      "distance": "2-4 miles",
+      "type": "Conventional"
+    }
+  ]
+}`;
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a helpful assistant that provides grocery store information. Always respond with valid JSON only.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      temperature: 0.7,
+    });
+
+    let responseText = completion.choices[0].message.content.trim();
+
+    // Clean up response - remove markdown code blocks if present
+    responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+    const storeData = JSON.parse(responseText);
+
+    res.json(storeData);
+
+  } catch (error) {
+    console.error('Error finding stores:', error);
+    res.status(500).json({ error: 'Failed to find stores' });
+  }
 });
 
 // placeholder for meal generation route
