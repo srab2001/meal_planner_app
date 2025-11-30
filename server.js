@@ -22,6 +22,11 @@ if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_CALLBACK_URL) {
   process.exit(1);
 }
 
+if (!SESSION_SECRET) {
+  console.error('SESSION_SECRET not set');
+  process.exit(1);
+}
+
 console.log('GOOGLE_CLIENT_ID set?', !!GOOGLE_CLIENT_ID);
 console.log(
   'GOOGLE_CLIENT_ID prefix:',
@@ -38,24 +43,10 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
 const app = express();
 
+// CORS: open for now, reflect origin and allow cookies
 app.use(
   cors({
-    origin: (origin, callback) => {
-      // Allow no-origin requests (curl, server-side) and your frontend
-      const allowed = [
-        'http://localhost:3000',
-        FRONTEND_BASE
-      ].filter(Boolean);
-
-      console.log('CORS origin:', origin, 'allowed:', allowed);
-
-      if (!origin || allowed.includes(origin)) {
-        return callback(null, true);
-      }
-
-      // For now do not throw, just deny CORS without crashing
-      return callback(null, false);
-    },
+    origin: true,
     credentials: true
   })
 );
@@ -138,7 +129,8 @@ app.get(
 app.get(
   '/auth/google/callback',
   passport.authenticate('google', {
-    failureRedirect: (FRONTEND_BASE || 'http://localhost:3000') + '/login?error=1',
+    failureRedirect:
+      (FRONTEND_BASE || 'http://localhost:3000') + '/login?error=1',
     session: true
   }),
   (req, res) => {
@@ -164,7 +156,7 @@ app.get('/auth/user', (req, res) => {
 app.post('/auth/logout', (req, res, next) => {
   req.logout(err => {
     if (err) return next(err);
-    req.session.destroy(() => {
+  req.session.destroy(() => {
       res.clearCookie('connect.sid');
       res.json({ success: true });
     });
