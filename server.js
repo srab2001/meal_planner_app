@@ -137,13 +137,26 @@ app.get(
     session: true
   }),
   (req, res) => {
-    const frontend = FRONTEND_BASE || 'http://localhost:3000';
-    res.redirect(frontend);
+    // Log successful authentication
+    console.log('OAuth callback successful for user:', req.user?.email);
+
+    // Save session before redirecting to avoid race condition
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        return res.redirect((FRONTEND_BASE || 'http://localhost:3000') + '/login?error=1');
+      }
+      console.log('Session saved, redirecting to frontend');
+      const frontend = FRONTEND_BASE || 'http://localhost:3000';
+      res.redirect(frontend);
+    });
   }
 );
 
 // current user
 app.get('/auth/user', (req, res) => {
+  console.log('GET /auth/user - Session ID:', req.sessionID, 'User:', req.user?.email || 'none');
+
   if (!req.user) {
     return res.status(401).json({ user: null });
   }
