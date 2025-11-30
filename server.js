@@ -149,11 +149,13 @@ app.get('/auth/user', (req, res) => {
   }
 
   res.json({
-    id: req.user.id,
-    email: req.user.email,
-    full_name: req.user.full_name,
-    role: req.user.role || null,
-    picture: req.user.picture || null
+    user: {
+      id: req.user.id,
+      email: req.user.email,
+      full_name: req.user.full_name,
+      role: req.user.role || null,
+      picture: req.user.picture || null
+    }
   });
 });
 
