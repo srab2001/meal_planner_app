@@ -1,0 +1,26 @@
+services:
+  # Backend API Service
+  - type: web
+    name: meal-planner-api
+    runtime: node
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_CALLBACK_URL
+        sync: false
+      - key: FRONTEND_BASE
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
