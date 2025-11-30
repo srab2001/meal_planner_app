@@ -6,6 +6,8 @@ import StoreSelection from './components/StoreSelection';
 import Questionnaire from './components/Questionnaire';
 import MealPlanView from './components/MealPlanView';
 
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 function App() {
   const [user, setUser] = useState(null);
   const [currentView, setCurrentView] = useState('login');
@@ -17,7 +19,7 @@ function App() {
 
   // Check if user is already authenticated
   useEffect(() => {
-    fetch('/auth/user', {
+    fetch(`${API_BASE}/auth/user`, {
       credentials: 'include'
     })
       .then(res => res.json())
@@ -32,15 +34,12 @@ function App() {
 
   // Handler: Login
   const handleLogin = (userData) => {
-    console.log('🟢 User logged in:', userData);
     setUser(userData);
     setCurrentView('zip');
   };
 
   // Handler: ZIP Code Submit
   const handleZIPSubmit = ({ zipCode: enteredZip, stores: foundStores }) => {
-    console.log('🟢 ZIP submitted:', enteredZip);
-    console.log('🟢 Stores found:', foundStores);
     setZipCode(enteredZip);
     setStores(foundStores);
     setCurrentView('store');
@@ -48,14 +47,12 @@ function App() {
 
   // Handler: Store Selection
   const handleStoreSelect = (store) => {
-    console.log('🟢 Store selected:', store);
     setSelectedStore(store);
     setCurrentView('questionnaire');
   };
 
   // Handler: Back to ZIP
   const handleBackToZIP = () => {
-    console.log('🟢 Going back to ZIP entry');
     setCurrentView('zip');
     setStores([]);
     setSelectedStore(null);
@@ -63,29 +60,23 @@ function App() {
 
   // Handler: Refresh Stores
   const handleRefreshStores = (newStores) => {
-    console.log('🟢 Refreshing stores with new list:', newStores);
     setStores(newStores);
   };
 
   // Handler: Questionnaire Complete
   const handleQuestionnaireComplete = async (prefs) => {
-    console.log('🟢 Questionnaire completed');
-    console.log('Preferences:', prefs);
-    console.log('ZIP Code:', zipCode);
-    console.log('Selected Store:', selectedStore);
-    
     setPreferences(prefs);
     setCurrentView('loading');
 
     try {
-      console.log('🟢 Sending API request to /api/generate-meals...');
       const startTime = Date.now();
-      
-      const response = await fetch('/api/generate-meals', {
+
+      const response = await fetch(`${API_BASE}/api/generate-meals`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           ...prefs,
           zipCode,
@@ -94,42 +85,31 @@ function App() {
       });
 
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
-      console.log(`🟢 API responded in ${elapsed} seconds`);
+      console.log('Generate meals response time (seconds):', elapsed);
       console.log('Response status:', response.status);
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('❌ API error:', errorData);
+        console.error('API error:', errorData);
         throw new Error(errorData.error || 'Failed to generate meal plan');
       }
 
-      console.log('🟢 Parsing response...');
       const data = await response.json();
-      console.log('🟢 Received data keys:', Object.keys(data));
-      
-      if (data.mealPlan) {
-        console.log('🟢 Meal plan days:', Object.keys(data.mealPlan));
-      }
-      if (data.shoppingList) {
-        console.log('🟢 Shopping list categories:', Object.keys(data.shoppingList));
-      }
-      console.log('🟢 Total cost:', data.totalEstimatedCost);
-      
       setMealPlan(data);
       setCurrentView('mealplan');
-      console.log('✅ Success! Showing meal plan view');
-
     } catch (error) {
-      console.error('❌❌❌ Frontend Error:', error);
-      console.error('Error message:', error.message);
-      alert('Failed to generate meal plan: ' + error.message + '\n\nPlease try again or check the console for details.');
+      console.error('Frontend error:', error);
+      alert(
+        'Failed to generate meal plan: ' +
+        error.message +
+        '\n\nPlease try again or check the console for details.'
+      );
       setCurrentView('questionnaire');
     }
   };
 
   // Handler: Start Over
   const handleStartOver = () => {
-    console.log('🟢 Starting over - resetting all state');
     setCurrentView('zip');
     setZipCode('');
     setStores([]);
@@ -140,26 +120,22 @@ function App() {
 
   // Handler: Logout
   const handleLogout = () => {
-    console.log('🟢 Logging out');
-    window.location.href = '/auth/logout';
+    window.location.href = `${API_BASE}/auth/logout`;
   };
 
   return (
     <div className="App">
-      {/* Login View */}
       {currentView === 'login' && (
         <LoginPage onLogin={handleLogin} />
       )}
 
-      {/* ZIP Code Entry View */}
       {currentView === 'zip' && (
-        <ZIPCodeInput 
+        <ZIPCodeInput
           onSubmit={handleZIPSubmit}
           user={user}
         />
       )}
 
-      {/* Store Selection View */}
       {currentView === 'store' && (
         <StoreSelection
           stores={stores}
@@ -170,30 +146,27 @@ function App() {
         />
       )}
 
-      {/* Questionnaire View */}
       {currentView === 'questionnaire' && (
-        <Questionnaire 
+        <Questionnaire
           onSubmit={handleQuestionnaireComplete}
           user={user}
           selectedStore={selectedStore}
         />
       )}
 
-      {/* Loading View */}
       {currentView === 'loading' && (
         <div className="loading-screen">
           <div className="loading-content">
             <div className="spinner-large"></div>
-            <h2>Creating Your Personalized Meal Plan...</h2>
-            <p>This may take 20-30 seconds</p>
+            <h2>Creating your meal plan</h2>
+            <p>This can take up to 30 seconds</p>
             <p className="loading-details">
-              Analyzing your preferences, finding recipes, and building your shopping list...
+              Building meals and a shopping list based on your inputs
             </p>
           </div>
         </div>
       )}
 
-      {/* Meal Plan View */}
       {currentView === 'mealplan' && (
         <MealPlanView
           mealPlan={mealPlan}

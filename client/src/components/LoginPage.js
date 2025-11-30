@@ -1,35 +1,37 @@
 import React from 'react';
 import './LoginPage.css';
 
-function LoginPage() {
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
+function LoginPage({ onLogin }) {
   const handleGoogleLogin = () => {
-    window.location.href = 'http://localhost:5000/auth/google';
+    window.location.href = `${API_BASE}/auth/google`;
   };
 
   return (
     <div className="login-page">
       <div className="login-container">
         <div className="login-header">
-          <h1>🍽️ AI Meal Planner</h1>
-          <p>Plan your weekly meals with personalized AI-generated recipes</p>
+          <h1>Meal Planner</h1>
+          <p>Plan meals for the week in one place</p>
         </div>
         
         <div className="login-content">
           <div className="features">
             <div className="feature">
               <span className="icon">🎯</span>
-              <h3>Personalized</h3>
-              <p>Tailored to your cuisine preferences</p>
+              <h3>Food choices</h3>
+              <p>Use your cuisine and diet preferences</p>
             </div>
             <div className="feature">
               <span className="icon">📅</span>
-              <h3>Weekly Plans</h3>
-              <p>7 days of delicious meals</p>
+              <h3>Weekly plan</h3>
+              <p>Seven days of meals in one view</p>
             </div>
             <div className="feature">
               <span className="icon">📖</span>
-              <h3>Detailed Recipes</h3>
-              <p>Step-by-step cooking instructions</p>
+              <h3>Recipes</h3>
+              <p>Clear steps for each meal</p>
             </div>
           </div>
 
