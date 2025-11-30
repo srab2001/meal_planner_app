@@ -10,9 +10,11 @@ function LoginPage({ onLogin }) {
       const base = (API_BASE || '').replace(/\/$/, '');
       const redirectUrl = `${base}/auth/google`;
       console.log('Login redirect URL:', redirectUrl);
-      window.location.assign(redirectUrl);
+      alert(`Redirecting to:\n${redirectUrl}`);
+      window.location.href = redirectUrl;
     } catch (err) {
       console.error('Login redirect error:', err);
+      alert('Login redirect error, see console for details');
     }
   };
 
