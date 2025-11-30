@@ -12,3 +12,5 @@ client/.env.local
 client/.env
 client/.env.local
 .env
+client/.env.local
+.env.local
