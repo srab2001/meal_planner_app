@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import './StoreSelection.css';
 
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 function StoreSelection({ stores, zipCode, onSubmit, onBack, onRefreshStores }) {
   const [selectedStore, setSelectedStore] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -20,12 +22,13 @@ function StoreSelection({ stores, zipCode, onSubmit, onBack, onRefreshStores }) 
     
     try {
       console.log('🔄 Finding more stores for ZIP:', zipCode);
-      
-      const response = await fetch('/api/find-stores', {
+
+      const response = await fetch(`${API_BASE}/api/find-stores`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({ zipCode }),
       });
 
