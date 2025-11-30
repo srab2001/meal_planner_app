@@ -27,6 +27,15 @@ AI-powered meal planning application with Google OAuth authentication.
 
 ## Deployment
 
+### Production Configuration (Quick Start)
+
+**📋 For your production setup:**
+1. Copy the template: `cp PRODUCTION_CONFIG.md.example PRODUCTION_CONFIG.md`
+2. Edit `PRODUCTION_CONFIG.md` with your actual credentials
+3. Follow the configuration guide in that file
+
+The actual `PRODUCTION_CONFIG.md` is git-ignored for security.
+
 ### Deploying to Vercel (Frontend) + Backend Service
 
 See **[VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md)** for complete deployment guide.
@@ -39,6 +48,7 @@ See **[VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md)** for complete deployment g
 
 ## Documentation
 
+- **[PRODUCTION_CONFIG.md.example](./PRODUCTION_CONFIG.md.example)** - 🔧 **START HERE** - Production environment setup template
 - **[VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md)** - Complete Vercel deployment guide with Google OAuth
 - **[QUICKSTART.md](./QUICKSTART.md)** - Quick start guide
 - **[README_INSTALLATION.md](./README_INSTALLATION.md)** - Installation details

@@ -3,14 +3,6 @@ node_modules
 .env.local
 client/.env
 client/.env.local
-.env
-.env.local
-client/.env
-client/.env.local
-.env
-.env.local
-client/.env
-client/.env.local
-.env
-client/.env.local
-.env.local
+
+# Production configuration with actual secrets
+PRODUCTION_CONFIG.md
