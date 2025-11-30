@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import './ZIPCodeInput.css';
 
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 function ZIPCodeInput({ onSubmit, user }) {
   const [zipCode, setZipCode] = useState('');
   const [error, setError] = useState('');
@@ -24,11 +26,12 @@ function ZIPCodeInput({ onSubmit, user }) {
 
     try {
       // Call backend to find stores
-      const response = await fetch('/api/find-stores', {
+      const response = await fetch(`${API_BASE}/api/find-stores`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({ zipCode: zipCode.trim() }),
       });
 
