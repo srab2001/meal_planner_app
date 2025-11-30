@@ -38,18 +38,23 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
 const app = express();
 
-const allowedOrigins = [
-  'http://localhost:3000',
-  FRONTEND_BASE
-].filter(Boolean);
-
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      // Allow no-origin requests (curl, server-side) and your frontend
+      const allowed = [
+        'http://localhost:3000',
+        FRONTEND_BASE
+      ].filter(Boolean);
+
+      console.log('CORS origin:', origin, 'allowed:', allowed);
+
+      if (!origin || allowed.includes(origin)) {
         return callback(null, true);
       }
-      return callback(new Error('Not allowed by CORS'));
+
+      // For now do not throw, just deny CORS without crashing
+      return callback(null, false);
     },
     credentials: true
   })
