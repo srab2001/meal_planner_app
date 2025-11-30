@@ -7,6 +7,7 @@ import Questionnaire from './components/Questionnaire';
 import MealPlanView from './components/MealPlanView';
 
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+console.log('API_BASE in browser:', API_BASE);
 
 function App() {
   const [user, setUser] = useState(null);
