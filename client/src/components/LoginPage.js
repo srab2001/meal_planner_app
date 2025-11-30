@@ -1,4 +1,3 @@
-//
 import React from 'react';
 import './LoginPage.css';
 
@@ -6,34 +5,35 @@ const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 function LoginPage({ onLogin }) {
   const handleGoogleLogin = () => {
-    // Do not append anything else. No Vercel URL in the path.
-    window.location.href = `${API_BASE}/auth/google`;
+    const redirectUrl = `${API_BASE}/auth/google`;
+    console.log('Login redirect URL:', redirectUrl);
+    window.location.href = redirectUrl;
   };
 
   return (
     <div className="login-page">
       <div className="login-container">
         <div className="login-header">
-          <h1>Meal Planner</h1>
-          <p>Plan meals for the week in one place</p>
+          <h1>Meal planner</h1>
+          <p>Plan meals for the week</p>
         </div>
-        
+
         <div className="login-content">
           <div className="features">
             <div className="feature">
               <span className="icon">🎯</span>
               <h3>Food choices</h3>
-              <p>Use your cuisine and diet preferences</p>
+              <p>Use cuisine and diet options</p>
             </div>
             <div className="feature">
               <span className="icon">📅</span>
               <h3>Weekly plan</h3>
-              <p>Seven days of meals in one view</p>
+              <p>Seven days of meals</p>
             </div>
             <div className="feature">
               <span className="icon">📖</span>
               <h3>Recipes</h3>
-              <p>Clear steps for each meal</p>
+              <p>Steps for each meal</p>
             </div>
           </div>
 
