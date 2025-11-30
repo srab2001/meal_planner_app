@@ -35,7 +35,7 @@ function LoginPage({ onLogin }) {
             </div>
           </div>
 
-          {/* plain anchor, no JS needed */}
+          {/* Main Google button as link */}
           <a
             href={LOGIN_URL}
             className="google-login-btn"
@@ -48,6 +48,12 @@ function LoginPage({ onLogin }) {
             </svg>
             Continue with Google
           </a>
+
+          {/* Debug block: shows raw link so you can click or copy */}
+          <div style={{ marginTop: '16px', fontSize: '12px', wordBreak: 'break-all' }}>
+            <div>Debug login link:</div>
+            <a href={LOGIN_URL}>{LOGIN_URL}</a>
+          </div>
         </div>
       </div>
     </div>
