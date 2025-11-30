@@ -11,13 +11,14 @@ const {
   OPENAI_API_KEY
 } = process.env;
 
+// TEMP DEBUG LOGS
+console.log('GOOGLE_CLIENT_ID present:', !!GOOGLE_CLIENT_ID);
+console.log('GOOGLE_CLIENT_SECRET present:', !!GOOGLE_CLIENT_SECRET);
+console.log('GOOGLE_CALLBACK_URL:', GOOGLE_CALLBACK_URL);
+
+// basic env checks
 if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_CALLBACK_URL) {
   console.error('Google OAuth env values not set');
-  process.exit(1);
-}
-
-if (!SESSION_SECRET) {
-  console.error('SESSION_SECRET not set');
   process.exit(1);
 }
 
