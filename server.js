@@ -299,12 +299,101 @@ Return ONLY valid JSON in this exact format:
   }
 });
 
-// placeholder for meal generation route
-// replace with your real logic that calls OpenAI when you are ready
+// Meal plan generation endpoint
 app.post('/api/generate-meals', requireAuth, async (req, res) => {
-  return res
-    .status(501)
-    .json({ error: 'generate-meals route not wired on this server build' });
+  try {
+    const { zipCode, groceryStore, ...preferences } = req.body;
+
+    console.log(`Generating meal plan for user: ${req.user.email}`);
+    console.log(`Store: ${groceryStore?.name}, ZIP: ${zipCode}`);
+
+    // Build a comprehensive prompt for meal planning
+    const prompt = `You are a professional meal planner. Create a personalized weekly meal plan based on these preferences:
+
+**User Information:**
+- Name: ${req.user.full_name || 'User'}
+- Email: ${req.user.email}
+
+**Location & Store:**
+- ZIP Code: ${zipCode}
+- Selected Grocery Store: ${groceryStore?.name || 'Local grocery store'}
+- Store Type: ${groceryStore?.type || 'Conventional'}
+
+**Preferences:**
+${Object.entries(preferences).map(([key, value]) => `- ${key}: ${JSON.stringify(value)}`).join('\n')}
+
+**Requirements:**
+1. Create a 7-day meal plan (breakfast, lunch, dinner, snacks)
+2. Include recipes that match the user's preferences
+3. Create a consolidated shopping list organized by category
+4. All items should be commonly available at ${groceryStore?.name || 'the selected store'}
+5. Include prep time and cooking time for each meal
+6. Provide simple, clear cooking instructions
+
+**Response Format:**
+Return ONLY valid JSON in this exact format:
+{
+  "mealPlan": {
+    "Monday": {
+      "breakfast": { "name": "...", "prepTime": "...", "cookTime": "...", "ingredients": [...], "instructions": [...] },
+      "lunch": { "name": "...", "prepTime": "...", "cookTime": "...", "ingredients": [...], "instructions": [...] },
+      "dinner": { "name": "...", "prepTime": "...", "cookTime": "...", "ingredients": [...], "instructions": [...] },
+      "snacks": ["..."]
+    },
+    "Tuesday": { ... },
+    ... (continue for all 7 days)
+  },
+  "shoppingList": {
+    "Produce": ["item 1", "item 2"],
+    "Meat & Seafood": ["item 1"],
+    "Dairy & Eggs": ["item 1"],
+    "Pantry Staples": ["item 1"],
+    "Other": ["item 1"]
+  },
+  "summary": {
+    "totalMeals": 21,
+    "estimatedCost": "$150-200",
+    "prepTimeTotal": "~5 hours",
+    "dietaryNotes": "..."
+  }
+}`;
+
+    console.log('Calling OpenAI to generate meal plan...');
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an expert meal planner and nutritionist. Create detailed, practical meal plans with realistic recipes. Always respond with valid JSON only.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      temperature: 0.8,
+      max_tokens: 4000,
+    });
+
+    let responseText = completion.choices[0].message.content.trim();
+
+    // Clean up response - remove markdown code blocks if present
+    responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+    const mealPlanData = JSON.parse(responseText);
+
+    console.log('Meal plan generated successfully');
+
+    res.json(mealPlanData);
+
+  } catch (error) {
+    console.error('Error generating meal plan:', error);
+    res.status(500).json({
+      error: 'Failed to generate meal plan',
+      details: error.message
+    });
+  }
 });
 
 const port = PORT || 5000;
