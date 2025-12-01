@@ -15,6 +15,12 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
     lunch: false,
     dinner: false
   });
+  const [dietaryPreferences, setDietaryPreferences] = useState({
+    diabetic: false,
+    dairyFree: false,
+    glutenFree: false,
+    peanutFree: false
+  });
   const [errors, setErrors] = useState({});
 
   const toggleCuisine = (cuisine) => {
@@ -31,6 +37,13 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
     setMeals(prev => ({
       ...prev,
       [mealType]: !prev[mealType]
+    }));
+  };
+
+  const toggleDietaryPreference = (preference) => {
+    setDietaryPreferences(prev => ({
+      ...prev,
+      [preference]: !prev[preference]
     }));
   };
 
@@ -52,10 +65,12 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
   const handleSubmit = () => {
     if (validate()) {
       const selectedMeals = Object.keys(meals).filter(meal => meals[meal]);
+      const selectedDietaryPreferences = Object.keys(dietaryPreferences).filter(pref => dietaryPreferences[pref]);
       onSubmit({
         cuisines,
         people: numberOfPeople,
-        selectedMeals: selectedMeals  // Send array of meal types: ['breakfast', 'lunch', 'dinner']
+        selectedMeals: selectedMeals,  // Send array of meal types: ['breakfast', 'lunch', 'dinner']
+        dietaryPreferences: selectedDietaryPreferences  // Send array: ['diabetic', 'dairyFree', etc.]
       });
     }
   };
@@ -108,6 +123,52 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
             >
               +
             </button>
+          </div>
+        </div>
+
+        <div className="question-section">
+          <h3>Any dietary restrictions?</h3>
+          <p className="hint">Select all that apply (optional)</p>
+          <div className="meal-checkboxes">
+            <label className={`meal-checkbox ${dietaryPreferences.diabetic ? 'checked' : ''}`}>
+              <input
+                type="checkbox"
+                checked={dietaryPreferences.diabetic}
+                onChange={() => toggleDietaryPreference('diabetic')}
+              />
+              <span className="meal-icon">🩺</span>
+              <span className="meal-name">Diabetic</span>
+            </label>
+
+            <label className={`meal-checkbox ${dietaryPreferences.dairyFree ? 'checked' : ''}`}>
+              <input
+                type="checkbox"
+                checked={dietaryPreferences.dairyFree}
+                onChange={() => toggleDietaryPreference('dairyFree')}
+              />
+              <span className="meal-icon">🥛</span>
+              <span className="meal-name">Dairy Free</span>
+            </label>
+
+            <label className={`meal-checkbox ${dietaryPreferences.glutenFree ? 'checked' : ''}`}>
+              <input
+                type="checkbox"
+                checked={dietaryPreferences.glutenFree}
+                onChange={() => toggleDietaryPreference('glutenFree')}
+              />
+              <span className="meal-icon">🌾</span>
+              <span className="meal-name">Gluten Free</span>
+            </label>
+
+            <label className={`meal-checkbox ${dietaryPreferences.peanutFree ? 'checked' : ''}`}>
+              <input
+                type="checkbox"
+                checked={dietaryPreferences.peanutFree}
+                onChange={() => toggleDietaryPreference('peanutFree')}
+              />
+              <span className="meal-icon">🥜</span>
+              <span className="meal-name">Peanut Free</span>
+            </label>
           </div>
         </div>
 
