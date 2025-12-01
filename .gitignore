@@ -9,3 +9,6 @@ PRODUCTION_CONFIG.md
 
 # Discount code usage tracking (contains user emails)
 discount-code-usage.json
+
+# User data (favorites and history - contains personal data)
+user-data/

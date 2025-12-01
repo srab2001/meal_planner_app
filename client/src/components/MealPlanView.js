@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './MealPlanView.css';
 import ShoppingList from './ShoppingList';
 
@@ -10,6 +10,11 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   const [activeTab, setActiveTab] = useState('meals');
   const [regeneratingMeal, setRegeneratingMeal] = useState(null);
   const [localMealPlan, setLocalMealPlan] = useState(mealPlan);
+  const [favorites, setFavorites] = useState([]);
+  const [favoritingMeal, setFavoritingMeal] = useState(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   if (!localMealPlan) {
     return (
@@ -22,6 +27,9 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   const days = Object.keys(localMealPlan.mealPlan || {});
   const currentDayMeals = localMealPlan.mealPlan[selectedDay] || {};
   const mealTypes = Object.keys(currentDayMeals);
+
+  // Get all meal types from preferences for favorites dropdown
+  const allMealTypes = preferences?.selectedMeals || ['breakfast', 'lunch', 'dinner'];
 
   const handleMealClick = (meal) => {
     setSelectedMeal(meal);
@@ -91,6 +99,127 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
     window.open(feedbackURL, '_blank');
   };
 
+  // Load favorites and save meal plan to history on mount
+  useEffect(() => {
+    const loadFavorites = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/api/favorites`, {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setFavorites(data.favorites || []);
+        }
+      } catch (error) {
+        console.error('Error loading favorites:', error);
+      }
+    };
+
+    const saveMealPlanToHistory = async () => {
+      try {
+        await fetch(`${API_BASE}/api/save-meal-plan`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            mealPlan: localMealPlan,
+            preferences,
+            selectedStores
+          }),
+        });
+        console.log('📝 Meal plan saved to history');
+      } catch (error) {
+        console.error('Error saving meal plan to history:', error);
+      }
+    };
+
+    loadFavorites();
+    saveMealPlanToHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount
+
+  const handleAddFavorite = async (meal, mealType, day) => {
+    const key = `${day}-${mealType}`;
+    setFavoritingMeal(key);
+
+    try {
+      const response = await fetch(`${API_BASE}/api/favorites/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ meal, mealType }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setFavorites(prev => [...prev, data.favorite]);
+        console.log('❤️ Added to favorites:', meal.name);
+      }
+    } catch (error) {
+      console.error('Error adding favorite:', error);
+      alert('Failed to add to favorites');
+    } finally {
+      setFavoritingMeal(null);
+    }
+  };
+
+  const handleRemoveFavorite = async (favoriteId) => {
+    try {
+      const response = await fetch(`${API_BASE}/api/favorites/${favoriteId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        setFavorites(prev => prev.filter(fav => fav.id !== favoriteId));
+        console.log('🗑️ Removed from favorites');
+      }
+    } catch (error) {
+      console.error('Error removing favorite:', error);
+      alert('Failed to remove from favorites');
+    }
+  };
+
+  const handleUseFavorite = async (favorite, day, mealType) => {
+    // Replace current meal with favorite
+    setLocalMealPlan(prevPlan => ({
+      ...prevPlan,
+      mealPlan: {
+        ...prevPlan.mealPlan,
+        [day]: {
+          ...prevPlan.mealPlan[day],
+          [mealType]: favorite.meal
+        }
+      }
+    }));
+    console.log(`✨ Applied favorite "${favorite.meal.name}" to ${day} ${mealType}`);
+  };
+
+  const handleViewHistory = async (days = null) => {
+    setLoadingHistory(true);
+    try {
+      const url = days
+        ? `${API_BASE}/api/meal-plan-history?days=${days}`
+        : `${API_BASE}/api/meal-plan-history`;
+
+      const response = await fetch(url, { credentials: 'include' });
+      if (response.ok) {
+        const data = await response.json();
+        setHistory(data.history || []);
+        setShowHistory(true);
+      }
+    } catch (error) {
+      console.error('Error loading history:', error);
+      alert('Failed to load history');
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const isFavorited = (mealName) => {
+    return favorites.some(fav => fav.meal.name === mealName);
+  };
+
   return (
     <div className="meal-plan-container">
       {/* Header */}
@@ -111,6 +240,9 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
           <button onClick={handleFeedback} className="btn-feedback">
             💬 Send Feedback
           </button>
+          <button onClick={() => handleViewHistory()} className="btn-history">
+            📜 History
+          </button>
           <button onClick={handlePrintAllRecipes} className="btn-print">
             🖨️ Print All Recipes
           </button>
@@ -125,13 +257,19 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
 
       {/* Tabs */}
       <div className="meal-plan-tabs">
-        <button 
+        <button
           className={`tab-button ${activeTab === 'meals' ? 'active' : ''}`}
           onClick={() => setActiveTab('meals')}
         >
           📅 Meal Plan
         </button>
-        <button 
+        <button
+          className={`tab-button ${activeTab === 'favorites' ? 'active' : ''}`}
+          onClick={() => setActiveTab('favorites')}
+        >
+          ❤️ Favorites ({favorites.length})
+        </button>
+        <button
           className={`tab-button ${activeTab === 'shopping' ? 'active' : ''}`}
           onClick={() => setActiveTab('shopping')}
         >
@@ -163,7 +301,9 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                 const meal = currentDayMeals[mealType];
                 const mealKey = `${selectedDay}-${mealType}`;
                 const isRegenerating = regeneratingMeal === mealKey;
-                
+                const isFavoriting = favoritingMeal === mealKey;
+                const alreadyFavorited = isFavorited(meal.name);
+
                 return (
                   <div key={mealType} className="meal-card">
                     <div className="meal-type">{mealType}</div>
@@ -180,16 +320,25 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                     {meal.estimatedCost && (
                       <p className="meal-cost">💰 {meal.estimatedCost}</p>
                     )}
-                    
+
                     <div className="meal-card-actions">
-                      <button 
+                      <button
                         className="view-recipe-btn"
                         onClick={() => handleMealClick(meal)}
                       >
                         👁️ View Recipe
                       </button>
-                      
-                      <button 
+
+                      <button
+                        className={`favorite-btn ${alreadyFavorited ? 'favorited' : ''}`}
+                        onClick={() => handleAddFavorite(meal, mealType, selectedDay)}
+                        disabled={isFavoriting || alreadyFavorited}
+                        title={alreadyFavorited ? 'Already in favorites' : 'Add to favorites'}
+                      >
+                        {isFavoriting ? '...' : alreadyFavorited ? '❤️' : '🤍'}
+                      </button>
+
+                      <button
                         className="regenerate-meal-btn"
                         onClick={() => handleRegenerateMeal(selectedDay, mealType)}
                         disabled={isRegenerating}
@@ -227,6 +376,74 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                     <span className="pref-value">{preferences.meals}</span>
                   </div>
                 </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Favorites Tab */}
+        {activeTab === 'favorites' && (
+          <div className="favorites-view">
+            <h2>❤️ Your Favorite Meals</h2>
+            {favorites.length === 0 ? (
+              <div className="empty-favorites">
+                <p>No favorites yet! Click the 🤍 button on any meal to save it here.</p>
+              </div>
+            ) : (
+              <div className="favorites-grid">
+                {favorites.map((favorite) => (
+                  <div key={favorite.id} className="favorite-card">
+                    <div className="favorite-header">
+                      <span className="favorite-type">{favorite.mealType}</span>
+                      <button
+                        className="remove-favorite-btn"
+                        onClick={() => handleRemoveFavorite(favorite.id)}
+                        title="Remove from favorites"
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <h3 className="favorite-name">{favorite.meal.name}</h3>
+                    {favorite.meal.prepTime && (
+                      <p className="favorite-time">⏱️ Prep: {favorite.meal.prepTime}</p>
+                    )}
+                    {favorite.meal.cookTime && (
+                      <p className="favorite-time">🔥 Cook: {favorite.meal.cookTime}</p>
+                    )}
+                    {favorite.meal.servings && (
+                      <p className="favorite-servings">👥 Serves {favorite.meal.servings}</p>
+                    )}
+                    <p className="favorite-saved">Saved: {new Date(favorite.savedAt).toLocaleDateString()}</p>
+
+                    <div className="favorite-actions">
+                      <button
+                        className="view-recipe-btn"
+                        onClick={() => handleMealClick(favorite.meal)}
+                      >
+                        👁️ View Recipe
+                      </button>
+                      <select
+                        className="use-favorite-select"
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            const [day, mealType] = e.target.value.split('|');
+                            handleUseFavorite(favorite, day, mealType);
+                            e.target.value = '';
+                          }
+                        }}
+                      >
+                        <option value="">Add to plan...</option>
+                        {days.map((day) =>
+                          allMealTypes.map((mealType) => (
+                            <option key={`${day}-${mealType}`} value={`${day}|${mealType}`}>
+                              {day} - {mealType}
+                            </option>
+                          ))
+                        )}
+                      </select>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -371,6 +588,66 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
           </div>
         )}
       </div>
+
+      {/* History Modal */}
+      {showHistory && (
+        <div className="modal-overlay" onClick={() => setShowHistory(false)}>
+          <div className="history-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowHistory(false)}>✕</button>
+
+            <h2>📜 Meal Plan History</h2>
+
+            <div className="history-filters">
+              <button onClick={() => handleViewHistory(30)} className="filter-btn">
+                Last 30 Days
+              </button>
+              <button onClick={() => handleViewHistory(60)} className="filter-btn">
+                Last 60 Days
+              </button>
+              <button onClick={() => handleViewHistory(90)} className="filter-btn">
+                Last 90 Days
+              </button>
+              <button onClick={() => handleViewHistory(null)} className="filter-btn">
+                All Time
+              </button>
+            </div>
+
+            <div className="history-list">
+              {loadingHistory ? (
+                <p>Loading history...</p>
+              ) : history.length === 0 ? (
+                <p className="empty-history">No meal plan history found.</p>
+              ) : (
+                history.map((entry) => (
+                  <div key={entry.id} className="history-entry">
+                    <div className="history-header">
+                      <span className="history-date">
+                        {new Date(entry.createdAt).toLocaleDateString('en-US', {
+                          weekday: 'short',
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </span>
+                      <span className="history-details">
+                        {entry.preferences?.cuisines?.slice(0, 2).join(', ') || 'Various'}
+                        {entry.preferences?.cuisines?.length > 2 && '...'}
+                      </span>
+                    </div>
+                    <div className="history-info">
+                      <span>👥 {entry.preferences?.people} people</span>
+                      <span>🍽️ {entry.preferences?.selectedMeals?.join(', ')}</span>
+                      {entry.selectedStores?.primaryStore && (
+                        <span>🛒 {entry.selectedStores.primaryStore.name}</span>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

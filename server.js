@@ -943,6 +943,204 @@ app.get('/api/discount-usage-stats', (req, res) => {
   }
 });
 
+// ==================== FAVORITES & HISTORY ====================
+
+// Helper function to get user's favorites file path
+const getFavoritesFilePath = (userEmail) => {
+  const fs = require('fs');
+  const path = require('path');
+  const favoritesDir = path.join(__dirname, 'user-data', 'favorites');
+
+  // Create directory if it doesn't exist
+  if (!fs.existsSync(favoritesDir)) {
+    fs.mkdirSync(favoritesDir, { recursive: true });
+  }
+
+  // Use email hash for filename (for privacy/security)
+  const crypto = require('crypto');
+  const emailHash = crypto.createHash('md5').update(userEmail).digest('hex');
+  return path.join(favoritesDir, `${emailHash}.json`);
+};
+
+// Helper function to get user's history file path
+const getHistoryFilePath = (userEmail) => {
+  const fs = require('fs');
+  const path = require('path');
+  const historyDir = path.join(__dirname, 'user-data', 'history');
+
+  // Create directory if it doesn't exist
+  if (!fs.existsSync(historyDir)) {
+    fs.mkdirSync(historyDir, { recursive: true });
+  }
+
+  const crypto = require('crypto');
+  const emailHash = crypto.createHash('md5').update(userEmail).digest('hex');
+  return path.join(historyDir, `${emailHash}.json`);
+};
+
+// Add meal to favorites
+app.post('/api/favorites/add', requireAuth, (req, res) => {
+  try {
+    const { meal, mealType } = req.body;
+    const fs = require('fs');
+
+    if (!meal || !meal.name) {
+      return res.status(400).json({ error: 'Invalid meal data' });
+    }
+
+    const filePath = getFavoritesFilePath(req.user.email);
+
+    // Read existing favorites
+    let favorites = [];
+    if (fs.existsSync(filePath)) {
+      favorites = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    }
+
+    // Add new favorite with metadata
+    const favorite = {
+      id: Date.now().toString(),
+      meal,
+      mealType: mealType || 'unknown',
+      savedAt: new Date().toISOString(),
+      savedDate: new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })
+    };
+
+    favorites.push(favorite);
+
+    // Save back to file
+    fs.writeFileSync(filePath, JSON.stringify(favorites, null, 2));
+
+    console.log(`❤️ ${req.user.email} saved favorite: ${meal.name}`);
+    res.json({ success: true, favorite });
+
+  } catch (error) {
+    console.error('Error adding favorite:', error);
+    res.status(500).json({ error: 'Failed to add favorite' });
+  }
+});
+
+// Get user's favorites
+app.get('/api/favorites', requireAuth, (req, res) => {
+  try {
+    const fs = require('fs');
+    const filePath = getFavoritesFilePath(req.user.email);
+
+    if (!fs.existsSync(filePath)) {
+      return res.json({ favorites: [] });
+    }
+
+    const favorites = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    res.json({ favorites });
+
+  } catch (error) {
+    console.error('Error reading favorites:', error);
+    res.status(500).json({ error: 'Failed to read favorites' });
+  }
+});
+
+// Remove favorite
+app.delete('/api/favorites/:id', requireAuth, (req, res) => {
+  try {
+    const { id } = req.params;
+    const fs = require('fs');
+    const filePath = getFavoritesFilePath(req.user.email);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'No favorites found' });
+    }
+
+    let favorites = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    favorites = favorites.filter(fav => fav.id !== id);
+
+    fs.writeFileSync(filePath, JSON.stringify(favorites, null, 2));
+
+    console.log(`🗑️ ${req.user.email} removed favorite: ${id}`);
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error('Error removing favorite:', error);
+    res.status(500).json({ error: 'Failed to remove favorite' });
+  }
+});
+
+// Save meal plan to history
+app.post('/api/save-meal-plan', requireAuth, (req, res) => {
+  try {
+    const { mealPlan, preferences, selectedStores } = req.body;
+    const fs = require('fs');
+
+    if (!mealPlan) {
+      return res.status(400).json({ error: 'No meal plan provided' });
+    }
+
+    const filePath = getHistoryFilePath(req.user.email);
+
+    // Read existing history
+    let history = [];
+    if (fs.existsSync(filePath)) {
+      history = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    }
+
+    // Add new history entry
+    const historyEntry = {
+      id: Date.now().toString(),
+      mealPlan,
+      preferences,
+      selectedStores,
+      createdAt: new Date().toISOString(),
+      createdDate: new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })
+    };
+
+    history.unshift(historyEntry); // Add to beginning
+
+    // Keep only last 100 entries
+    if (history.length > 100) {
+      history = history.slice(0, 100);
+    }
+
+    fs.writeFileSync(filePath, JSON.stringify(history, null, 2));
+
+    console.log(`📝 Saved meal plan to history for ${req.user.email}`);
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error('Error saving meal plan:', error);
+    res.status(500).json({ error: 'Failed to save meal plan' });
+  }
+});
+
+// Get meal plan history
+app.get('/api/meal-plan-history', requireAuth, (req, res) => {
+  try {
+    const { days } = req.query; // ?days=30, ?days=60, ?days=90
+    const fs = require('fs');
+    const filePath = getHistoryFilePath(req.user.email);
+
+    if (!fs.existsSync(filePath)) {
+      return res.json({ history: [] });
+    }
+
+    let history = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+
+    // Filter by days if specified
+    if (days) {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - parseInt(days));
+
+      history = history.filter(entry => {
+        const entryDate = new Date(entry.createdAt);
+        return entryDate >= cutoffDate;
+      });
+    }
+
+    res.json({ history });
+
+  } catch (error) {
+    console.error('Error reading meal plan history:', error);
+    res.status(500).json({ error: 'Failed to read history' });
+  }
+});
+
 const port = PORT || 5000;
 app.listen(port, () => {
   console.log(`server listening on port ${port}`);
