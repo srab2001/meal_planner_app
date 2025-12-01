@@ -138,6 +138,7 @@
   width: 100%;
   border-collapse: collapse;
   margin-top: 10px;
+  table-layout: fixed;
 }
 
 .comparison-table thead {
@@ -145,11 +146,12 @@
 }
 
 .comparison-table th {
-  padding: 12px;
+  padding: 8px 12px;
   text-align: left;
   font-weight: 600;
   color: #667eea;
   border-bottom: 2px solid #667eea;
+  vertical-align: middle;
 }
 
 .comparison-table th.price-col {
@@ -171,7 +173,8 @@
 }
 
 .comparison-table td {
-  padding: 12px;
+  padding: 8px 12px;
+  vertical-align: middle;
 }
 
 .checkbox-col {
