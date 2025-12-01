@@ -6,3 +6,6 @@ client/.env.local
 
 # Production configuration with actual secrets
 PRODUCTION_CONFIG.md
+
+# Discount code usage tracking (contains user emails)
+discount-code-usage.json

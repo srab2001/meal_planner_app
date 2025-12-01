@@ -585,6 +585,39 @@ const DISCOUNT_CODES = {
   // 'LAUNCH20': { percentOff: 20, description: 'Launch discount' },
 };
 
+// Function to track discount code usage
+const trackDiscountCodeUsage = (email, code, percentOff, usageType = 'validated') => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const trackingFile = path.join(__dirname, 'discount-code-usage.json');
+
+    // Read existing data
+    let trackingData = [];
+    if (fs.existsSync(trackingFile)) {
+      const fileContent = fs.readFileSync(trackingFile, 'utf8');
+      trackingData = JSON.parse(fileContent);
+    }
+
+    // Add new entry
+    trackingData.push({
+      email,
+      code,
+      percentOff,
+      usageType, // 'validated', 'applied_free', 'applied_paid'
+      timestamp: new Date().toISOString(),
+      date: new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })
+    });
+
+    // Write back to file
+    fs.writeFileSync(trackingFile, JSON.stringify(trackingData, null, 2));
+    console.log(`📊 Tracked discount code: ${email} used ${code} (${percentOff}% off) - ${usageType}`);
+  } catch (error) {
+    console.error('Error tracking discount code usage:', error);
+    // Don't fail the request if tracking fails
+  }
+};
+
 // Validate discount code endpoint
 app.post('/api/validate-discount', requireAuth, async (req, res) => {
   try {
@@ -598,7 +631,11 @@ app.post('/api/validate-discount', requireAuth, async (req, res) => {
     const discount = DISCOUNT_CODES[normalizedCode];
 
     if (discount) {
-      console.log(`✅ Valid discount code applied: ${normalizedCode} (${discount.percentOff}% off)`);
+      console.log(`✅ Valid discount code applied: ${normalizedCode} (${discount.percentOff}% off) by ${req.user.email}`);
+
+      // Track the validation
+      trackDiscountCodeUsage(req.user.email, normalizedCode, discount.percentOff, 'validated');
+
       res.json({
         valid: true,
         code: normalizedCode,
@@ -606,7 +643,7 @@ app.post('/api/validate-discount', requireAuth, async (req, res) => {
         description: discount.description
       });
     } else {
-      console.log(`❌ Invalid discount code attempted: ${normalizedCode}`);
+      console.log(`❌ Invalid discount code attempted: ${normalizedCode} by ${req.user.email}`);
       res.status(400).json({ error: 'Invalid discount code', valid: false });
     }
   } catch (error) {
@@ -638,6 +675,10 @@ app.post('/api/apply-free-access', requireAuth, async (req, res) => {
     });
 
     console.log(`✅ Free access granted to ${req.user.email} with code ${normalizedCode}`);
+
+    // Track the free access application
+    trackDiscountCodeUsage(req.user.email, normalizedCode, 100, 'applied_free');
+
     res.json({ success: true, message: 'Free access granted' });
   } catch (error) {
     console.error('Error applying free access:', error);
@@ -707,6 +748,11 @@ app.post('/api/create-checkout-session', requireAuth, async (req, res) => {
     });
 
     console.log(`💳 Checkout session created for ${req.user.email}: ${session.id}`);
+
+    // Track paid discount code usage
+    if (discount && discountCode) {
+      trackDiscountCodeUsage(req.user.email, discountCode.trim().toUpperCase(), discount.percentOff, 'applied_paid');
+    }
 
     res.json({ url: session.url, sessionId: session.id });
   } catch (error) {
@@ -780,6 +826,85 @@ app.post('/api/reset-payment', requireAuth, (req, res) => {
     console.log(`🔄 Payment status RESET for ${req.user.email}`);
     res.json({ success: true, message: 'Payment status reset' });
   });
+});
+
+// View discount code usage statistics
+// Access via: http://your-server-url/api/discount-usage-stats
+app.get('/api/discount-usage-stats', (req, res) => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const trackingFile = path.join(__dirname, 'discount-code-usage.json');
+
+    if (!fs.existsSync(trackingFile)) {
+      return res.json({
+        message: 'No discount code usage data yet',
+        totalUsage: 0,
+        usageByCode: {},
+        recentUsage: []
+      });
+    }
+
+    const trackingData = JSON.parse(fs.readFileSync(trackingFile, 'utf8'));
+
+    // Calculate statistics
+    const usageByCode = {};
+    const usageByEmail = {};
+
+    trackingData.forEach(entry => {
+      // By code
+      if (!usageByCode[entry.code]) {
+        usageByCode[entry.code] = {
+          totalUses: 0,
+          percentOff: entry.percentOff,
+          users: [],
+          usageTypes: { validated: 0, applied_free: 0, applied_paid: 0 }
+        };
+      }
+      usageByCode[entry.code].totalUses++;
+      usageByCode[entry.code].usageTypes[entry.usageType]++;
+      if (!usageByCode[entry.code].users.includes(entry.email)) {
+        usageByCode[entry.code].users.push(entry.email);
+      }
+
+      // By email
+      if (!usageByEmail[entry.email]) {
+        usageByEmail[entry.email] = {
+          codesUsed: [],
+          totalValidations: 0,
+          totalApplications: 0
+        };
+      }
+      if (!usageByEmail[entry.email].codesUsed.includes(entry.code)) {
+        usageByEmail[entry.email].codesUsed.push(entry.code);
+      }
+      if (entry.usageType === 'validated') {
+        usageByEmail[entry.email].totalValidations++;
+      } else {
+        usageByEmail[entry.email].totalApplications++;
+      }
+    });
+
+    // Get recent usage (last 20)
+    const recentUsage = trackingData.slice(-20).reverse();
+
+    res.json({
+      totalRecords: trackingData.length,
+      usageByCode,
+      usageByEmail,
+      recentUsage,
+      summary: {
+        totalCodes: Object.keys(usageByCode).length,
+        totalUsers: Object.keys(usageByEmail).length,
+        mostUsedCode: Object.keys(usageByCode).reduce((a, b) =>
+          usageByCode[a].totalUses > usageByCode[b].totalUses ? a : b, Object.keys(usageByCode)[0]
+        )
+      }
+    });
+  } catch (error) {
+    console.error('Error reading discount usage stats:', error);
+    res.status(500).json({ error: 'Failed to read usage stats' });
+  }
 });
 
 const port = PORT || 5000;
