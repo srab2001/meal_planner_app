@@ -4,6 +4,7 @@ import LoginPage from './components/LoginPage';
 import ZIPCodeInput from './components/ZIPCodeInput';
 import StoreSelection from './components/StoreSelection';
 import Questionnaire from './components/Questionnaire';
+import PaymentPage from './components/PaymentPage';
 import MealPlanView from './components/MealPlanView';
 
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
@@ -67,6 +68,35 @@ function App() {
   // Handler: Questionnaire Complete
   const handleQuestionnaireComplete = async (prefs) => {
     setPreferences(prefs);
+
+    // Check if user already has paid access
+    try {
+      const response = await fetch(`${API_BASE}/api/payment-status`, {
+        credentials: 'include'
+      });
+      const data = await response.json();
+
+      if (data.hasPaidAccess) {
+        // User already paid, skip payment page
+        generateMealPlan(prefs);
+      } else {
+        // Show payment page
+        setCurrentView('payment');
+      }
+    } catch (error) {
+      console.error('Error checking payment status:', error);
+      // Default to showing payment page if check fails
+      setCurrentView('payment');
+    }
+  };
+
+  // Handler: Payment Complete
+  const handlePaymentComplete = () => {
+    generateMealPlan(preferences);
+  };
+
+  // Generate meal plan (called after payment)
+  const generateMealPlan = async (prefs) => {
     setCurrentView('loading');
 
     try {
@@ -152,6 +182,17 @@ function App() {
           onSubmit={handleQuestionnaireComplete}
           user={user}
           selectedStore={selectedStore}
+          onLogout={handleLogout}
+        />
+      )}
+
+      {currentView === 'payment' && (
+        <PaymentPage
+          user={user}
+          selectedStore={selectedStore}
+          preferences={preferences}
+          onPaymentComplete={handlePaymentComplete}
+          onLogout={handleLogout}
         />
       )}
 
