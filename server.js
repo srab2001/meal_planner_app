@@ -698,8 +698,29 @@ app.post('/api/verify-payment', requireAuth, async (req, res) => {
 // Check payment status
 app.get('/api/payment-status', requireAuth, (req, res) => {
   const hasPaidAccess = req.session.hasPaidAccess || false;
-  console.log(`Payment status check for ${req.user.email}: ${hasPaidAccess ? 'PAID' : 'UNPAID'}`);
+  console.log(`💰 Payment status check for ${req.user.email}: ${hasPaidAccess ? 'PAID ✅' : 'UNPAID ❌'}`);
+  console.log(`   Session details:`, {
+    hasPaidAccess: req.session.hasPaidAccess,
+    discountCodeUsed: req.session.discountCodeUsed,
+    stripeSessionId: req.session.stripeSessionId
+  });
   res.json({ hasPaidAccess });
+});
+
+// Reset payment status (for testing only)
+app.post('/api/reset-payment', requireAuth, (req, res) => {
+  req.session.hasPaidAccess = false;
+  req.session.discountCodeUsed = null;
+  req.session.stripeSessionId = null;
+
+  req.session.save((err) => {
+    if (err) {
+      console.error('Error resetting payment:', err);
+      return res.status(500).json({ error: 'Failed to reset' });
+    }
+    console.log(`🔄 Payment status RESET for ${req.user.email}`);
+    res.json({ success: true, message: 'Payment status reset' });
+  });
 });
 
 const port = PORT || 5000;
