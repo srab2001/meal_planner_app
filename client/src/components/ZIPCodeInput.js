@@ -5,6 +5,7 @@ const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 function ZIPCodeInput({ onSubmit, user }) {
   const [zipCode, setZipCode] = useState('');
+  const [storeName, setStoreName] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -32,7 +33,10 @@ function ZIPCodeInput({ onSubmit, user }) {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ zipCode: zipCode.trim() }),
+        body: JSON.stringify({
+          zipCode: zipCode.trim(),
+          storeName: storeName.trim() || undefined
+        }),
       });
 
       if (!response.ok) {
@@ -74,48 +78,71 @@ function ZIPCodeInput({ onSubmit, user }) {
             <span className="label-icon">📍</span>
             Enter Your ZIP Code
           </label>
-          
-          <div className="zip-input-wrapper">
-            <input
-              id="zipCode"
-              type="text"
-              className="zip-input"
-              placeholder="e.g., 27617"
-              value={zipCode}
-              onChange={(e) => {
-                setZipCode(e.target.value);
-                setError('');
-              }}
-              maxLength="10"
-              disabled={isLoading}
-              autoFocus
-            />
-            
-            <button 
-              type="submit" 
-              className="zip-submit-button"
-              disabled={isLoading || !zipCode}
-            >
-              {isLoading ? (
-                <>
-                  <span className="spinner-small"></span>
-                  Finding Stores...
-                </>
-              ) : (
-                <>
-                  Find Stores
-                  <span className="arrow">→</span>
-                </>
-              )}
-            </button>
-          </div>
 
-          {error && (
-            <div className="error-message">
-              ⚠️ {error}
-            </div>
-          )}
+          <input
+            id="zipCode"
+            type="text"
+            className="zip-input"
+            placeholder="e.g., 27617"
+            value={zipCode}
+            onChange={(e) => {
+              setZipCode(e.target.value);
+              setError('');
+            }}
+            maxLength="10"
+            disabled={isLoading}
+            autoFocus
+          />
         </div>
+
+        <div className="form-group">
+          <label htmlFor="storeName" className="section-label">
+            <span className="label-icon">🏪</span>
+            Specific Store Name (Optional)
+          </label>
+
+          <input
+            id="storeName"
+            type="text"
+            className="zip-input"
+            placeholder="e.g., Whole Foods, Harris Teeter, Trader Joe's"
+            value={storeName}
+            onChange={(e) => {
+              setStoreName(e.target.value);
+              setError('');
+            }}
+            disabled={isLoading}
+          />
+
+          <p className="field-hint">
+            Leave blank to see all nearby stores, or enter a specific store name to prioritize it in results
+          </p>
+        </div>
+
+        <button
+          type="submit"
+          className="zip-submit-button"
+          disabled={isLoading || !zipCode}
+          style={{ width: '100%', marginTop: '1rem' }}
+        >
+          {isLoading ? (
+            <>
+              <span className="spinner-small"></span>
+              Finding Stores...
+            </>
+          ) : (
+            <>
+              Find Stores
+              <span className="arrow">→</span>
+            </>
+          )}
+        </button>
+
+        {error && (
+          <div className="error-message">
+            ⚠️ {error}
+          </div>
+        )}
 
         <div className="zip-info">
           <p>💡 <strong>Why do we need this?</strong></p>
