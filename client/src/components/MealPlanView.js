@@ -28,6 +28,9 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   const currentDayMeals = localMealPlan.mealPlan[selectedDay] || {};
   const mealTypes = Object.keys(currentDayMeals);
 
+  // Get all meal types from preferences for favorites dropdown
+  const allMealTypes = preferences?.selectedMeals || ['breakfast', 'lunch', 'dinner'];
+
   const handleMealClick = (meal) => {
     setSelectedMeal(meal);
   };
@@ -132,6 +135,7 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
 
     loadFavorites();
     saveMealPlanToHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount
 
   const handleAddFavorite = async (meal, mealType, day) => {
@@ -430,7 +434,7 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                       >
                         <option value="">Add to plan...</option>
                         {days.map((day) =>
-                          mealTypes.map((mealType) => (
+                          allMealTypes.map((mealType) => (
                             <option key={`${day}-${mealType}`} value={`${day}|${mealType}`}>
                               {day} - {mealType}
                             </option>
