@@ -396,6 +396,93 @@ Return ONLY valid JSON in this exact format:
   }
 });
 
+// Single meal regeneration endpoint
+app.post('/api/regenerate-meal', requireAuth, async (req, res) => {
+  try {
+    const { mealType, cuisines, people, groceryStore, currentMeal } = req.body;
+
+    console.log(`Regenerating ${mealType} for user: ${req.user.email}`);
+    console.log(`Current meal: ${currentMeal}`);
+    console.log(`Store: ${groceryStore?.name}`);
+
+    // Build a prompt for regenerating a single meal
+    const prompt = `You are a professional chef and meal planner. Generate ONE new ${mealType} recipe based on these preferences:
+
+**User Information:**
+- Name: ${req.user.full_name || 'User'}
+- Cooking for: ${people || 2} people
+
+**Preferences:**
+- Cuisine preferences: ${cuisines?.join(', ') || 'Any'}
+- Grocery Store: ${groceryStore?.name || 'Local grocery store'}
+- Store Type: ${groceryStore?.type || 'Conventional'}
+
+**Requirements:**
+1. Create a DIFFERENT meal than: "${currentMeal}"
+2. Make it appropriate for ${mealType}
+3. Include prep time and cooking time
+4. Include servings count (for ${people || 2} people)
+5. List all ingredients with quantities
+6. Provide clear, step-by-step cooking instructions
+7. Estimate the cost
+8. All ingredients should be commonly available at ${groceryStore?.name || 'the selected store'}
+
+**Response Format:**
+Return ONLY valid JSON in this exact format:
+{
+  "name": "Recipe Name",
+  "prepTime": "10 mins",
+  "cookTime": "20 mins",
+  "servings": ${people || 2},
+  "estimatedCost": "$8-12",
+  "ingredients": [
+    "1 cup of ingredient",
+    "2 tablespoons of ingredient"
+  ],
+  "instructions": [
+    "Step 1 description",
+    "Step 2 description"
+  ]
+}`;
+
+    console.log(`Calling OpenAI to regenerate ${mealType}...`);
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an expert chef and meal planner. Create detailed, practical recipes that are easy to follow. Always respond with valid JSON only.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      temperature: 0.9, // Higher temperature for more variety
+      max_tokens: 1000,
+    });
+
+    let responseText = completion.choices[0].message.content.trim();
+
+    // Clean up response - remove markdown code blocks if present
+    responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+    const meal = JSON.parse(responseText);
+
+    console.log(`✅ New ${mealType} generated: ${meal.name}`);
+
+    res.json({ meal });
+
+  } catch (error) {
+    console.error('Error regenerating meal:', error);
+    res.status(500).json({
+      error: 'Failed to regenerate meal',
+      details: error.message
+    });
+  }
+});
+
 const port = PORT || 5000;
 app.listen(port, () => {
   console.log(`server listening on port ${port}`);
