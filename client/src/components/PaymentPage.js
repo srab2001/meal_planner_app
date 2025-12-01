@@ -3,7 +3,7 @@ import './PaymentPage.css';
 
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-function PaymentPage({ user, onPaymentComplete, onLogout, selectedStore, preferences }) {
+function PaymentPage({ user, onPaymentComplete, onLogout, selectedStores, preferences }) {
   const [discountCode, setDiscountCode] = useState('');
   const [isValidatingCode, setIsValidatingCode] = useState(false);
   const [codeError, setCodeError] = useState('');
@@ -154,7 +154,10 @@ function PaymentPage({ user, onPaymentComplete, onLogout, selectedStore, prefere
               </div>
               <div className="pref-item">
                 <span className="pref-label">Store:</span>
-                <span className="pref-value">{selectedStore?.name}</span>
+                <span className="pref-value">
+                  {selectedStores?.primaryStore?.name}
+                  {selectedStores?.comparisonStore && ` vs ${selectedStores.comparisonStore.name}`}
+                </span>
               </div>
             </div>
           </div>

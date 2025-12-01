@@ -49,6 +49,21 @@ h1 {
   font-weight: 600;
 }
 
+.instruction-text {
+  color: #555;
+  font-size: 1rem;
+  margin: 15px 0 30px 0;
+  padding: 15px;
+  background: #f0f4ff;
+  border-left: 4px solid #667eea;
+  border-radius: 8px;
+}
+
+.instruction-text strong {
+  color: #667eea;
+  font-weight: 600;
+}
+
 .stores-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -77,6 +92,16 @@ h1 {
   box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
 }
 
+.store-card.primary {
+  border-color: #4caf50;
+  border-width: 3px;
+}
+
+.store-card.comparison {
+  border-color: #ff9800;
+  border-width: 3px;
+}
+
 .store-header {
   display: flex;
   justify-content: space-between;
@@ -96,8 +121,17 @@ h1 {
   color: white;
   padding: 5px 12px;
   border-radius: 20px;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 600;
+  white-space: nowrap;
+}
+
+.primary-badge {
+  background: #4caf50;
+}
+
+.comparison-badge {
+  background: #ff9800;
 }
 
 .store-details {

@@ -4,16 +4,40 @@ import './StoreSelection.css';
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 function StoreSelection({ stores, zipCode, onSubmit, onBack, onRefreshStores }) {
-  const [selectedStore, setSelectedStore] = useState(null);
+  const [primaryStore, setPrimaryStore] = useState(null);
+  const [comparisonStore, setComparisonStore] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleStoreSelect = (store) => {
-    setSelectedStore(store);
+    if (!primaryStore) {
+      // Select as primary store first
+      setPrimaryStore(store);
+    } else if (primaryStore === store) {
+      // Clicking primary again deselects it
+      setPrimaryStore(null);
+      // If there was a comparison store, make it primary
+      if (comparisonStore) {
+        setPrimaryStore(comparisonStore);
+        setComparisonStore(null);
+      }
+    } else if (!comparisonStore) {
+      // Select as comparison store
+      setComparisonStore(store);
+    } else if (comparisonStore === store) {
+      // Clicking comparison again deselects it
+      setComparisonStore(null);
+    } else {
+      // Replace comparison store
+      setComparisonStore(store);
+    }
   };
 
   const handleContinue = () => {
-    if (selectedStore) {
-      onSubmit(selectedStore);
+    if (primaryStore) {
+      onSubmit({
+        primaryStore,
+        comparisonStore: comparisonStore || null
+      });
     }
   };
 
@@ -41,9 +65,10 @@ function StoreSelection({ stores, zipCode, onSubmit, onBack, onRefreshStores }) 
       
       // Call the refresh callback with new stores
       onRefreshStores(data.stores);
-      
-      // Clear selection since we have new stores
-      setSelectedStore(null);
+
+      // Clear selections since we have new stores
+      setPrimaryStore(null);
+      setComparisonStore(null);
       
     } catch (error) {
       console.error('❌ Error finding more stores:', error);
@@ -60,24 +85,35 @@ function StoreSelection({ stores, zipCode, onSubmit, onBack, onRefreshStores }) 
           ← Back to ZIP Code
         </button>
 
-        <h1>Select Your Grocery Store</h1>
+        <h1>Select Grocery Stores</h1>
         <p className="subtitle">
           Based on ZIP code: <strong>{zipCode}</strong>
         </p>
+        <p className="instruction-text">
+          Select your <strong>primary store</strong>, then optionally select a <strong>second store</strong> to compare prices
+        </p>
 
         <div className="stores-grid">
-          {stores.map((store, index) => (
-            <div
-              key={index}
-              className={`store-card ${selectedStore === store ? 'selected' : ''}`}
-              onClick={() => handleStoreSelect(store)}
-            >
-              <div className="store-header">
-                <h3 className="store-name">{store.name}</h3>
-                {selectedStore === store && (
-                  <span className="selected-badge">✓ Selected</span>
-                )}
-              </div>
+          {stores.map((store, index) => {
+            const isPrimary = primaryStore === store;
+            const isComparison = comparisonStore === store;
+            const isSelected = isPrimary || isComparison;
+
+            return (
+              <div
+                key={index}
+                className={`store-card ${isSelected ? 'selected' : ''} ${isPrimary ? 'primary' : ''} ${isComparison ? 'comparison' : ''}`}
+                onClick={() => handleStoreSelect(store)}
+              >
+                <div className="store-header">
+                  <h3 className="store-name">{store.name}</h3>
+                  {isPrimary && (
+                    <span className="selected-badge primary-badge">⭐ Primary Store</span>
+                  )}
+                  {isComparison && (
+                    <span className="selected-badge comparison-badge">💰 Compare Prices</span>
+                  )}
+                </div>
               
               <div className="store-details">
                 <p className="store-address">
@@ -92,8 +128,9 @@ function StoreSelection({ stores, zipCode, onSubmit, onBack, onRefreshStores }) 
                   </span>
                 )}
               </div>
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
 
         <div className="action-buttons">
@@ -117,9 +154,15 @@ function StoreSelection({ stores, zipCode, onSubmit, onBack, onRefreshStores }) 
           <button
             onClick={handleContinue}
             className="continue-button"
-            disabled={!selectedStore}
+            disabled={!primaryStore}
           >
-            Continue with {selectedStore ? selectedStore.name : 'Selected Store'} →
+            {primaryStore && comparisonStore ? (
+              <>Continue with {primaryStore.name} vs {comparisonStore.name} →</>
+            ) : primaryStore ? (
+              <>Continue with {primaryStore.name} →</>
+            ) : (
+              <>Select a Store to Continue →</>
+            )}
           </button>
         </div>
       </div>

@@ -133,6 +133,116 @@
   color: #999;
 }
 
+/* Price Comparison Table Styles */
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.comparison-table thead {
+  background: #f5f7fa;
+}
+
+.comparison-table th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #667eea;
+  border-bottom: 2px solid #667eea;
+}
+
+.comparison-table tbody tr {
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.2s;
+}
+
+.comparison-table tbody tr:hover {
+  background: #f9f9f9;
+}
+
+.comparison-table tbody tr.checked {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+.comparison-table td {
+  padding: 12px;
+}
+
+.checkbox-col {
+  width: 40px;
+  text-align: center;
+}
+
+.item-col {
+  font-weight: 500;
+  color: #333;
+  min-width: 200px;
+}
+
+.quantity-col {
+  color: #666;
+  min-width: 120px;
+}
+
+.price-col {
+  color: #667eea;
+  font-weight: 600;
+  text-align: right;
+  min-width: 100px;
+}
+
+.cheaper-price {
+  background: #d4edda;
+  color: #155724;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 4px 8px;
+}
+
+/* Price Comparison Summary */
+.price-comparison-summary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 25px;
+  border-radius: 8px;
+  margin-top: 20px;
+}
+
+.comparison-totals {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 15px;
+}
+
+.total-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.total-label {
+  font-size: 1rem;
+  opacity: 0.9;
+}
+
+.total-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.savings-banner {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 15px;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: 600;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
 /* Print styles */
 @media print {
   .print-button {
@@ -153,16 +263,51 @@
   .shopping-list-container {
     padding: 20px;
   }
-  
+
   .item-details {
     flex-direction: column;
     align-items: flex-start;
     gap: 5px;
   }
-  
+
   .item-name,
   .item-quantity,
   .item-price {
     text-align: left;
+  }
+
+  /* Comparison table responsive */
+  .comparison-table {
+    font-size: 0.85rem;
+  }
+
+  .comparison-table th,
+  .comparison-table td {
+    padding: 8px 4px;
+  }
+
+  .item-col {
+    min-width: 120px;
+  }
+
+  .quantity-col {
+    min-width: 80px;
+  }
+
+  .price-col {
+    min-width: 70px;
+  }
+
+  .comparison-totals {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .total-value {
+    font-size: 1.3rem;
+  }
+
+  .savings-banner {
+    font-size: 1rem;
   }
 }

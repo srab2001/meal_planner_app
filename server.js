@@ -314,10 +314,13 @@ Return ONLY valid JSON in this exact format:
 // Meal plan generation endpoint
 app.post('/api/generate-meals', requireAuth, async (req, res) => {
   try {
-    const { zipCode, groceryStore, selectedMeals, ...preferences } = req.body;
+    const { zipCode, primaryStore, comparisonStore, selectedMeals, ...preferences } = req.body;
 
     console.log(`Generating meal plan for user: ${req.user.email}`);
-    console.log(`Store: ${groceryStore?.name}, ZIP: ${zipCode}`);
+    console.log(`Primary Store: ${primaryStore?.name}, ZIP: ${zipCode}`);
+    if (comparisonStore) {
+      console.log(`Comparison Store: ${comparisonStore.name}`);
+    }
     console.log(`Selected meals: ${selectedMeals?.join(', ')}`);
 
     // Build meal type list based on user selection
@@ -330,6 +333,67 @@ app.post('/api/generate-meals', requireAuth, async (req, res) => {
       `      "${mealType}": { "name": "...", "prepTime": "...", "cookTime": "...", "servings": ${preferences.people || 2}, "estimatedCost": "$X-Y", "ingredients": [...], "instructions": [...] }`
     ).join(',\n');
 
+    // Build shopping list format based on whether we have comparison store
+    const shoppingListFormat = comparisonStore ? `
+  "shoppingList": {
+    "Produce": [
+      {
+        "item": "Tomatoes",
+        "quantity": "6 medium",
+        "primaryStorePrice": "$4.50",
+        "comparisonStorePrice": "$5.00"
+      },
+      {
+        "item": "Lettuce",
+        "quantity": "2 heads",
+        "primaryStorePrice": "$3.00",
+        "comparisonStorePrice": "$2.50"
+      }
+    ],
+    "Meat & Seafood": [
+      {
+        "item": "Chicken breast",
+        "quantity": "2 lbs",
+        "primaryStorePrice": "$8.99",
+        "comparisonStorePrice": "$9.49"
+      }
+    ],
+    "Dairy & Eggs": [
+      {
+        "item": "Eggs",
+        "quantity": "1 dozen",
+        "primaryStorePrice": "$3.50",
+        "comparisonStorePrice": "$3.25"
+      }
+    ],
+    "Pantry Staples": [],
+    "Other": []
+  },
+  "priceComparison": {
+    "primaryStoreTotal": "$150-175",
+    "comparisonStoreTotal": "$145-170",
+    "savings": "Save $5-10 at ${comparisonStore.name}"
+  },` : `
+  "shoppingList": {
+    "Produce": [
+      { "item": "Tomatoes", "quantity": "6 medium", "estimatedPrice": "$4.50" },
+      { "item": "Lettuce", "quantity": "2 heads", "estimatedPrice": "$3.00" }
+    ],
+    "Meat & Seafood": [
+      { "item": "Chicken breast", "quantity": "2 lbs", "estimatedPrice": "$8.99" }
+    ],
+    "Dairy & Eggs": [
+      { "item": "Eggs", "quantity": "1 dozen", "estimatedPrice": "$3.50" }
+    ],`;
+
+    // Build store information for prompt
+    const storeInfo = comparisonStore ?
+      `- Primary Store: ${primaryStore?.name || 'Local grocery store'} (${primaryStore?.type || 'Conventional'})
+- Comparison Store: ${comparisonStore.name} (${comparisonStore.type || 'Conventional'})
+- **IMPORTANT**: Provide estimated prices at BOTH stores for ALL shopping list items` :
+      `- Selected Grocery Store: ${primaryStore?.name || 'Local grocery store'}
+- Store Type: ${primaryStore?.type || 'Conventional'}`;
+
     // Build a comprehensive prompt for meal planning
     const prompt = `You are a professional meal planner. Create a personalized weekly meal plan based on these preferences:
 
@@ -339,8 +403,7 @@ app.post('/api/generate-meals', requireAuth, async (req, res) => {
 
 **Location & Store:**
 - ZIP Code: ${zipCode}
-- Selected Grocery Store: ${groceryStore?.name || 'Local grocery store'}
-- Store Type: ${groceryStore?.type || 'Conventional'}
+${storeInfo}
 
 **Preferences:**
 - Cuisines: ${preferences.cuisines?.join(', ') || 'Any'}
@@ -352,9 +415,11 @@ app.post('/api/generate-meals', requireAuth, async (req, res) => {
 2. DO NOT include meal types that were not selected
 3. Include recipes that match the user's cuisine preferences
 4. Create a consolidated shopping list organized by category
-5. All items should be commonly available at ${groceryStore?.name || 'the selected store'}
+5. All items should be commonly available at the selected store(s)
 6. Include prep time, cooking time, servings, and estimated cost for each meal
 7. Provide simple, clear cooking instructions
+${comparisonStore ? `8. **CRITICAL**: For EVERY item in the shopping list, provide estimated prices at BOTH stores (primaryStorePrice and comparisonStorePrice)
+9. Calculate total estimated costs for both stores and show potential savings` : ''}
 
 **Response Format:**
 Return ONLY valid JSON in this exact format:
@@ -368,17 +433,7 @@ ${mealStructureExample}
     },
     ... (continue for all 7 days: Monday through Sunday)
   },
-  "shoppingList": {
-    "Produce": [
-      { "item": "Tomatoes", "quantity": "6 medium", "estimatedPrice": "$4.50" },
-      { "item": "Lettuce", "quantity": "2 heads", "estimatedPrice": "$3.00" }
-    ],
-    "Meat & Seafood": [
-      { "item": "Chicken breast", "quantity": "2 lbs", "estimatedPrice": "$8.99" }
-    ],
-    "Dairy & Eggs": [
-      { "item": "Eggs", "quantity": "1 dozen", "estimatedPrice": "$3.50" }
-    ],
+${shoppingListFormat}
     "Pantry Staples": [
       { "item": "Olive oil", "quantity": "1 bottle", "estimatedPrice": "$7.99" }
     ],
@@ -520,10 +575,14 @@ Return ONLY valid JSON in this exact format:
 
 // Discount codes configuration
 // Add or modify codes as needed
+// To add a new code, add a line like: 'YOURCODE': { percentOff: 100, description: 'Description' },
 const DISCOUNT_CODES = {
   'TESTFREE': { percentOff: 100, description: 'Free access for testers' },
   'BETA50': { percentOff: 50, description: '50% off for beta testers' },
   'WELCOME25': { percentOff: 25, description: '25% off welcome discount' },
+  // Add your custom codes below:
+  // 'FRIEND100': { percentOff: 100, description: 'Free for friends' },
+  // 'LAUNCH20': { percentOff: 20, description: 'Launch discount' },
 };
 
 // Validate discount code endpoint
