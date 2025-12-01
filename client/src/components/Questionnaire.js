@@ -54,8 +54,8 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStore }) {
       const selectedMeals = Object.keys(meals).filter(meal => meals[meal]);
       onSubmit({
         cuisines,
-        people: numberOfPeople,  // Also changed to "people" to match App.js
-        meals: selectedMeals.length  // Changed to count
+        people: numberOfPeople,
+        selectedMeals: selectedMeals  // Send array of meal types: ['breakfast', 'lunch', 'dinner']
       });
     }
   };

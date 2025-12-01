@@ -302,10 +302,21 @@ Return ONLY valid JSON in this exact format:
 // Meal plan generation endpoint
 app.post('/api/generate-meals', requireAuth, async (req, res) => {
   try {
-    const { zipCode, groceryStore, ...preferences } = req.body;
+    const { zipCode, groceryStore, selectedMeals, ...preferences } = req.body;
 
     console.log(`Generating meal plan for user: ${req.user.email}`);
     console.log(`Store: ${groceryStore?.name}, ZIP: ${zipCode}`);
+    console.log(`Selected meals: ${selectedMeals?.join(', ')}`);
+
+    // Build meal type list based on user selection
+    const mealTypes = selectedMeals && selectedMeals.length > 0
+      ? selectedMeals
+      : ['breakfast', 'lunch', 'dinner'];
+
+    // Create example meal structure for the prompt
+    const mealStructureExample = mealTypes.map(mealType =>
+      `      "${mealType}": { "name": "...", "prepTime": "...", "cookTime": "...", "servings": ${preferences.people || 2}, "estimatedCost": "$X-Y", "ingredients": [...], "instructions": [...] }`
+    ).join(',\n');
 
     // Build a comprehensive prompt for meal planning
     const prompt = `You are a professional meal planner. Create a personalized weekly meal plan based on these preferences:
@@ -320,38 +331,50 @@ app.post('/api/generate-meals', requireAuth, async (req, res) => {
 - Store Type: ${groceryStore?.type || 'Conventional'}
 
 **Preferences:**
-${Object.entries(preferences).map(([key, value]) => `- ${key}: ${JSON.stringify(value)}`).join('\n')}
+- Cuisines: ${preferences.cuisines?.join(', ') || 'Any'}
+- Number of people: ${preferences.people || 2}
+- Meals needed: ${mealTypes.join(', ')}
 
-**Requirements:**
-1. Create a 7-day meal plan (breakfast, lunch, dinner, snacks)
-2. Include recipes that match the user's preferences
-3. Create a consolidated shopping list organized by category
-4. All items should be commonly available at ${groceryStore?.name || 'the selected store'}
-5. Include prep time and cooking time for each meal
-6. Provide simple, clear cooking instructions
+**IMPORTANT Requirements:**
+1. Create a 7-day meal plan with ONLY these meal types: ${mealTypes.join(', ')}
+2. DO NOT include meal types that were not selected
+3. Include recipes that match the user's cuisine preferences
+4. Create a consolidated shopping list organized by category
+5. All items should be commonly available at ${groceryStore?.name || 'the selected store'}
+6. Include prep time, cooking time, servings, and estimated cost for each meal
+7. Provide simple, clear cooking instructions
 
 **Response Format:**
 Return ONLY valid JSON in this exact format:
 {
   "mealPlan": {
     "Monday": {
-      "breakfast": { "name": "...", "prepTime": "...", "cookTime": "...", "ingredients": [...], "instructions": [...] },
-      "lunch": { "name": "...", "prepTime": "...", "cookTime": "...", "ingredients": [...], "instructions": [...] },
-      "dinner": { "name": "...", "prepTime": "...", "cookTime": "...", "ingredients": [...], "instructions": [...] },
-      "snacks": ["..."]
+${mealStructureExample}
     },
-    "Tuesday": { ... },
-    ... (continue for all 7 days)
+    "Tuesday": {
+${mealStructureExample}
+    },
+    ... (continue for all 7 days: Monday through Sunday)
   },
   "shoppingList": {
-    "Produce": ["item 1", "item 2"],
-    "Meat & Seafood": ["item 1"],
-    "Dairy & Eggs": ["item 1"],
-    "Pantry Staples": ["item 1"],
-    "Other": ["item 1"]
+    "Produce": [
+      { "item": "Tomatoes", "quantity": "6 medium", "estimatedPrice": "$4.50" },
+      { "item": "Lettuce", "quantity": "2 heads", "estimatedPrice": "$3.00" }
+    ],
+    "Meat & Seafood": [
+      { "item": "Chicken breast", "quantity": "2 lbs", "estimatedPrice": "$8.99" }
+    ],
+    "Dairy & Eggs": [
+      { "item": "Eggs", "quantity": "1 dozen", "estimatedPrice": "$3.50" }
+    ],
+    "Pantry Staples": [
+      { "item": "Olive oil", "quantity": "1 bottle", "estimatedPrice": "$7.99" }
+    ],
+    "Other": []
   },
+  "totalEstimatedCost": "$150-200",
   "summary": {
-    "totalMeals": 21,
+    "totalMeals": ${mealTypes.length * 7},
     "estimatedCost": "$150-200",
     "prepTimeTotal": "~5 hours",
     "dietaryNotes": "..."
