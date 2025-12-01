@@ -152,6 +152,10 @@
   border-bottom: 2px solid #667eea;
 }
 
+.comparison-table th.price-col {
+  text-align: right;
+}
+
 .comparison-table tbody tr {
   border-bottom: 1px solid #f0f0f0;
   transition: background 0.2s;
