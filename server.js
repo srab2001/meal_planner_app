@@ -314,7 +314,7 @@ Return ONLY valid JSON in this exact format:
 // Meal plan generation endpoint
 app.post('/api/generate-meals', requireAuth, async (req, res) => {
   try {
-    const { zipCode, primaryStore, comparisonStore, selectedMeals, ...preferences } = req.body;
+    const { zipCode, primaryStore, comparisonStore, selectedMeals, dietaryPreferences, ...preferences } = req.body;
 
     console.log(`Generating meal plan for user: ${req.user.email}`);
     console.log(`Primary Store: ${primaryStore?.name}, ZIP: ${zipCode}`);
@@ -322,11 +322,27 @@ app.post('/api/generate-meals', requireAuth, async (req, res) => {
       console.log(`Comparison Store: ${comparisonStore.name}`);
     }
     console.log(`Selected meals: ${selectedMeals?.join(', ')}`);
+    console.log(`Dietary preferences: ${dietaryPreferences?.join(', ') || 'None'}`);
 
     // Build meal type list based on user selection
     const mealTypes = selectedMeals && selectedMeals.length > 0
       ? selectedMeals
       : ['breakfast', 'lunch', 'dinner'];
+
+    // Build dietary restrictions text
+    const formatDietaryPreference = (pref) => {
+      const mapping = {
+        'diabetic': 'Diabetic-friendly (low sugar, complex carbohydrates)',
+        'dairyFree': 'Dairy-free (no milk, cheese, butter, cream, yogurt)',
+        'glutenFree': 'Gluten-free (no wheat, barley, rye)',
+        'peanutFree': 'Peanut-free (no peanuts or peanut products)'
+      };
+      return mapping[pref] || pref;
+    };
+
+    const dietaryRestrictionsText = dietaryPreferences && dietaryPreferences.length > 0
+      ? `- Dietary Restrictions: ${dietaryPreferences.map(formatDietaryPreference).join(', ')}`
+      : '';
 
     // Create example meal structure for the prompt
     const mealStructureExample = mealTypes.map(mealType =>
@@ -409,15 +425,17 @@ ${storeInfo}
 - Cuisines: ${preferences.cuisines?.join(', ') || 'Any'}
 - Number of people: ${preferences.people || 2}
 - Meals needed: ${mealTypes.join(', ')}
+${dietaryRestrictionsText}
 
 **IMPORTANT Requirements:**
 1. Create a 7-day meal plan with ONLY these meal types: ${mealTypes.join(', ')}
 2. DO NOT include meal types that were not selected
 3. Include recipes that match the user's cuisine preferences
-4. Create a consolidated shopping list organized by category
-5. All items should be commonly available at the selected store(s)
-6. Include prep time, cooking time, servings, and estimated cost for each meal
-7. Provide simple, clear cooking instructions
+${dietaryPreferences && dietaryPreferences.length > 0 ? `4. **CRITICAL**: ALL recipes MUST comply with these dietary restrictions: ${dietaryPreferences.map(formatDietaryPreference).join('; ')}. Do not use any ingredients that violate these restrictions.
+5. Create a consolidated shopping list organized by category` : '4. Create a consolidated shopping list organized by category'}
+${dietaryPreferences && dietaryPreferences.length > 0 ? '6' : '5'}. All items should be commonly available at the selected store(s)
+${dietaryPreferences && dietaryPreferences.length > 0 ? '7' : '6'}. Include prep time, cooking time, servings, and estimated cost for each meal
+${dietaryPreferences && dietaryPreferences.length > 0 ? '8' : '7'}. Provide simple, clear cooking instructions
 ${comparisonStore ? `8. **CRITICAL**: For EVERY item in the shopping list, provide estimated prices at BOTH stores (primaryStorePrice and comparisonStorePrice)
 9. Calculate total estimated costs for both stores and show potential savings` : ''}
 
@@ -489,11 +507,27 @@ ${shoppingListFormat}
 // Single meal regeneration endpoint
 app.post('/api/regenerate-meal', requireAuth, async (req, res) => {
   try {
-    const { mealType, cuisines, people, groceryStore, currentMeal } = req.body;
+    const { mealType, cuisines, people, groceryStore, currentMeal, dietaryPreferences } = req.body;
 
     console.log(`Regenerating ${mealType} for user: ${req.user.email}`);
     console.log(`Current meal: ${currentMeal}`);
     console.log(`Store: ${groceryStore?.name}`);
+    console.log(`Dietary preferences: ${dietaryPreferences?.join(', ') || 'None'}`);
+
+    // Build dietary restrictions text
+    const formatDietaryPreference = (pref) => {
+      const mapping = {
+        'diabetic': 'Diabetic-friendly (low sugar, complex carbohydrates)',
+        'dairyFree': 'Dairy-free (no milk, cheese, butter, cream, yogurt)',
+        'glutenFree': 'Gluten-free (no wheat, barley, rye)',
+        'peanutFree': 'Peanut-free (no peanuts or peanut products)'
+      };
+      return mapping[pref] || pref;
+    };
+
+    const dietaryRestrictionsText = dietaryPreferences && dietaryPreferences.length > 0
+      ? `- Dietary Restrictions: ${dietaryPreferences.map(formatDietaryPreference).join(', ')}`
+      : '';
 
     // Build a prompt for regenerating a single meal
     const prompt = `You are a professional chef and meal planner. Generate ONE new ${mealType} recipe based on these preferences:
@@ -506,16 +540,18 @@ app.post('/api/regenerate-meal', requireAuth, async (req, res) => {
 - Cuisine preferences: ${cuisines?.join(', ') || 'Any'}
 - Grocery Store: ${groceryStore?.name || 'Local grocery store'}
 - Store Type: ${groceryStore?.type || 'Conventional'}
+${dietaryRestrictionsText}
 
 **Requirements:**
 1. Create a DIFFERENT meal than: "${currentMeal}"
 2. Make it appropriate for ${mealType}
-3. Include prep time and cooking time
-4. Include servings count (for ${people || 2} people)
-5. List all ingredients with quantities
-6. Provide clear, step-by-step cooking instructions
-7. Estimate the cost
-8. All ingredients should be commonly available at ${groceryStore?.name || 'the selected store'}
+${dietaryPreferences && dietaryPreferences.length > 0 ? `3. **CRITICAL**: This recipe MUST comply with these dietary restrictions: ${dietaryPreferences.map(formatDietaryPreference).join('; ')}. Do not use any ingredients that violate these restrictions.
+4. Include prep time and cooking time` : '3. Include prep time and cooking time'}
+${dietaryPreferences && dietaryPreferences.length > 0 ? '5' : '4'}. Include servings count (for ${people || 2} people)
+${dietaryPreferences && dietaryPreferences.length > 0 ? '6' : '5'}. List all ingredients with quantities
+${dietaryPreferences && dietaryPreferences.length > 0 ? '7' : '6'}. Provide clear, step-by-step cooking instructions
+${dietaryPreferences && dietaryPreferences.length > 0 ? '8' : '7'}. Estimate the cost
+${dietaryPreferences && dietaryPreferences.length > 0 ? '9' : '8'}. All ingredients should be commonly available at ${groceryStore?.name || 'the selected store'}
 
 **Response Format:**
 Return ONLY valid JSON in this exact format:
