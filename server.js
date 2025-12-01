@@ -15,7 +15,9 @@ const {
   GOOGLE_CLIENT_SECRET,
   GOOGLE_CALLBACK_URL,
   FRONTEND_BASE,
-  OPENAI_API_KEY
+  OPENAI_API_KEY,
+  STRIPE_SECRET_KEY,
+  STRIPE_PUBLISHABLE_KEY
 } = process.env;
 
 // basic env checks
@@ -43,6 +45,16 @@ const app = express();
 const openai = new OpenAI({
   apiKey: OPENAI_API_KEY
 });
+
+// Initialize Stripe (if configured)
+let stripe = null;
+if (STRIPE_SECRET_KEY) {
+  const stripeLib = require('stripe');
+  stripe = stripeLib(STRIPE_SECRET_KEY);
+  console.log('Stripe initialized');
+} else {
+  console.warn('STRIPE_SECRET_KEY not set - payment features will be disabled');
+}
 
 // behind Render proxy
 app.set('trust proxy', 1);
@@ -504,6 +516,190 @@ Return ONLY valid JSON in this exact format:
       details: error.message
     });
   }
+});
+
+// Discount codes configuration
+// Add or modify codes as needed
+const DISCOUNT_CODES = {
+  'TESTFREE': { percentOff: 100, description: 'Free access for testers' },
+  'BETA50': { percentOff: 50, description: '50% off for beta testers' },
+  'WELCOME25': { percentOff: 25, description: '25% off welcome discount' },
+};
+
+// Validate discount code endpoint
+app.post('/api/validate-discount', requireAuth, async (req, res) => {
+  try {
+    const { code } = req.body;
+
+    if (!code || typeof code !== 'string') {
+      return res.status(400).json({ error: 'Invalid code format', valid: false });
+    }
+
+    const normalizedCode = code.trim().toUpperCase();
+    const discount = DISCOUNT_CODES[normalizedCode];
+
+    if (discount) {
+      console.log(`✅ Valid discount code applied: ${normalizedCode} (${discount.percentOff}% off)`);
+      res.json({
+        valid: true,
+        code: normalizedCode,
+        percentOff: discount.percentOff,
+        description: discount.description
+      });
+    } else {
+      console.log(`❌ Invalid discount code attempted: ${normalizedCode}`);
+      res.status(400).json({ error: 'Invalid discount code', valid: false });
+    }
+  } catch (error) {
+    console.error('Error validating discount code:', error);
+    res.status(500).json({ error: 'Failed to validate code', valid: false });
+  }
+});
+
+// Apply free access (for 100% discount codes)
+app.post('/api/apply-free-access', requireAuth, async (req, res) => {
+  try {
+    const { code } = req.body;
+    const normalizedCode = code?.trim().toUpperCase();
+    const discount = DISCOUNT_CODES[normalizedCode];
+
+    if (!discount || discount.percentOff !== 100) {
+      return res.status(400).json({ error: 'Invalid free access code' });
+    }
+
+    // Mark user as having paid access in session
+    req.session.hasPaidAccess = true;
+    req.session.discountCodeUsed = normalizedCode;
+
+    await new Promise((resolve, reject) => {
+      req.session.save((err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
+    console.log(`✅ Free access granted to ${req.user.email} with code ${normalizedCode}`);
+    res.json({ success: true, message: 'Free access granted' });
+  } catch (error) {
+    console.error('Error applying free access:', error);
+    res.status(500).json({ error: 'Failed to apply free access' });
+  }
+});
+
+// Create Stripe checkout session
+app.post('/api/create-checkout-session', requireAuth, async (req, res) => {
+  try {
+    if (!stripe) {
+      return res.status(500).json({ error: 'Payment system not configured' });
+    }
+
+    const { discountCode } = req.body;
+    let discount = null;
+
+    // Validate discount code if provided
+    if (discountCode) {
+      const normalizedCode = discountCode.trim().toUpperCase();
+      discount = DISCOUNT_CODES[normalizedCode];
+
+      if (!discount) {
+        return res.status(400).json({ error: 'Invalid discount code' });
+      }
+
+      // If 100% off, shouldn't reach here (should use free access endpoint)
+      if (discount.percentOff === 100) {
+        return res.status(400).json({ error: 'Use free access for 100% discount codes' });
+      }
+    }
+
+    // Calculate price (in cents)
+    const basePrice = 999; // $9.99
+    let finalPrice = basePrice;
+
+    if (discount && discount.percentOff) {
+      finalPrice = Math.round(basePrice * (1 - discount.percentOff / 100));
+    }
+
+    // Create Stripe checkout session
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: '7-Day Personalized Meal Plan',
+              description: 'Complete meal plan with recipes and shopping list',
+            },
+            unit_amount: finalPrice,
+          },
+          quantity: 1,
+        },
+      ],
+      mode: 'payment',
+      success_url: `${FRONTEND_BASE || 'http://localhost:3000'}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${FRONTEND_BASE || 'http://localhost:3000'}/payment-cancelled`,
+      client_reference_id: req.user.id,
+      customer_email: req.user.email,
+      metadata: {
+        userId: req.user.id,
+        userEmail: req.user.email,
+        discountCode: discountCode || 'none',
+      },
+    });
+
+    console.log(`💳 Checkout session created for ${req.user.email}: ${session.id}`);
+
+    res.json({ url: session.url, sessionId: session.id });
+  } catch (error) {
+    console.error('Error creating checkout session:', error);
+    res.status(500).json({ error: 'Failed to create checkout session', details: error.message });
+  }
+});
+
+// Verify payment success
+app.post('/api/verify-payment', requireAuth, async (req, res) => {
+  try {
+    if (!stripe) {
+      return res.status(500).json({ error: 'Payment system not configured' });
+    }
+
+    const { sessionId } = req.body;
+
+    if (!sessionId) {
+      return res.status(400).json({ error: 'Session ID required' });
+    }
+
+    // Retrieve the checkout session from Stripe
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+    if (session.payment_status === 'paid') {
+      // Mark user as having paid access in session
+      req.session.hasPaidAccess = true;
+      req.session.stripeSessionId = sessionId;
+
+      await new Promise((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+
+      console.log(`✅ Payment verified for ${req.user.email}: ${sessionId}`);
+      res.json({ success: true, verified: true });
+    } else {
+      res.status(400).json({ error: 'Payment not completed', verified: false });
+    }
+  } catch (error) {
+    console.error('Error verifying payment:', error);
+    res.status(500).json({ error: 'Failed to verify payment', details: error.message });
+  }
+});
+
+// Check payment status
+app.get('/api/payment-status', requireAuth, (req, res) => {
+  const hasPaidAccess = req.session.hasPaidAccess || false;
+  console.log(`Payment status check for ${req.user.email}: ${hasPaidAccess ? 'PAID' : 'UNPAID'}`);
+  res.json({ hasPaidAccess });
 });
 
 const port = PORT || 5000;
