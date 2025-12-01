@@ -135,7 +135,7 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   };
 
   const handleFeedback = () => {
-    const feedbackURL = 'https://docs.google.com/forms/d/e/1FAIpQLSfNbdZD1GdQYzQvrvZkWDjlLw97fd15NX-X3Z53me5IbK_rhA/viewform?usp=dialog';
+    const feedbackURL = 'https://docs.google.com/forms/d/e/1FAIpQLSfNbdZD1GdQYzQvrvZkWDjlLw97fd15NX-X3Z53me5IbK_rhA/viewform?usp=header';
     window.open(feedbackURL, '_blank');
   };
 
