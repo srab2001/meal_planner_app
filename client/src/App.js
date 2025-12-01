@@ -15,7 +15,7 @@ function App() {
   const [currentView, setCurrentView] = useState('login');
   const [zipCode, setZipCode] = useState('');
   const [stores, setStores] = useState([]);
-  const [selectedStore, setSelectedStore] = useState(null);
+  const [selectedStores, setSelectedStores] = useState({ primaryStore: null, comparisonStore: null });
   const [preferences, setPreferences] = useState(null);
   const [mealPlan, setMealPlan] = useState(null);
 
@@ -48,8 +48,8 @@ function App() {
   };
 
   // Handler: Store Selection
-  const handleStoreSelect = (store) => {
-    setSelectedStore(store);
+  const handleStoreSelect = (storesData) => {
+    setSelectedStores(storesData);
     setCurrentView('questionnaire');
   };
 
@@ -57,7 +57,7 @@ function App() {
   const handleBackToZIP = () => {
     setCurrentView('zip');
     setStores([]);
-    setSelectedStore(null);
+    setSelectedStores({ primaryStore: null, comparisonStore: null });
   };
 
   // Handler: Refresh Stores
@@ -111,7 +111,8 @@ function App() {
         body: JSON.stringify({
           ...prefs,
           zipCode,
-          groceryStore: selectedStore
+          primaryStore: selectedStores.primaryStore,
+          comparisonStore: selectedStores.comparisonStore
         }),
       });
 
@@ -144,7 +145,7 @@ function App() {
     setCurrentView('zip');
     setZipCode('');
     setStores([]);
-    setSelectedStore(null);
+    setSelectedStores({ primaryStore: null, comparisonStore: null });
     setPreferences(null);
     setMealPlan(null);
   };
@@ -181,7 +182,7 @@ function App() {
         <Questionnaire
           onSubmit={handleQuestionnaireComplete}
           user={user}
-          selectedStore={selectedStore}
+          selectedStores={selectedStores}
           onLogout={handleLogout}
         />
       )}
@@ -189,7 +190,7 @@ function App() {
       {currentView === 'payment' && (
         <PaymentPage
           user={user}
-          selectedStore={selectedStore}
+          selectedStores={selectedStores}
           preferences={preferences}
           onPaymentComplete={handlePaymentComplete}
           onLogout={handleLogout}
@@ -214,7 +215,7 @@ function App() {
           mealPlan={mealPlan}
           preferences={preferences}
           user={user}
-          selectedStore={selectedStore}
+          selectedStores={selectedStores}
           onStartOver={handleStartOver}
           onLogout={handleLogout}
         />
