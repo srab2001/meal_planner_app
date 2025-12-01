@@ -16,6 +16,47 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
+  // Load favorites and save meal plan to history on mount
+  // This useEffect must come before any early returns to follow React hooks rules
+  useEffect(() => {
+    const loadFavorites = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/api/favorites`, {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setFavorites(data.favorites || []);
+        }
+      } catch (error) {
+        console.error('Error loading favorites:', error);
+      }
+    };
+
+    const saveMealPlanToHistory = async () => {
+      try {
+        await fetch(`${API_BASE}/api/save-meal-plan`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            mealPlan: localMealPlan,
+            preferences,
+            selectedStores
+          }),
+        });
+        console.log('📝 Meal plan saved to history');
+      } catch (error) {
+        console.error('Error saving meal plan to history:', error);
+      }
+    };
+
+    loadFavorites();
+    saveMealPlanToHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount
+
+  // Early return check must come after all hooks
   if (!localMealPlan) {
     return (
       <div className="meal-plan-container">
@@ -98,45 +139,6 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
     const feedbackURL = 'https://forms.gle/YOUR-FORM-ID-HERE';
     window.open(feedbackURL, '_blank');
   };
-
-  // Load favorites and save meal plan to history on mount
-  useEffect(() => {
-    const loadFavorites = async () => {
-      try {
-        const response = await fetch(`${API_BASE}/api/favorites`, {
-          credentials: 'include',
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setFavorites(data.favorites || []);
-        }
-      } catch (error) {
-        console.error('Error loading favorites:', error);
-      }
-    };
-
-    const saveMealPlanToHistory = async () => {
-      try {
-        await fetch(`${API_BASE}/api/save-meal-plan`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            mealPlan: localMealPlan,
-            preferences,
-            selectedStores
-          }),
-        });
-        console.log('📝 Meal plan saved to history');
-      } catch (error) {
-        console.error('Error saving meal plan to history:', error);
-      }
-    };
-
-    loadFavorites();
-    saveMealPlanToHistory();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run on mount
 
   const handleAddFavorite = async (meal, mealType, day) => {
     const key = `${day}-${mealType}`;
