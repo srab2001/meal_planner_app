@@ -47,6 +47,7 @@
   flex-wrap: wrap;
 }
 
+.btn-feedback,
 .btn-print,
 .btn-secondary,
 .btn-logout {
@@ -57,6 +58,16 @@
   cursor: pointer;
   transition: all 0.3s;
   font-weight: 500;
+}
+
+.btn-feedback {
+  background: #ff9800;
+  color: white;
+}
+
+.btn-feedback:hover {
+  background: #f57c00;
+  transform: translateY(-2px);
 }
 
 .btn-print {

@@ -84,6 +84,12 @@ function MealPlanView({ mealPlan, preferences, user, selectedStore, onStartOver,
     window.print();
   };
 
+  const handleFeedback = () => {
+    // TODO: Replace this URL with your Google Form URL
+    const feedbackURL = 'https://forms.gle/YOUR-FORM-ID-HERE';
+    window.open(feedbackURL, '_blank');
+  };
+
   return (
     <div className="meal-plan-container">
       {/* Header */}
@@ -96,6 +102,9 @@ function MealPlanView({ mealPlan, preferences, user, selectedStore, onStartOver,
           )}
         </div>
         <div className="header-actions">
+          <button onClick={handleFeedback} className="btn-feedback">
+            💬 Send Feedback
+          </button>
           <button onClick={handlePrintAllRecipes} className="btn-print">
             🖨️ Print All Recipes
           </button>
