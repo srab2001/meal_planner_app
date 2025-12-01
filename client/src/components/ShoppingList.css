@@ -248,13 +248,71 @@
   .print-button {
     display: none;
   }
-  
+
   .item-checkbox {
     border: 1px solid #000;
   }
-  
+
   .shopping-item:hover {
     background: none;
+  }
+
+  /* Comparison table print styles */
+  .comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .comparison-table th,
+  .comparison-table td {
+    border: 1px solid #333;
+    padding: 8px;
+  }
+
+  .comparison-table th {
+    text-align: left;
+    background: #f0f0f0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .comparison-table tbody tr:hover {
+    background: none;
+  }
+
+  .checkbox-col {
+    width: 30px;
+    text-align: center;
+  }
+
+  .item-col {
+    text-align: left;
+  }
+
+  .quantity-col {
+    text-align: left;
+  }
+
+  .price-col {
+    text-align: right;
+  }
+
+  .cheaper-price {
+    background: #d4edda !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .price-comparison-summary {
+    background: #f0f0f0 !important;
+    color: #333 !important;
+    border: 2px solid #333;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .savings-banner {
+    border: 1px solid #333;
   }
 }
 
