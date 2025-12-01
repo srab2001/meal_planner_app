@@ -4,7 +4,7 @@ import ShoppingList from './ShoppingList';
 
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-function MealPlanView({ mealPlan, preferences, user, selectedStore, onStartOver, onLogout }) {
+function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver, onLogout }) {
   const [selectedDay, setSelectedDay] = useState('Monday');
   const [selectedMeal, setSelectedMeal] = useState(null);
   const [activeTab, setActiveTab] = useState('meals');
@@ -48,7 +48,7 @@ function MealPlanView({ mealPlan, preferences, user, selectedStore, onStartOver,
           cuisines: preferences?.cuisines || [],
           people: preferences?.people || 2,
           mealType,
-          groceryStore: selectedStore,
+          groceryStore: selectedStores?.primaryStore,
           currentMeal: localMealPlan.mealPlan[day][mealType].name
         }),
       });
@@ -97,8 +97,13 @@ function MealPlanView({ mealPlan, preferences, user, selectedStore, onStartOver,
         <div className="header-content">
           <h1>Your 7-Day Meal Plan</h1>
           {user && <p className="welcome-text">Welcome, {user.displayName}!</p>}
-          {selectedStore && (
-            <p className="store-info">Shopping at: <strong>{selectedStore.name}</strong></p>
+          {selectedStores?.primaryStore && (
+            <p className="store-info">
+              Shopping at: <strong>{selectedStores.primaryStore.name}</strong>
+              {selectedStores.comparisonStore && (
+                <> vs <strong>{selectedStores.comparisonStore.name}</strong></>
+              )}
+            </p>
           )}
         </div>
         <div className="header-actions">
@@ -228,10 +233,11 @@ function MealPlanView({ mealPlan, preferences, user, selectedStore, onStartOver,
 
         {/* Shopping List Tab */}
         {activeTab === 'shopping' && (
-          <ShoppingList 
+          <ShoppingList
             shoppingList={localMealPlan.shoppingList}
             totalCost={localMealPlan.totalEstimatedCost}
-            storeName={selectedStore?.name}
+            priceComparison={localMealPlan.priceComparison}
+            selectedStores={selectedStores}
           />
         )}
       </div>
@@ -288,7 +294,12 @@ function MealPlanView({ mealPlan, preferences, user, selectedStore, onStartOver,
       <div className="print-only-content">
         <div className="print-header">
           <h1>7-Day Meal Plan</h1>
-          {selectedStore && <p>Shopping at: {selectedStore.name}</p>}
+          {selectedStores?.primaryStore && (
+            <p>
+              Shopping at: {selectedStores.primaryStore.name}
+              {selectedStores.comparisonStore && ` vs ${selectedStores.comparisonStore.name}`}
+            </p>
+          )}
           {preferences && (
             <p>For {preferences.people} people | {preferences.cuisines?.join(', ')}</p>
           )}

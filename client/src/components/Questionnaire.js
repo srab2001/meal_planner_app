@@ -7,7 +7,7 @@ const CUISINE_OPTIONS = [
   'Vietnamese', 'Greek', 'Spanish', 'Middle Eastern'
 ];
 
-function Questionnaire({ user, onSubmit, onLogout, selectedStore }) {
+function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
   const [cuisines, setCuisines] = useState([]);
   const [numberOfPeople, setNumberOfPeople] = useState(2);
   const [meals, setMeals] = useState({
