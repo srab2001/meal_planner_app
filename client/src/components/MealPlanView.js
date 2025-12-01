@@ -49,7 +49,8 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
           people: preferences?.people || 2,
           mealType,
           groceryStore: selectedStores?.primaryStore,
-          currentMeal: localMealPlan.mealPlan[day][mealType].name
+          currentMeal: localMealPlan.mealPlan[day][mealType].name,
+          dietaryPreferences: preferences?.dietaryPreferences || []
         }),
       });
 
