@@ -200,14 +200,48 @@ app.get('/api/profile', requireAuth, (req, res) => {
 // Store finder endpoint
 app.post('/api/find-stores', requireAuth, async (req, res) => {
   try {
-    const { zipCode } = req.body;
+    const { zipCode, storeName } = req.body;
 
     if (!zipCode || !/^\d{5}(-\d{4})?$/.test(zipCode)) {
       return res.status(400).json({ error: 'Invalid ZIP code' });
     }
 
-    // Use GPT to find common stores in the area
-    const prompt = `Given the ZIP code ${zipCode}, list major grocery stores commonly found in this area of the United States.
+    // Build prompt based on whether a specific store was requested
+    let prompt;
+    if (storeName && storeName.trim()) {
+      prompt = `Given the ZIP code ${zipCode}, list grocery stores in this area with a focus on "${storeName}".
+
+IMPORTANT: If "${storeName}" exists in this area, it MUST be the FIRST store in the list.
+
+For each store, provide:
+- name: The official store name
+- type: Category like "Organic", "Discount", "Conventional", "Specialty"
+- typical_distance: Range like "1-3 miles", "2-5 miles", etc.
+
+List 6-8 stores total:
+1. "${storeName}" (if it exists in this area) - MUST BE FIRST
+2. Other nearby stores similar to "${storeName}"
+3. Other major chains in the area
+
+Include a mix of:
+- The requested store if available
+- National chains (Walmart, Kroger, Target)
+- Regional chains appropriate for this area
+- Specialty stores (Whole Foods, Trader Joe's)
+
+Return ONLY valid JSON in this exact format:
+{
+  "stores": [
+    {
+      "name": "Store Name",
+      "address": "Typical location within 5 miles",
+      "distance": "2-4 miles",
+      "type": "Conventional"
+    }
+  ]
+}`;
+    } else {
+      prompt = `Given the ZIP code ${zipCode}, list major grocery stores commonly found in this area of the United States.
 
 For each store, provide:
 - name: The official store name
@@ -230,6 +264,9 @@ Return ONLY valid JSON in this exact format:
     }
   ]
 }`;
+    }
+
+    console.log(`Finding stores for ZIP: ${zipCode}${storeName ? `, prioritizing: ${storeName}` : ''}`);
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -253,6 +290,7 @@ Return ONLY valid JSON in this exact format:
 
     const storeData = JSON.parse(responseText);
 
+    console.log(`Found ${storeData.stores?.length || 0} stores`);
     res.json(storeData);
 
   } catch (error) {

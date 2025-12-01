@@ -171,6 +171,14 @@
   color: #333;
 }
 
+.field-hint {
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: #888;
+  font-style: italic;
+  line-height: 1.4;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .zip-code-container {
