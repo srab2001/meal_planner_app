@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import './MealPlanView.css';
 import ShoppingList from './ShoppingList';
 
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 function MealPlanView({ mealPlan, preferences, user, selectedStore, onStartOver, onLogout }) {
   const [selectedDay, setSelectedDay] = useState('Monday');
   const [selectedMeal, setSelectedMeal] = useState(null);
@@ -36,11 +38,12 @@ function MealPlanView({ mealPlan, preferences, user, selectedStore, onStartOver,
     try {
       console.log('🔄 Regenerating meal:', day, mealType);
 
-      const response = await fetch('/api/regenerate-meal', {
+      const response = await fetch(`${API_BASE}/api/regenerate-meal`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           cuisines: preferences?.cuisines || [],
           people: preferences?.people || 2,
