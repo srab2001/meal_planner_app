@@ -59,10 +59,30 @@ if (STRIPE_SECRET_KEY) {
 // behind Render proxy
 app.set('trust proxy', 1);
 
-// CORS: allow frontend and cookies
+// CORS: whitelist specific origins only
+const allowedOrigins = [
+  FRONTEND_BASE,
+  'http://localhost:3000',  // Local development
+  'http://localhost:5000',  // Local backend
+  'https://meal-planner-rjyhqof89-stus-projects-458dd35a.vercel.app',  // Vercel preview
+  // Add your production Vercel URL here when deployed
+].filter(Boolean); // Remove undefined values
+
+console.log('Allowed CORS origins:', allowedOrigins);
+
 app.use(
   cors({
-    origin: true,
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps, Postman, curl)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.indexOf(origin) === -1) {
+        const msg = `The CORS policy for this site does not allow access from origin ${origin}`;
+        console.warn('CORS blocked:', origin);
+        return callback(new Error(msg), false);
+      }
+      return callback(null, true);
+    },
     credentials: true
   })
 );
