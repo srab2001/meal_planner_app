@@ -1,0 +1,26 @@
+Phase,Week,Priority,Task,Category,Dependencies,Deliverable,Success Metric,Owner,Status
+Immediate,Week 1,P0,Fix CORS to whitelist specific origins,Security,None,Update server.js CORS config,No unauthorized domain access,Backend,Not Started
+Immediate,Week 1,P0,Add express-rate-limit,Security,None,Rate limiting middleware,Max 100 req/15min per IP,Backend,Not Started
+Immediate,Week 1,P0,Remove sensitive console.logs,Security,None,Clean logging in production,No PII in logs,Backend,Not Started
+Immediate,Week 1,P0,Add helmet for security headers,Security,None,Helmet middleware installed,All security headers present,Backend,Not Started
+Immediate,Week 1,P0,Add input validation with express-validator,Security,None,Validation on all endpoints,No invalid data processed,Backend,Not Started
+Short-Term,Week 2,P1,Set up PostgreSQL database,Scalability,None,Database provisioned on Render,Database accessible,Backend,Not Started
+Short-Term,Week 2,P1,Create database schema,Scalability,PostgreSQL setup,Schema for users/favorites/history,Tables created,Backend,Not Started
+Short-Term,Week 2-3,P1,Migrate favorites to PostgreSQL,Scalability,Database schema,Favorites use database,All favorites in DB,Backend,Not Started
+Short-Term,Week 2-3,P1,Migrate history to PostgreSQL,Scalability,Database schema,History uses database,All history in DB,Backend,Not Started
+Short-Term,Week 3,P1,Migrate discount tracking to PostgreSQL,Scalability,Database schema,Discount tracking in DB,Track usage in DB,Backend,Not Started
+Short-Term,Week 3,P1,Implement Redis session store,Security,PostgreSQL complete,connect-redis configured,Sessions persist across restarts,Backend,Not Started
+Short-Term,Week 4,P1,Add Sentry error monitoring,Infrastructure,None,Sentry integrated,Errors tracked in dashboard,Backend,Not Started
+Short-Term,Week 4,P1,Implement caching with node-cache,Scalability,None,Cache meal plans & store searches,30% faster responses,Backend,Not Started
+Short-Term,Week 4,P2,Convert file operations to async,Scalability,None,All fs operations use promises,No blocking I/O,Backend,Not Started
+Short-Term,Week 4,P2,Add OpenAI retry logic,Scalability,None,Exponential backoff on errors,95%+ success rate,Backend,Not Started
+Long-Term,Month 2,P2,Implement admin role system,Security,Database migration complete,Admin RBAC middleware,Only admins access stats,Backend,Not Started
+Long-Term,Month 2,P2,Set up automated database backups,Infrastructure,PostgreSQL complete,Daily automated backups,Daily snapshots created,DevOps,Not Started
+Long-Term,Month 2,P2,Replace MD5 with HMAC-SHA256,Security,None,Secure email hashing,Emails not reversible,Backend,Not Started
+Long-Term,Month 2,P3,Add session regeneration on login,Security,None,req.session.regenerate() after auth,New session ID on login,Backend,Not Started
+Long-Term,Month 2,P3,Implement structured logging (winston),Infrastructure,None,Winston logger with levels,Proper log levels in prod,Backend,Not Started
+Long-Term,Month 3,P2,Add health check endpoints,Infrastructure,None,/health with DB/Redis checks,Monitoring can ping health,Backend,Not Started
+Long-Term,Month 3,P2,Scale to multiple Render instances,Infrastructure,Redis sessions + PostgreSQL,2+ instances with load balancer,99.9% uptime,DevOps,Not Started
+Long-Term,Month 3,P3,Implement queue system for OpenAI,Scalability,Redis setup,BullMQ for background jobs,OpenAI calls queued,Backend,Not Started
+Long-Term,Month 3,P3,Add comprehensive API tests,Quality,None,Integration tests for all endpoints,80%+ code coverage,Backend,Not Started
+Long-Term,Month 3,P3,Set up CI/CD pipeline,DevOps,None,GitHub Actions for tests + deploy,Auto-deploy on merge,DevOps,Not Started
