@@ -188,3 +188,16 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Days checkboxes */
+.days-checkboxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .days-checkboxes {
+    grid-template-columns: 1fr;
+  }
+}
