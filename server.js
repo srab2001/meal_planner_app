@@ -341,7 +341,9 @@ app.post('/api/generate-meals', requireAuth, async (req, res) => {
         'diabetic': 'Diabetic-friendly (low sugar, complex carbohydrates)',
         'dairyFree': 'Dairy-free (no milk, cheese, butter, cream, yogurt)',
         'glutenFree': 'Gluten-free (no wheat, barley, rye)',
-        'peanutFree': 'Peanut-free (no peanuts or peanut products)'
+        'peanutFree': 'Peanut-free (no peanuts or peanut products)',
+        'vegetarian': 'Vegetarian (no meat, poultry, or seafood)',
+        'kosher': 'Kosher (following Jewish dietary laws - no pork, shellfish, mixing meat and dairy)'
       };
       return mapping[pref] || pref;
     };
@@ -521,7 +523,9 @@ app.post('/api/regenerate-meal', requireAuth, async (req, res) => {
         'diabetic': 'Diabetic-friendly (low sugar, complex carbohydrates)',
         'dairyFree': 'Dairy-free (no milk, cheese, butter, cream, yogurt)',
         'glutenFree': 'Gluten-free (no wheat, barley, rye)',
-        'peanutFree': 'Peanut-free (no peanuts or peanut products)'
+        'peanutFree': 'Peanut-free (no peanuts or peanut products)',
+        'vegetarian': 'Vegetarian (no meat, poultry, or seafood)',
+        'kosher': 'Kosher (following Jewish dietary laws - no pork, shellfish, mixing meat and dairy)'
       };
       return mapping[pref] || pref;
     };
