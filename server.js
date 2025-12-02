@@ -353,6 +353,32 @@ app.post('/api/generate-meals', requireAuth, async (req, res) => {
       ? `- Dietary Restrictions: ${dietaryPreferences.map(formatDietaryPreference).join(', ')}`
       : '';
 
+    // Build leftovers text
+    const leftoversText = leftovers && leftovers.length > 0
+      ? `- Leftover ingredients to use: ${leftovers.join(', ')}`
+      : '';
+
+    // Build requirements based on what's selected
+    let requirementNumber = 4;
+    const leftoverRequirement = leftovers && leftovers.length > 0
+      ? `${requirementNumber++}. **PRIORITY**: Incorporate these leftover ingredients into the meal plan wherever possible: ${leftovers.join(', ')}. Try to use them in at least 2-3 meals throughout the plan.\n`
+      : '';
+
+    const cuisineRequirement = `${requirementNumber++}. Include recipes that match the user's cuisine preferences\n`;
+
+    const dietaryRequirement = dietaryPreferences && dietaryPreferences.length > 0
+      ? `${requirementNumber++}. **CRITICAL**: ALL recipes MUST comply with these dietary restrictions: ${dietaryPreferences.map(formatDietaryPreference).join('; ')}. Do not use any ingredients that violate these restrictions.\n`
+      : '';
+
+    const shoppingListRequirement = `${requirementNumber++}. Create a consolidated shopping list organized by category\n`;
+    const storeRequirement = `${requirementNumber++}. All items should be commonly available at the selected store(s)\n`;
+    const timeRequirement = `${requirementNumber++}. Include prep time, cooking time, servings, and estimated cost for each meal\n`;
+    const instructionsRequirement = `${requirementNumber++}. Provide simple, clear cooking instructions\n`;
+
+    const comparisonRequirement = comparisonStore
+      ? `${requirementNumber++}. **CRITICAL**: For EVERY item in the shopping list, provide estimated prices at BOTH stores (primaryStorePrice and comparisonStorePrice)\n${requirementNumber++}. Calculate total estimated costs for both stores and show potential savings\n`
+      : '';
+
     // Create example meal structure for the prompt
     const mealStructureExample = mealTypes.map(mealType =>
       `      "${mealType}": { "name": "...", "prepTime": "...", "cookTime": "...", "servings": ${preferences.people || 2}, "estimatedCost": "$X-Y", "ingredients": [...], "instructions": [...] }`
@@ -435,21 +461,13 @@ ${storeInfo}
 - Number of people: ${preferences.people || 2}
 - Meals needed: ${mealTypes.join(', ')}
 ${dietaryRestrictionsText}
-${leftovers && leftovers.length > 0 ? `- Leftover ingredients to use: ${leftovers.join(', ')}` : ''}
+${leftoversText}
 
 **IMPORTANT Requirements:**
 1. Create a meal plan for these days: ${daysOfWeek.join(', ')} with ONLY these meal types: ${mealTypes.join(', ')}
 2. DO NOT include meal types that were not selected
 3. DO NOT include days that were not selected
-${leftovers && leftovers.length > 0 ? `4. **PRIORITY**: Incorporate these leftover ingredients into the meal plan wherever possible: ${leftovers.join(', ')}. Try to use them in at least 2-3 meals throughout the plan.
-5. Include recipes that match the user's cuisine preferences` : '4. Include recipes that match the user's cuisine preferences'}
-${dietaryPreferences && dietaryPreferences.length > 0 ? `5. **CRITICAL**: ALL recipes MUST comply with these dietary restrictions: ${dietaryPreferences.map(formatDietaryPreference).join('; ')}. Do not use any ingredients that violate these restrictions.
-6. Create a consolidated shopping list organized by category` : '5. Create a consolidated shopping list organized by category'}
-${dietaryPreferences && dietaryPreferences.length > 0 ? '7' : '6'}. All items should be commonly available at the selected store(s)
-${dietaryPreferences && dietaryPreferences.length > 0 ? '8' : '7'}. Include prep time, cooking time, servings, and estimated cost for each meal
-${dietaryPreferences && dietaryPreferences.length > 0 ? '9' : '8'}. Provide simple, clear cooking instructions
-${comparisonStore ? `${dietaryPreferences && dietaryPreferences.length > 0 ? '10' : '9'}. **CRITICAL**: For EVERY item in the shopping list, provide estimated prices at BOTH stores (primaryStorePrice and comparisonStorePrice)
-${dietaryPreferences && dietaryPreferences.length > 0 ? '11' : '10'}. Calculate total estimated costs for both stores and show potential savings` : ''}
+${leftoverRequirement}${cuisineRequirement}${dietaryRequirement}${shoppingListRequirement}${storeRequirement}${timeRequirement}${instructionsRequirement}${comparisonRequirement}
 
 **Response Format:**
 Return ONLY valid JSON in this exact format:
