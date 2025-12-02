@@ -42,6 +42,7 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
     vegetarian: false,
     kosher: false
   });
+  const [leftovers, setLeftovers] = useState(['']);
   const [errors, setErrors] = useState({});
 
   const toggleCuisine = (cuisine) => {
@@ -75,6 +76,21 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
     }));
   };
 
+  const handleAddLeftoverField = () => {
+    setLeftovers([...leftovers, '']);
+  };
+
+  const handleLeftoverChange = (index, value) => {
+    const newLeftovers = [...leftovers];
+    newLeftovers[index] = value;
+    setLeftovers(newLeftovers);
+  };
+
+  const handleRemoveLeftoverField = (index) => {
+    const newLeftovers = leftovers.filter((_, i) => i !== index);
+    setLeftovers(newLeftovers.length === 0 ? [''] : newLeftovers);
+  };
+
   const validate = () => {
     const newErrors = {};
 
@@ -100,12 +116,14 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
       const selectedMeals = Object.keys(meals).filter(meal => meals[meal]);
       const selectedDietaryPreferences = Object.keys(dietaryPreferences).filter(pref => dietaryPreferences[pref]);
       const daysArray = Object.keys(selectedDays).filter(day => selectedDays[day]);
+      const leftoverIngredients = leftovers.filter(item => item.trim() !== '');
       onSubmit({
         cuisines,
         people: numberOfPeople,
         selectedMeals: selectedMeals,  // Send array of meal types: ['breakfast', 'lunch', 'dinner']
         selectedDays: daysArray,  // Send array of days: ['Monday', 'Tuesday', etc.]
-        dietaryPreferences: selectedDietaryPreferences  // Send array: ['diabetic', 'dairyFree', etc.]
+        dietaryPreferences: selectedDietaryPreferences,  // Send array: ['diabetic', 'dairyFree', etc.]
+        leftovers: leftoverIngredients  // Send array of leftover ingredients
       });
     }
   };
@@ -159,6 +177,36 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
               +
             </button>
           </div>
+        </div>
+
+        <div className="question-section">
+          <h3>Got leftovers or ingredients to use up?</h3>
+          <p className="hint">Add ingredients you'd like to incorporate into your meals (optional)</p>
+          <div className="leftovers-inputs">
+            {leftovers.map((item, index) => (
+              <div key={index} className="leftover-input-row">
+                <input
+                  type="text"
+                  value={item}
+                  onChange={(e) => handleLeftoverChange(index, e.target.value)}
+                  placeholder="e.g., 'chicken', 'broccoli', 'rice'"
+                  className="leftover-input"
+                />
+                {leftovers.length > 1 && (
+                  <button
+                    onClick={() => handleRemoveLeftoverField(index)}
+                    className="remove-leftover-btn"
+                    title="Remove this ingredient"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          <button onClick={handleAddLeftoverField} className="add-leftover-btn">
+            + Add Another Ingredient
+          </button>
         </div>
 
         <div className="question-section">
