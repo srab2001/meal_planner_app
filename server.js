@@ -314,7 +314,7 @@ Return ONLY valid JSON in this exact format:
 // Meal plan generation endpoint
 app.post('/api/generate-meals', requireAuth, async (req, res) => {
   try {
-    const { zipCode, primaryStore, comparisonStore, selectedMeals, selectedDays, dietaryPreferences, ...preferences } = req.body;
+    const { zipCode, primaryStore, comparisonStore, selectedMeals, selectedDays, dietaryPreferences, leftovers, ...preferences } = req.body;
 
     console.log(`Generating meal plan for user: ${req.user.email}`);
     console.log(`Primary Store: ${primaryStore?.name}, ZIP: ${zipCode}`);
@@ -324,6 +324,7 @@ app.post('/api/generate-meals', requireAuth, async (req, res) => {
     console.log(`Selected meals: ${selectedMeals?.join(', ')}`);
     console.log(`Selected days: ${selectedDays?.join(', ') || 'All days'}`);
     console.log(`Dietary preferences: ${dietaryPreferences?.join(', ') || 'None'}`);
+    console.log(`Leftover ingredients: ${leftovers?.join(', ') || 'None'}`);
 
     // Build meal type list based on user selection
     const mealTypes = selectedMeals && selectedMeals.length > 0
@@ -434,12 +435,14 @@ ${storeInfo}
 - Number of people: ${preferences.people || 2}
 - Meals needed: ${mealTypes.join(', ')}
 ${dietaryRestrictionsText}
+${leftovers && leftovers.length > 0 ? `- Leftover ingredients to use: ${leftovers.join(', ')}` : ''}
 
 **IMPORTANT Requirements:**
 1. Create a meal plan for these days: ${daysOfWeek.join(', ')} with ONLY these meal types: ${mealTypes.join(', ')}
 2. DO NOT include meal types that were not selected
 3. DO NOT include days that were not selected
-4. Include recipes that match the user's cuisine preferences
+${leftovers && leftovers.length > 0 ? `4. **PRIORITY**: Incorporate these leftover ingredients into the meal plan wherever possible: ${leftovers.join(', ')}. Try to use them in at least 2-3 meals throughout the plan.
+5. Include recipes that match the user's cuisine preferences` : '4. Include recipes that match the user's cuisine preferences'}
 ${dietaryPreferences && dietaryPreferences.length > 0 ? `5. **CRITICAL**: ALL recipes MUST comply with these dietary restrictions: ${dietaryPreferences.map(formatDietaryPreference).join('; ')}. Do not use any ingredients that violate these restrictions.
 6. Create a consolidated shopping list organized by category` : '5. Create a consolidated shopping list organized by category'}
 ${dietaryPreferences && dietaryPreferences.length > 0 ? '7' : '6'}. All items should be commonly available at the selected store(s)
