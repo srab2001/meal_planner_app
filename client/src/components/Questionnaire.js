@@ -7,6 +7,16 @@ const CUISINE_OPTIONS = [
   'Vietnamese', 'Greek', 'Spanish', 'Middle Eastern'
 ];
 
+const DAYS_OF_WEEK = [
+  { id: 'Monday', icon: '📅', label: 'Monday' },
+  { id: 'Tuesday', icon: '📅', label: 'Tuesday' },
+  { id: 'Wednesday', icon: '📅', label: 'Wednesday' },
+  { id: 'Thursday', icon: '📅', label: 'Thursday' },
+  { id: 'Friday', icon: '📅', label: 'Friday' },
+  { id: 'Saturday', icon: '🎉', label: 'Saturday' },
+  { id: 'Sunday', icon: '🎉', label: 'Sunday' }
+];
+
 function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
   const [cuisines, setCuisines] = useState([]);
   const [numberOfPeople, setNumberOfPeople] = useState(2);
@@ -14,6 +24,15 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
     breakfast: false,
     lunch: false,
     dinner: false
+  });
+  const [selectedDays, setSelectedDays] = useState({
+    Monday: true,
+    Tuesday: true,
+    Wednesday: true,
+    Thursday: true,
+    Friday: true,
+    Saturday: true,
+    Sunday: true
   });
   const [dietaryPreferences, setDietaryPreferences] = useState({
     diabetic: false,
@@ -40,6 +59,13 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
     }));
   };
 
+  const toggleDay = (day) => {
+    setSelectedDays(prev => ({
+      ...prev,
+      [day]: !prev[day]
+    }));
+  };
+
   const toggleDietaryPreference = (preference) => {
     setDietaryPreferences(prev => ({
       ...prev,
@@ -49,15 +75,20 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
 
   const validate = () => {
     const newErrors = {};
-    
+
     if (cuisines.length === 0) {
       newErrors.cuisines = 'Please select at least one cuisine';
     }
-    
+
     if (!meals.breakfast && !meals.lunch && !meals.dinner) {
       newErrors.meals = 'Please select at least one meal type';
     }
-    
+
+    const hasSelectedDay = Object.values(selectedDays).some(day => day === true);
+    if (!hasSelectedDay) {
+      newErrors.days = 'Please select at least one day';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -66,10 +97,12 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
     if (validate()) {
       const selectedMeals = Object.keys(meals).filter(meal => meals[meal]);
       const selectedDietaryPreferences = Object.keys(dietaryPreferences).filter(pref => dietaryPreferences[pref]);
+      const daysArray = Object.keys(selectedDays).filter(day => selectedDays[day]);
       onSubmit({
         cuisines,
         people: numberOfPeople,
         selectedMeals: selectedMeals,  // Send array of meal types: ['breakfast', 'lunch', 'dinner']
+        selectedDays: daysArray,  // Send array of days: ['Monday', 'Tuesday', etc.]
         dietaryPreferences: selectedDietaryPreferences  // Send array: ['diabetic', 'dairyFree', etc.]
       });
     }
@@ -207,6 +240,25 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
             </label>
           </div>
           {errors.meals && <p className="error">{errors.meals}</p>}
+        </div>
+
+        <div className="question-section">
+          <h3>Which days do you want to plan for?</h3>
+          <p className="hint">Select the days you need meal plans for</p>
+          <div className="days-checkboxes">
+            {DAYS_OF_WEEK.map((day) => (
+              <label key={day.id} className={`meal-checkbox ${selectedDays[day.id] ? 'checked' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={selectedDays[day.id]}
+                  onChange={() => toggleDay(day.id)}
+                />
+                <span className="meal-icon">{day.icon}</span>
+                <span className="meal-name">{day.label}</span>
+              </label>
+            ))}
+          </div>
+          {errors.days && <p className="error">{errors.days}</p>}
         </div>
 
         <button className="generate-btn" onClick={handleSubmit}>
