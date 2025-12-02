@@ -314,7 +314,7 @@ Return ONLY valid JSON in this exact format:
 // Meal plan generation endpoint
 app.post('/api/generate-meals', requireAuth, async (req, res) => {
   try {
-    const { zipCode, primaryStore, comparisonStore, selectedMeals, dietaryPreferences, ...preferences } = req.body;
+    const { zipCode, primaryStore, comparisonStore, selectedMeals, selectedDays, dietaryPreferences, ...preferences } = req.body;
 
     console.log(`Generating meal plan for user: ${req.user.email}`);
     console.log(`Primary Store: ${primaryStore?.name}, ZIP: ${zipCode}`);
@@ -322,12 +322,18 @@ app.post('/api/generate-meals', requireAuth, async (req, res) => {
       console.log(`Comparison Store: ${comparisonStore.name}`);
     }
     console.log(`Selected meals: ${selectedMeals?.join(', ')}`);
+    console.log(`Selected days: ${selectedDays?.join(', ') || 'All days'}`);
     console.log(`Dietary preferences: ${dietaryPreferences?.join(', ') || 'None'}`);
 
     // Build meal type list based on user selection
     const mealTypes = selectedMeals && selectedMeals.length > 0
       ? selectedMeals
       : ['breakfast', 'lunch', 'dinner'];
+
+    // Build days list based on user selection
+    const daysOfWeek = selectedDays && selectedDays.length > 0
+      ? selectedDays
+      : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
     // Build dietary restrictions text
     const formatDietaryPreference = (pref) => {
@@ -428,28 +434,23 @@ ${storeInfo}
 ${dietaryRestrictionsText}
 
 **IMPORTANT Requirements:**
-1. Create a 7-day meal plan with ONLY these meal types: ${mealTypes.join(', ')}
+1. Create a meal plan for these days: ${daysOfWeek.join(', ')} with ONLY these meal types: ${mealTypes.join(', ')}
 2. DO NOT include meal types that were not selected
-3. Include recipes that match the user's cuisine preferences
-${dietaryPreferences && dietaryPreferences.length > 0 ? `4. **CRITICAL**: ALL recipes MUST comply with these dietary restrictions: ${dietaryPreferences.map(formatDietaryPreference).join('; ')}. Do not use any ingredients that violate these restrictions.
-5. Create a consolidated shopping list organized by category` : '4. Create a consolidated shopping list organized by category'}
-${dietaryPreferences && dietaryPreferences.length > 0 ? '6' : '5'}. All items should be commonly available at the selected store(s)
-${dietaryPreferences && dietaryPreferences.length > 0 ? '7' : '6'}. Include prep time, cooking time, servings, and estimated cost for each meal
-${dietaryPreferences && dietaryPreferences.length > 0 ? '8' : '7'}. Provide simple, clear cooking instructions
-${comparisonStore ? `8. **CRITICAL**: For EVERY item in the shopping list, provide estimated prices at BOTH stores (primaryStorePrice and comparisonStorePrice)
-9. Calculate total estimated costs for both stores and show potential savings` : ''}
+3. DO NOT include days that were not selected
+4. Include recipes that match the user's cuisine preferences
+${dietaryPreferences && dietaryPreferences.length > 0 ? `5. **CRITICAL**: ALL recipes MUST comply with these dietary restrictions: ${dietaryPreferences.map(formatDietaryPreference).join('; ')}. Do not use any ingredients that violate these restrictions.
+6. Create a consolidated shopping list organized by category` : '5. Create a consolidated shopping list organized by category'}
+${dietaryPreferences && dietaryPreferences.length > 0 ? '7' : '6'}. All items should be commonly available at the selected store(s)
+${dietaryPreferences && dietaryPreferences.length > 0 ? '8' : '7'}. Include prep time, cooking time, servings, and estimated cost for each meal
+${dietaryPreferences && dietaryPreferences.length > 0 ? '9' : '8'}. Provide simple, clear cooking instructions
+${comparisonStore ? `${dietaryPreferences && dietaryPreferences.length > 0 ? '10' : '9'}. **CRITICAL**: For EVERY item in the shopping list, provide estimated prices at BOTH stores (primaryStorePrice and comparisonStorePrice)
+${dietaryPreferences && dietaryPreferences.length > 0 ? '11' : '10'}. Calculate total estimated costs for both stores and show potential savings` : ''}
 
 **Response Format:**
 Return ONLY valid JSON in this exact format:
 {
   "mealPlan": {
-    "Monday": {
-${mealStructureExample}
-    },
-    "Tuesday": {
-${mealStructureExample}
-    },
-    ... (continue for all 7 days: Monday through Sunday)
+${daysOfWeek.map(day => `    "${day}": {\n${mealStructureExample}\n    }`).join(',\n')}
   },
 ${shoppingListFormat}
     "Pantry Staples": [
@@ -459,7 +460,7 @@ ${shoppingListFormat}
   },
   "totalEstimatedCost": "$150-200",
   "summary": {
-    "totalMeals": ${mealTypes.length * 7},
+    "totalMeals": ${mealTypes.length * daysOfWeek.length},
     "estimatedCost": "$150-200",
     "prepTimeTotal": "~5 hours",
     "dietaryNotes": "..."
