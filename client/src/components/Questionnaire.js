@@ -38,7 +38,9 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
     diabetic: false,
     dairyFree: false,
     glutenFree: false,
-    peanutFree: false
+    peanutFree: false,
+    vegetarian: false,
+    kosher: false
   });
   const [errors, setErrors] = useState({});
 
@@ -201,6 +203,26 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
               />
               <span className="meal-icon">🥜</span>
               <span className="meal-name">Peanut Free</span>
+            </label>
+
+            <label className={`meal-checkbox ${dietaryPreferences.vegetarian ? 'checked' : ''}`}>
+              <input
+                type="checkbox"
+                checked={dietaryPreferences.vegetarian}
+                onChange={() => toggleDietaryPreference('vegetarian')}
+              />
+              <span className="meal-icon">🥗</span>
+              <span className="meal-name">Vegetarian</span>
+            </label>
+
+            <label className={`meal-checkbox ${dietaryPreferences.kosher ? 'checked' : ''}`}>
+              <input
+                type="checkbox"
+                checked={dietaryPreferences.kosher}
+                onChange={() => toggleDietaryPreference('kosher')}
+              />
+              <span className="meal-icon">✡️</span>
+              <span className="meal-name">Kosher</span>
             </label>
           </div>
         </div>
