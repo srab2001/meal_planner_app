@@ -6,6 +6,7 @@ const session = require('express-session');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const OpenAI = require('openai');
+const rateLimit = require('express-rate-limit');
 
 const {
   PORT,
@@ -89,6 +90,63 @@ app.use(
 
 app.use(express.json());
 
+// Rate Limiting - Prevent DoS attacks and API abuse
+// General rate limiter for all requests
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  handler: (req, res) => {
+    console.warn(`Rate limit exceeded for IP: ${req.ip}`);
+    res.status(429).json({
+      error: 'Too many requests',
+      message: 'You have exceeded the request limit. Please try again in 15 minutes.',
+      retryAfter: Math.ceil(req.rateLimit.resetTime / 1000)
+    });
+  }
+});
+
+// Strict rate limiter for authentication endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // Limit each IP to 20 login attempts per windowMs
+  message: 'Too many authentication attempts, please try again later.',
+  skipSuccessfulRequests: true, // Don't count successful requests
+  handler: (req, res) => {
+    console.warn(`Auth rate limit exceeded for IP: ${req.ip}`);
+    res.status(429).json({
+      error: 'Too many authentication attempts',
+      message: 'Please wait 15 minutes before trying again.',
+      retryAfter: Math.ceil(req.rateLimit.resetTime / 1000)
+    });
+  }
+});
+
+// Strict rate limiter for expensive AI API calls
+const aiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30, // Limit each IP to 30 AI requests per windowMs
+  message: 'Too many AI requests, please try again later.',
+  handler: (req, res) => {
+    console.warn(`AI rate limit exceeded for IP: ${req.ip} - preventing OpenAI cost overrun`);
+    res.status(429).json({
+      error: 'Too many meal plan requests',
+      message: 'To prevent abuse, we limit meal plan generations. Please try again in 15 minutes.',
+      retryAfter: Math.ceil(req.rateLimit.resetTime / 1000)
+    });
+  }
+});
+
+// Apply general rate limiter to all requests
+app.use(generalLimiter);
+
+console.log('Rate limiting enabled:');
+console.log('- General: 100 requests per 15 minutes');
+console.log('- Auth: 20 attempts per 15 minutes');
+console.log('- AI: 30 requests per 15 minutes');
+
 app.use(
   session({
     secret: SESSION_SECRET,
@@ -159,15 +217,17 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// Google login
+// Google login (with auth rate limiter to prevent brute force)
 app.get(
   '/auth/google',
+  authLimiter,
   passport.authenticate('google', { scope: ['profile', 'email'] })
 );
 
-// Google callback
+// Google callback (with auth rate limiter to prevent brute force)
 app.get(
   '/auth/google/callback',
+  authLimiter,
   passport.authenticate('google', {
     failureRedirect:
       (FRONTEND_BASE || 'http://localhost:3000') + '/login?error=1',
@@ -229,8 +289,8 @@ app.get('/api/profile', requireAuth, (req, res) => {
   });
 });
 
-// Store finder endpoint
-app.post('/api/find-stores', requireAuth, async (req, res) => {
+// Store finder endpoint (with AI rate limiter)
+app.post('/api/find-stores', aiLimiter, requireAuth, async (req, res) => {
   try {
     const { zipCode, storeName } = req.body;
 
@@ -331,8 +391,8 @@ Return ONLY valid JSON in this exact format:
   }
 });
 
-// Meal plan generation endpoint
-app.post('/api/generate-meals', requireAuth, async (req, res) => {
+// Meal plan generation endpoint (with AI rate limiter to prevent cost overruns)
+app.post('/api/generate-meals', aiLimiter, requireAuth, async (req, res) => {
   try {
     const { zipCode, primaryStore, comparisonStore, selectedMeals, selectedDays, dietaryPreferences, leftovers, ...preferences } = req.body;
 
@@ -548,8 +608,8 @@ ${shoppingListFormat}
   }
 });
 
-// Single meal regeneration endpoint
-app.post('/api/regenerate-meal', requireAuth, async (req, res) => {
+// Single meal regeneration endpoint (with AI rate limiter)
+app.post('/api/regenerate-meal', aiLimiter, requireAuth, async (req, res) => {
   try {
     const { mealType, cuisines, people, groceryStore, currentMeal, dietaryPreferences } = req.body;
 
@@ -655,8 +715,8 @@ Return ONLY valid JSON in this exact format:
   }
 });
 
-// Custom item prices endpoint
-app.post('/api/custom-item-prices', requireAuth, async (req, res) => {
+// Custom item prices endpoint (with AI rate limiter)
+app.post('/api/custom-item-prices', aiLimiter, requireAuth, async (req, res) => {
   try {
     const { items, primaryStore, comparisonStore } = req.body;
 
