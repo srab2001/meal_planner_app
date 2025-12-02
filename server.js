@@ -7,6 +7,7 @@ const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const OpenAI = require('openai');
 const rateLimit = require('express-rate-limit');
+const db = require('./db');
 
 const {
   PORT,
@@ -188,17 +189,53 @@ passport.use(
           return done(new Error('email not in Google profile'));
         }
 
-        const user = {
-          id: profile.id,
-          email,
-          full_name: profile.displayName,
-          picture:
-            profile.photos && profile.photos[0] && profile.photos[0].value,
-          role: null
-        };
+        // Check if user exists in database
+        const userResult = await db.query(
+          'SELECT * FROM users WHERE google_id = $1',
+          [profile.id]
+        );
 
-        done(null, user);
+        let user;
+
+        if (userResult.rows.length === 0) {
+          // Create new user
+          const insertResult = await db.query(`
+            INSERT INTO users (google_id, email, display_name, picture_url, last_login)
+            VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+            RETURNING *
+          `, [profile.id, email, profile.displayName, profile.photos?.[0]?.value]);
+
+          user = insertResult.rows[0];
+
+          // Create free subscription for new user
+          await db.query(`
+            INSERT INTO subscriptions (user_id, plan_type, status)
+            VALUES ($1, 'free', 'active')
+          `, [user.id]);
+
+          console.log('✅ New user created:', user.email);
+        } else {
+          user = userResult.rows[0];
+
+          // Update last login
+          await db.query(
+            'UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1',
+            [user.id]
+          );
+
+          console.log('✅ Existing user logged in:', user.email);
+        }
+
+        // Return user object for session
+        done(null, {
+          id: user.id,
+          googleId: user.google_id,
+          email: user.email,
+          displayName: user.display_name,
+          picture: user.picture_url
+        });
       } catch (err) {
+        console.error('❌ OAuth error:', err);
         done(err);
       }
     }
@@ -397,6 +434,44 @@ app.post('/api/generate-meals', aiLimiter, requireAuth, async (req, res) => {
     const { zipCode, primaryStore, comparisonStore, selectedMeals, selectedDays, dietaryPreferences, leftovers, ...preferences } = req.body;
 
     console.log(`Generating meal plan for user: ${req.user.email}`);
+
+    // Check user subscription status and usage limits
+    const subscription = await db.query(
+      'SELECT plan_type FROM subscriptions WHERE user_id = $1',
+      [req.user.id]
+    );
+
+    const planType = subscription.rows[0]?.plan_type || 'free';
+
+    if (planType === 'free') {
+      // Check monthly usage for free tier
+      const usageResult = await db.query(`
+        SELECT COUNT(*) as count
+        FROM usage_stats
+        WHERE user_id = $1
+          AND action_type = 'meal_plan_generated'
+          AND created_at >= date_trunc('month', CURRENT_TIMESTAMP)
+      `, [req.user.id]);
+
+      const usageCount = parseInt(usageResult.rows[0].count);
+
+      if (usageCount >= 10) {
+        console.log(`⚠️  Free tier limit reached for ${req.user.email} (${usageCount}/10)`);
+        return res.status(403).json({
+          error: 'Free tier limit reached',
+          message: 'You have generated 10 meal plans this month. Upgrade to Premium for unlimited access.',
+          usageCount: usageCount,
+          limit: 10,
+          planType: 'free',
+          upgradeUrl: '/pricing'
+        });
+      }
+
+      console.log(`✅ Usage: ${usageCount}/10 meal plans this month`);
+    } else {
+      console.log(`✅ Premium user - unlimited access`);
+    }
+
     console.log(`Primary Store: ${primaryStore?.name}, ZIP: ${zipCode}`);
     if (comparisonStore) {
       console.log(`Comparison Store: ${comparisonStore.name}`);
@@ -596,6 +671,20 @@ ${shoppingListFormat}
     const mealPlanData = JSON.parse(responseText);
 
     console.log('Meal plan generated successfully');
+
+    // Track usage for analytics and quota enforcement
+    await db.query(`
+      INSERT INTO usage_stats (user_id, action_type, metadata)
+      VALUES ($1, 'meal_plan_generated', $2)
+    `, [req.user.id, JSON.stringify({
+      cuisines: preferences.cuisines || [],
+      days: selectedDays?.length || 7,
+      meals: selectedMeals?.length || 3,
+      dietaryPreferences: dietaryPreferences || [],
+      hasComparison: !!comparisonStore
+    })]);
+
+    console.log(`📊 Usage tracked for ${req.user.email}`);
 
     res.json(mealPlanData);
 
@@ -1129,73 +1218,34 @@ app.get('/api/discount-usage-stats', (req, res) => {
 
 // ==================== FAVORITES & HISTORY ====================
 
-// Helper function to get user's favorites file path
-const getFavoritesFilePath = (userEmail) => {
-  const fs = require('fs');
-  const path = require('path');
-  const favoritesDir = path.join(__dirname, 'user-data', 'favorites');
-
-  // Create directory if it doesn't exist
-  if (!fs.existsSync(favoritesDir)) {
-    fs.mkdirSync(favoritesDir, { recursive: true });
-  }
-
-  // Use email hash for filename (for privacy/security)
-  const crypto = require('crypto');
-  const emailHash = crypto.createHash('md5').update(userEmail).digest('hex');
-  return path.join(favoritesDir, `${emailHash}.json`);
-};
-
-// Helper function to get user's history file path
-const getHistoryFilePath = (userEmail) => {
-  const fs = require('fs');
-  const path = require('path');
-  const historyDir = path.join(__dirname, 'user-data', 'history');
-
-  // Create directory if it doesn't exist
-  if (!fs.existsSync(historyDir)) {
-    fs.mkdirSync(historyDir, { recursive: true });
-  }
-
-  const crypto = require('crypto');
-  const emailHash = crypto.createHash('md5').update(userEmail).digest('hex');
-  return path.join(historyDir, `${emailHash}.json`);
-};
-
 // Add meal to favorites
-app.post('/api/favorites/add', requireAuth, (req, res) => {
+app.post('/api/favorites/add', requireAuth, async (req, res) => {
   try {
     const { meal, mealType } = req.body;
-    const fs = require('fs');
 
     if (!meal || !meal.name) {
       return res.status(400).json({ error: 'Invalid meal data' });
     }
 
-    const filePath = getFavoritesFilePath(req.user.email);
-
-    // Read existing favorites
-    let favorites = [];
-    if (fs.existsSync(filePath)) {
-      favorites = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    // Validate meal type
+    if (!['breakfast', 'lunch', 'dinner'].includes(mealType)) {
+      return res.status(400).json({ error: 'Invalid meal type' });
     }
 
-    // Add new favorite with metadata
-    const favorite = {
-      id: Date.now().toString(),
-      meal,
-      mealType: mealType || 'unknown',
-      savedAt: new Date().toISOString(),
-      savedDate: new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })
-    };
+    // Insert favorite
+    const result = await db.query(`
+      INSERT INTO favorites (user_id, meal_type, meal_data, meal_name)
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (user_id, meal_name, meal_type) DO NOTHING
+      RETURNING *
+    `, [req.user.id, mealType, JSON.stringify(meal), meal.name]);
 
-    favorites.push(favorite);
-
-    // Save back to file
-    fs.writeFileSync(filePath, JSON.stringify(favorites, null, 2));
-
-    console.log(`❤️ ${req.user.email} saved favorite: ${meal.name}`);
-    res.json({ success: true, favorite });
+    if (result.rows.length > 0) {
+      console.log(`❤️  ${req.user.email} saved favorite: ${meal.name}`);
+      res.json({ success: true, favorite: result.rows[0] });
+    } else {
+      res.json({ success: true, message: 'Favorite already exists' });
+    }
 
   } catch (error) {
     console.error('Error adding favorite:', error);
@@ -1204,16 +1254,28 @@ app.post('/api/favorites/add', requireAuth, (req, res) => {
 });
 
 // Get user's favorites
-app.get('/api/favorites', requireAuth, (req, res) => {
+app.get('/api/favorites', requireAuth, async (req, res) => {
   try {
-    const fs = require('fs');
-    const filePath = getFavoritesFilePath(req.user.email);
+    const result = await db.query(`
+      SELECT
+        id,
+        meal_type,
+        meal_data,
+        meal_name,
+        created_at
+      FROM favorites
+      WHERE user_id = $1
+      ORDER BY created_at DESC
+    `, [req.user.id]);
 
-    if (!fs.existsSync(filePath)) {
-      return res.json({ favorites: [] });
-    }
+    // Format response for frontend
+    const favorites = result.rows.map(row => ({
+      id: row.id,
+      meal: row.meal_data,
+      mealType: row.meal_type,
+      savedAt: row.created_at
+    }));
 
-    const favorites = JSON.parse(fs.readFileSync(filePath, 'utf8'));
     res.json({ favorites });
 
   } catch (error) {
@@ -1223,22 +1285,17 @@ app.get('/api/favorites', requireAuth, (req, res) => {
 });
 
 // Remove favorite
-app.delete('/api/favorites/:id', requireAuth, (req, res) => {
+app.delete('/api/favorites/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const fs = require('fs');
-    const filePath = getFavoritesFilePath(req.user.email);
 
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ error: 'No favorites found' });
-    }
+    // Delete favorite (only if it belongs to the user)
+    await db.query(`
+      DELETE FROM favorites
+      WHERE id = $1 AND user_id = $2
+    `, [id, req.user.id]);
 
-    let favorites = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    favorites = favorites.filter(fav => fav.id !== id);
-
-    fs.writeFileSync(filePath, JSON.stringify(favorites, null, 2));
-
-    console.log(`🗑️ ${req.user.email} removed favorite: ${id}`);
+    console.log(`🗑️  ${req.user.email} removed favorite: ${id}`);
     res.json({ success: true });
 
   } catch (error) {
@@ -1248,41 +1305,32 @@ app.delete('/api/favorites/:id', requireAuth, (req, res) => {
 });
 
 // Save meal plan to history
-app.post('/api/save-meal-plan', requireAuth, (req, res) => {
+app.post('/api/save-meal-plan', requireAuth, async (req, res) => {
   try {
-    const { mealPlan, preferences, selectedStores } = req.body;
-    const fs = require('fs');
+    const { mealPlan, preferences, selectedStores, shoppingList, totalCost } = req.body;
 
     if (!mealPlan) {
       return res.status(400).json({ error: 'No meal plan provided' });
     }
 
-    const filePath = getHistoryFilePath(req.user.email);
-
-    // Read existing history
-    let history = [];
-    if (fs.existsSync(filePath)) {
-      history = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    }
-
-    // Add new history entry
-    const historyEntry = {
-      id: Date.now().toString(),
-      mealPlan,
-      preferences,
-      selectedStores,
-      createdAt: new Date().toISOString(),
-      createdDate: new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })
-    };
-
-    history.unshift(historyEntry); // Add to beginning
-
-    // Keep only last 100 entries
-    if (history.length > 100) {
-      history = history.slice(0, 100);
-    }
-
-    fs.writeFileSync(filePath, JSON.stringify(history, null, 2));
+    // Insert history entry
+    await db.query(`
+      INSERT INTO meal_plan_history (
+        user_id,
+        preferences,
+        meal_plan,
+        stores,
+        shopping_list,
+        total_cost
+      ) VALUES ($1, $2, $3, $4, $5, $6)
+    `, [
+      req.user.id,
+      JSON.stringify(preferences || {}),
+      JSON.stringify(mealPlan),
+      JSON.stringify(selectedStores || {}),
+      JSON.stringify(shoppingList || {}),
+      totalCost || null
+    ]);
 
     console.log(`📝 Saved meal plan to history for ${req.user.email}`);
     res.json({ success: true });
@@ -1294,30 +1342,35 @@ app.post('/api/save-meal-plan', requireAuth, (req, res) => {
 });
 
 // Get meal plan history
-app.get('/api/meal-plan-history', requireAuth, (req, res) => {
+app.get('/api/meal-plan-history', requireAuth, async (req, res) => {
   try {
     const { days } = req.query; // ?days=30, ?days=60, ?days=90
-    const fs = require('fs');
-    const filePath = getHistoryFilePath(req.user.email);
 
-    if (!fs.existsSync(filePath)) {
-      return res.json({ history: [] });
-    }
+    let query = `
+      SELECT
+        id,
+        preferences,
+        meal_plan,
+        stores as "selectedStores",
+        shopping_list,
+        total_cost,
+        created_at as "createdAt"
+      FROM meal_plan_history
+      WHERE user_id = $1
+    `;
 
-    let history = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    const params = [req.user.id];
 
     // Filter by days if specified
     if (days) {
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - parseInt(days));
-
-      history = history.filter(entry => {
-        const entryDate = new Date(entry.createdAt);
-        return entryDate >= cutoffDate;
-      });
+      query += ` AND created_at >= CURRENT_TIMESTAMP - INTERVAL '${parseInt(days)} days'`;
     }
 
-    res.json({ history });
+    query += ` ORDER BY created_at DESC LIMIT 100`;
+
+    const result = await db.query(query, params);
+
+    res.json({ history: result.rows });
 
   } catch (error) {
     console.error('Error reading meal plan history:', error);
