@@ -609,6 +609,84 @@ Return ONLY valid JSON in this exact format:
   }
 });
 
+// Custom item prices endpoint
+app.post('/api/custom-item-prices', requireAuth, async (req, res) => {
+  try {
+    const { items, primaryStore, comparisonStore } = req.body;
+
+    console.log(`Getting prices for custom items: ${items.join(', ')}`);
+    console.log(`Primary store: ${primaryStore}`);
+    console.log(`Comparison store: ${comparisonStore || 'None'}`);
+
+    const isComparisonMode = !!comparisonStore;
+
+    // Build the prompt for GPT
+    const prompt = `You are a grocery pricing expert. Provide estimated prices for the following grocery items at the specified store(s).
+
+**Items to price:**
+${items.map((item, i) => `${i + 1}. ${item}`).join('\n')}
+
+**Store Information:**
+- Primary Store: ${primaryStore}
+${isComparisonMode ? `- Comparison Store: ${comparisonStore}` : ''}
+
+**Instructions:**
+1. For each item, estimate a realistic current price at the specified store(s)
+2. Use standard quantities (e.g., "1 lb", "1 gallon", "per item", "1 dozen", etc.)
+3. Prices should be realistic and based on typical ${primaryStore} pricing${isComparisonMode ? ` and ${comparisonStore} pricing` : ''}
+4. Format prices as dollar amounts (e.g., "$3.99", "$2.50")
+
+**Response Format:**
+Return ONLY valid JSON in this exact format:
+{
+  "items": [
+    {
+      "item": "item name",
+      "quantity": "standard quantity (e.g., '1 lb', '1 gallon')",
+      ${isComparisonMode ? `"primaryStorePrice": "$X.XX",
+      "comparisonStorePrice": "$X.XX"` : `"estimatedPrice": "$X.XX"`}
+    }
+  ]
+}`;
+
+    console.log('Calling OpenAI for custom item prices...');
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a grocery pricing expert with knowledge of current market prices at major grocery stores. Always respond with valid JSON only.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      temperature: 0.3, // Lower temperature for more consistent pricing
+      max_tokens: 1000,
+    });
+
+    let responseText = completion.choices[0].message.content.trim();
+
+    // Clean up response - remove markdown code blocks if present
+    responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+    const priceData = JSON.parse(responseText);
+
+    console.log(`✅ Prices retrieved for ${priceData.items.length} custom items`);
+
+    res.json(priceData);
+
+  } catch (error) {
+    console.error('Error getting custom item prices:', error);
+    res.status(500).json({
+      error: 'Failed to get prices for custom items',
+      details: error.message
+    });
+  }
+});
+
 // Discount codes configuration
 // Add or modify codes as needed
 // To add a new code, add a line like: 'YOURCODE': { percentOff: 100, description: 'Description' },
