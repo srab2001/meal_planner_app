@@ -6,6 +6,7 @@ import StoreSelection from './components/StoreSelection';
 import Questionnaire from './components/Questionnaire';
 import PaymentPage from './components/PaymentPage';
 import MealPlanView from './components/MealPlanView';
+import Profile from './components/Profile';
 
 // Use relative paths in production (proxied by Vercel) or localhost in development
 const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
@@ -200,6 +201,21 @@ function App() {
     console.log('User logged out');
   };
 
+  // Handler: View Profile
+  const handleViewProfile = () => {
+    setCurrentView('profile');
+  };
+
+  // Handler: Back from Profile
+  const handleBackFromProfile = () => {
+    // Return to previous view (usually mealplan or zip)
+    if (mealPlan) {
+      setCurrentView('mealplan');
+    } else {
+      setCurrentView('zip');
+    }
+  };
+
   return (
     <div className="App">
       {currentView === 'login' && (
@@ -210,6 +226,8 @@ function App() {
         <ZIPCodeInput
           onSubmit={handleZIPSubmit}
           user={user}
+          onViewProfile={handleViewProfile}
+          onLogout={handleLogout}
         />
       )}
 
@@ -263,6 +281,14 @@ function App() {
           selectedStores={selectedStores}
           onStartOver={handleStartOver}
           onLogout={handleLogout}
+          onViewProfile={handleViewProfile}
+        />
+      )}
+
+      {currentView === 'profile' && (
+        <Profile
+          user={user}
+          onBack={handleBackFromProfile}
         />
       )}
     </div>
