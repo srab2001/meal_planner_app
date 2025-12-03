@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './StoreSelection.css';
 
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
 
 function StoreSelection({ stores, zipCode, onSubmit, onBack, onRefreshStores }) {
   const [primaryStore, setPrimaryStore] = useState(null);

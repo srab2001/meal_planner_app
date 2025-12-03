@@ -7,7 +7,8 @@ import Questionnaire from './components/Questionnaire';
 import PaymentPage from './components/PaymentPage';
 import MealPlanView from './components/MealPlanView';
 
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+// Use relative paths in production (proxied by Vercel) or localhost in development
+const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
 console.log('API_BASE in browser:', API_BASE);
 
 function App() {

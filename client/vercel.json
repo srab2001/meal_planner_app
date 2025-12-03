@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://meal-planner-app-mve2.onrender.com/api/:path*"
+    },
+    {
+      "source": "/auth/:path*",
+      "destination": "https://meal-planner-app-mve2.onrender.com/auth/:path*"
+    }
+  ]
+}
