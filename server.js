@@ -163,7 +163,7 @@ app.use(
     cookie: {
       secure: NODE_ENV === 'production',
       httpOnly: true,
-      sameSite: NODE_ENV === 'production' ? 'none' : 'lax',
+      sameSite: 'lax', // lax works with Vercel proxy (same-origin from browser perspective)
       maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     }
   })
