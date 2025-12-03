@@ -21,11 +21,13 @@ const {
   FRONTEND_BASE,
   OPENAI_API_KEY,
   STRIPE_SECRET_KEY,
-  STRIPE_PUBLISHABLE_KEY
+  STRIPE_PUBLISHABLE_KEY,
+  ADMIN_PASSWORD
 } = process.env;
 
 // Use SESSION_SECRET for JWT as well
 const JWT_SECRET = SESSION_SECRET;
+const ADMIN_SECRET = ADMIN_PASSWORD || 'change-this-in-production';
 
 // basic env checks
 console.log('GOOGLE_CLIENT_ID present:', !!GOOGLE_CLIENT_ID);
@@ -1760,6 +1762,241 @@ app.get('/api/user/activity', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Error fetching activity:', error);
     res.status(500).json({ error: 'Failed to fetch activity' });
+  }
+});
+
+// ============================================================================
+// ADMIN PANEL ENDPOINTS
+// ============================================================================
+
+// Admin authentication middleware
+function requireAdmin(req, res, next) {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Admin authentication required' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    req.admin = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Invalid admin token' });
+  }
+}
+
+// Admin login
+app.post('/api/admin/login', (req, res) => {
+  const { password } = req.body;
+
+  if (password === ADMIN_SECRET) {
+    const token = jwt.sign(
+      { role: 'admin', timestamp: Date.now() },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+    console.log('✅ Admin logged in');
+    res.json({ success: true, token });
+  } else {
+    console.log('❌ Failed admin login attempt');
+    res.status(401).json({ error: 'Invalid admin password' });
+  }
+});
+
+// Get all discount codes
+app.get('/api/admin/discount-codes', requireAdmin, async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT
+        id, code, description, discount_type, discount_value,
+        active, max_uses, uses_count, valid_from, valid_until,
+        created_at, updated_at
+      FROM discount_codes
+      ORDER BY created_at DESC
+    `);
+
+    res.json({ codes: result.rows });
+  } catch (error) {
+    console.error('Error fetching discount codes:', error);
+    res.status(500).json({ error: 'Failed to fetch discount codes' });
+  }
+});
+
+// Create discount code
+app.post('/api/admin/discount-codes', requireAdmin, async (req, res) => {
+  try {
+    const {
+      code,
+      description,
+      discount_type,
+      discount_value,
+      max_uses,
+      valid_until
+    } = req.body;
+
+    // Validation
+    if (!code || !discount_type || !discount_value) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    if (!['percentage', 'fixed_amount'].includes(discount_type)) {
+      return res.status(400).json({ error: 'Invalid discount type' });
+    }
+
+    const result = await db.query(`
+      INSERT INTO discount_codes (
+        code, description, discount_type, discount_value,
+        max_uses, valid_until
+      )
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+    `, [
+      code.toUpperCase(),
+      description || null,
+      discount_type,
+      discount_value,
+      max_uses || null,
+      valid_until || null
+    ]);
+
+    console.log(`✅ Admin created discount code: ${code}`);
+    res.json({ success: true, code: result.rows[0] });
+  } catch (error) {
+    if (error.code === '23505') { // Unique constraint violation
+      return res.status(400).json({ error: 'Discount code already exists' });
+    }
+    console.error('Error creating discount code:', error);
+    res.status(500).json({ error: 'Failed to create discount code' });
+  }
+});
+
+// Update discount code
+app.put('/api/admin/discount-codes/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { description, active, max_uses, valid_until } = req.body;
+
+    const result = await db.query(`
+      UPDATE discount_codes
+      SET
+        description = COALESCE($1, description),
+        active = COALESCE($2, active),
+        max_uses = COALESCE($3, max_uses),
+        valid_until = COALESCE($4, valid_until),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $5
+      RETURNING *
+    `, [description, active, max_uses, valid_until, id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Discount code not found' });
+    }
+
+    console.log(`✅ Admin updated discount code: ${result.rows[0].code}`);
+    res.json({ success: true, code: result.rows[0] });
+  } catch (error) {
+    console.error('Error updating discount code:', error);
+    res.status(500).json({ error: 'Failed to update discount code' });
+  }
+});
+
+// Delete discount code
+app.delete('/api/admin/discount-codes/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await db.query(`
+      DELETE FROM discount_codes
+      WHERE id = $1
+      RETURNING code
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Discount code not found' });
+    }
+
+    console.log(`✅ Admin deleted discount code: ${result.rows[0].code}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting discount code:', error);
+    res.status(500).json({ error: 'Failed to delete discount code' });
+  }
+});
+
+// Get app settings
+app.get('/api/admin/settings', requireAdmin, async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT key, value, updated_at
+      FROM app_settings
+      WHERE key = 'free_meal_plans_limit'
+    `);
+
+    const freeMealPlansLimit = result.rows.length > 0
+      ? parseInt(result.rows[0].value)
+      : 10; // Default
+
+    res.json({
+      settings: {
+        free_meal_plans_limit: freeMealPlansLimit
+      }
+    });
+  } catch (error) {
+    // Table might not exist yet, return defaults
+    res.json({
+      settings: {
+        free_meal_plans_limit: 10
+      }
+    });
+  }
+});
+
+// Update app settings
+app.put('/api/admin/settings', requireAdmin, async (req, res) => {
+  try {
+    const { free_meal_plans_limit } = req.body;
+
+    if (free_meal_plans_limit !== undefined) {
+      await db.query(`
+        INSERT INTO app_settings (key, value)
+        VALUES ('free_meal_plans_limit', $1)
+        ON CONFLICT (key)
+        DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP
+      `, [free_meal_plans_limit.toString()]);
+
+      console.log(`✅ Admin updated free meal plans limit: ${free_meal_plans_limit}`);
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating settings:', error);
+    res.status(500).json({ error: 'Failed to update settings' });
+  }
+});
+
+// Get admin dashboard stats
+app.get('/api/admin/stats', requireAdmin, async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT
+        (SELECT COUNT(*) FROM users) as total_users,
+        (SELECT COUNT(*) FROM users WHERE created_at >= CURRENT_DATE - INTERVAL '7 days') as users_this_week,
+        (SELECT COUNT(*) FROM meal_plan_history) as total_meal_plans,
+        (SELECT COUNT(*) FROM meal_plan_history WHERE created_at >= CURRENT_DATE - INTERVAL '7 days') as meal_plans_this_week,
+        (SELECT COUNT(*) FROM discount_codes WHERE active = TRUE) as active_discount_codes,
+        (SELECT COUNT(*) FROM discount_usage) as total_discount_uses,
+        (SELECT COUNT(*) FROM subscriptions WHERE status = 'active' AND plan_type = 'premium') as premium_subscribers
+    `);
+
+    res.json({ stats: result.rows[0] });
+  } catch (error) {
+    console.error('Error fetching admin stats:', error);
+    res.status(500).json({ error: 'Failed to fetch stats' });
   }
 });
 
