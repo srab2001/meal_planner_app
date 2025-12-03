@@ -192,12 +192,16 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
+        console.log('🔐 OAuth callback received for:', profile.id);
         const email =
           profile.emails && profile.emails[0] && profile.emails[0].value;
 
         if (!email) {
+          console.error('❌ No email in Google profile');
           return done(new Error('email not in Google profile'));
         }
+
+        console.log('📧 Email from profile:', email);
 
         // Check if user exists in database
         const userResult = await db.query(
@@ -208,22 +212,31 @@ passport.use(
         let user;
 
         if (userResult.rows.length === 0) {
+          console.log('👤 New user detected, creating account...');
           // Create new user
-          const insertResult = await db.query(`
-            INSERT INTO users (google_id, email, display_name, picture_url, last_login)
-            VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
-            RETURNING *
-          `, [profile.id, email, profile.displayName, profile.photos?.[0]?.value]);
+          try {
+            const insertResult = await db.query(`
+              INSERT INTO users (google_id, email, display_name, picture_url, last_login)
+              VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+              RETURNING *
+            `, [profile.id, email, profile.displayName, profile.photos?.[0]?.value]);
 
-          user = insertResult.rows[0];
+            user = insertResult.rows[0];
+            console.log('✅ User record created with ID:', user.id);
 
-          // Create free subscription for new user
-          await db.query(`
-            INSERT INTO subscriptions (user_id, plan_type, status)
-            VALUES ($1, 'free', 'active')
-          `, [user.id]);
+            // Create free subscription for new user
+            await db.query(`
+              INSERT INTO subscriptions (user_id, plan_type, status)
+              VALUES ($1, 'free', 'active')
+            `, [user.id]);
 
-          console.log('✅ New user created:', user.email);
+            console.log('✅ Free subscription created for new user');
+            console.log('✅ New user created:', user.email);
+          } catch (createError) {
+            console.error('❌ Error creating new user:', createError.message);
+            console.error('❌ Full error:', createError);
+            throw createError;
+          }
         } else {
           user = userResult.rows[0];
 
@@ -237,15 +250,18 @@ passport.use(
         }
 
         // Return user object for session
-        done(null, {
+        const userObj = {
           id: user.id,
           googleId: user.google_id,
           email: user.email,
           displayName: user.display_name,
           picture: user.picture_url
-        });
+        };
+        console.log('✅ Returning user object to passport:', userObj.email);
+        done(null, userObj);
       } catch (err) {
-        console.error('❌ OAuth error:', err);
+        console.error('❌ OAuth error:', err.message);
+        console.error('❌ Full OAuth error:', err);
         done(err);
       }
     }
