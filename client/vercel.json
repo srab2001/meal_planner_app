@@ -8,5 +8,16 @@
       "source": "/auth/:path*",
       "destination": "https://meal-planner-app-mve2.onrender.com/auth/:path*"
     }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Forwarded-Host",
+          "value": "meal-planner-app-chi.vercel.app"
+        }
+      ]
+    }
   ]
 }
