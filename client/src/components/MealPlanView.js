@@ -21,8 +21,13 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   useEffect(() => {
     const loadFavorites = async () => {
       try {
+        // Get JWT token from localStorage
+        const token = localStorage.getItem('auth_token');
+
         const response = await fetch(`${API_BASE}/api/favorites`, {
-          credentials: 'include',
+          headers: {
+            'Authorization': token ? `Bearer ${token}` : ''
+          }
         });
         if (response.ok) {
           const data = await response.json();
@@ -35,10 +40,15 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
 
     const saveMealPlanToHistory = async () => {
       try {
+        // Get JWT token from localStorage
+        const token = localStorage.getItem('auth_token');
+
         await fetch(`${API_BASE}/api/save-meal-plan`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : ''
+          },
           body: JSON.stringify({
             mealPlan: localMealPlan,
             preferences,
@@ -87,12 +97,15 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
     try {
       console.log('🔄 Regenerating meal:', day, mealType);
 
+      // Get JWT token from localStorage
+      const token = localStorage.getItem('auth_token');
+
       const response = await fetch(`${API_BASE}/api/regenerate-meal`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
         },
-        credentials: 'include',
         body: JSON.stringify({
           cuisines: preferences?.cuisines || [],
           people: preferences?.people || 2,
@@ -144,10 +157,15 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
     setFavoritingMeal(key);
 
     try {
+      // Get JWT token from localStorage
+      const token = localStorage.getItem('auth_token');
+
       const response = await fetch(`${API_BASE}/api/favorites/add`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
         body: JSON.stringify({ meal, mealType }),
       });
 
@@ -166,9 +184,14 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
 
   const handleRemoveFavorite = async (favoriteId) => {
     try {
+      // Get JWT token from localStorage
+      const token = localStorage.getItem('auth_token');
+
       const response = await fetch(`${API_BASE}/api/favorites/${favoriteId}`, {
         method: 'DELETE',
-        credentials: 'include',
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
       });
 
       if (response.ok) {
@@ -199,11 +222,18 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   const handleViewHistory = async (days = null) => {
     setLoadingHistory(true);
     try {
+      // Get JWT token from localStorage
+      const token = localStorage.getItem('auth_token');
+
       const url = days
         ? `${API_BASE}/api/meal-plan-history?days=${days}`
         : `${API_BASE}/api/meal-plan-history`;
 
-      const response = await fetch(url, { credentials: 'include' });
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : ''
+        }
+      });
       if (response.ok) {
         const data = await response.json();
         setHistory(data.history || []);
