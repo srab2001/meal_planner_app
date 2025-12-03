@@ -8,6 +8,7 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const OpenAI = require('openai');
 const rateLimit = require('express-rate-limit');
 const db = require('./db');
+const pgSession = require('connect-pg-simple')(session);
 
 const {
   PORT,
@@ -150,16 +151,25 @@ console.log('- AI: 30 requests per 15 minutes');
 
 app.use(
   session({
+    store: new pgSession({
+      pool: db.pool,
+      tableName: 'session',
+      createTableIfMissing: false, // We create it via migration
+      pruneSessionInterval: 60 * 15 // Cleanup expired sessions every 15 minutes
+    }),
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
       secure: NODE_ENV === 'production',
       httpOnly: true,
-      sameSite: NODE_ENV === 'production' ? 'none' : 'lax'
+      sameSite: NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     }
   })
 );
+
+console.log('✅ Session storage: PostgreSQL (persistent across restarts)');
 
 app.use(passport.initialize());
 app.use(passport.session());

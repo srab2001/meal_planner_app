@@ -1,0 +1,16 @@
+-- Session Storage Table for connect-pg-simple
+-- This allows sessions to persist across server restarts and work with multiple instances
+
+CREATE TABLE IF NOT EXISTS "session" (
+  "sid" varchar NOT NULL COLLATE "default",
+  "sess" json NOT NULL,
+  "expire" timestamp(6) NOT NULL
+)
+WITH (OIDS=FALSE);
+
+ALTER TABLE "session" ADD CONSTRAINT "session_pkey" PRIMARY KEY ("sid") NOT DEFERRABLE INITIALLY IMMEDIATE;
+
+CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
+
+-- Cleanup old sessions (optional but recommended)
+-- This will be handled automatically by connect-pg-simple's pruneSessionInterval option
