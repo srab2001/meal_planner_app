@@ -160,10 +160,11 @@ app.use(
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
+    proxy: true, // Trust the proxy for secure cookie handling
     cookie: {
       secure: NODE_ENV === 'production',
       httpOnly: true,
-      sameSite: 'lax', // lax works with Vercel proxy (same-origin from browser perspective)
+      sameSite: 'lax',
       maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     }
   })
