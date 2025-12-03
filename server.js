@@ -1455,6 +1455,292 @@ app.get('/api/meal-plan-history', requireAuth, async (req, res) => {
   }
 });
 
+// ============================================================================
+// PROFILE MANAGEMENT ENDPOINTS
+// ============================================================================
+
+// Get full user profile with preferences and stats
+app.get('/api/user/profile', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Get user data
+    const userResult = await db.query(
+      `SELECT
+        id, email, display_name, picture_url, phone_number, timezone,
+        meal_plans_generated, bio, created_at, last_login
+      FROM users
+      WHERE id = $1`,
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = userResult.rows[0];
+
+    // Get user preferences
+    const prefsResult = await db.query(
+      `SELECT
+        default_cuisines, default_people, default_meals, default_days,
+        default_dietary, email_notifications, theme, units, language,
+        share_favorites, public_profile
+      FROM user_preferences
+      WHERE user_id = $1`,
+      [userId]
+    );
+
+    const preferences = prefsResult.rows.length > 0 ? prefsResult.rows[0] : null;
+
+    // Get user stats
+    const statsResult = await db.query(
+      `SELECT
+        (SELECT COUNT(*) FROM favorites WHERE user_id = $1) as favorites_count,
+        (SELECT COUNT(*) FROM meal_plan_history WHERE user_id = $1) as meal_plans_count,
+        (SELECT MAX(created_at) FROM meal_plan_history WHERE user_id = $1) as last_meal_plan
+      `,
+      [userId]
+    );
+
+    const stats = statsResult.rows[0];
+
+    res.json({
+      user,
+      preferences,
+      stats
+    });
+
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    res.status(500).json({ error: 'Failed to fetch profile' });
+  }
+});
+
+// Update user profile
+app.put('/api/user/profile', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { display_name, phone_number, timezone, bio } = req.body;
+
+    const result = await db.query(
+      `UPDATE users
+       SET display_name = COALESCE($1, display_name),
+           phone_number = COALESCE($2, phone_number),
+           timezone = COALESCE($3, timezone),
+           bio = COALESCE($4, bio),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $5
+       RETURNING id, email, display_name, picture_url, phone_number, timezone, bio`,
+      [display_name, phone_number, timezone, bio, userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Log activity
+    await db.query(
+      `SELECT log_user_activity($1, 'profile_updated', $2)`,
+      [userId, JSON.stringify({ fields_updated: Object.keys(req.body) })]
+    );
+
+    res.json({ user: result.rows[0] });
+
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+// Get user preferences
+app.get('/api/user/preferences', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const result = await db.query(
+      `SELECT
+        default_cuisines, default_people, default_meals, default_days,
+        default_dietary, email_notifications, theme, units, language,
+        share_favorites, public_profile
+      FROM user_preferences
+      WHERE user_id = $1`,
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      // Create default preferences if they don't exist
+      const createResult = await db.query(
+        `INSERT INTO user_preferences (user_id)
+         VALUES ($1)
+         RETURNING *`,
+        [userId]
+      );
+      return res.json({ preferences: createResult.rows[0] });
+    }
+
+    res.json({ preferences: result.rows[0] });
+
+  } catch (error) {
+    console.error('Error fetching preferences:', error);
+    res.status(500).json({ error: 'Failed to fetch preferences' });
+  }
+});
+
+// Update user preferences
+app.put('/api/user/preferences', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const {
+      default_cuisines,
+      default_people,
+      default_meals,
+      default_days,
+      default_dietary,
+      email_notifications,
+      theme,
+      units,
+      language,
+      share_favorites,
+      public_profile
+    } = req.body;
+
+    // Build dynamic update query
+    const updates = [];
+    const values = [];
+    let paramIndex = 1;
+
+    if (default_cuisines !== undefined) {
+      updates.push(`default_cuisines = $${paramIndex++}`);
+      values.push(JSON.stringify(default_cuisines));
+    }
+    if (default_people !== undefined) {
+      updates.push(`default_people = $${paramIndex++}`);
+      values.push(default_people);
+    }
+    if (default_meals !== undefined) {
+      updates.push(`default_meals = $${paramIndex++}`);
+      values.push(JSON.stringify(default_meals));
+    }
+    if (default_days !== undefined) {
+      updates.push(`default_days = $${paramIndex++}`);
+      values.push(JSON.stringify(default_days));
+    }
+    if (default_dietary !== undefined) {
+      updates.push(`default_dietary = $${paramIndex++}`);
+      values.push(JSON.stringify(default_dietary));
+    }
+    if (email_notifications !== undefined) {
+      updates.push(`email_notifications = $${paramIndex++}`);
+      values.push(JSON.stringify(email_notifications));
+    }
+    if (theme !== undefined) {
+      updates.push(`theme = $${paramIndex++}`);
+      values.push(theme);
+    }
+    if (units !== undefined) {
+      updates.push(`units = $${paramIndex++}`);
+      values.push(units);
+    }
+    if (language !== undefined) {
+      updates.push(`language = $${paramIndex++}`);
+      values.push(language);
+    }
+    if (share_favorites !== undefined) {
+      updates.push(`share_favorites = $${paramIndex++}`);
+      values.push(share_favorites);
+    }
+    if (public_profile !== undefined) {
+      updates.push(`public_profile = $${paramIndex++}`);
+      values.push(public_profile);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    updates.push(`updated_at = CURRENT_TIMESTAMP`);
+    values.push(userId);
+
+    const query = `
+      UPDATE user_preferences
+      SET ${updates.join(', ')}
+      WHERE user_id = $${paramIndex}
+      RETURNING *
+    `;
+
+    const result = await db.query(query, values);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Preferences not found' });
+    }
+
+    // Log activity
+    await db.query(
+      `SELECT log_user_activity($1, 'preferences_updated', $2)`,
+      [userId, JSON.stringify({ fields_updated: Object.keys(req.body) })]
+    );
+
+    res.json({ preferences: result.rows[0] });
+
+  } catch (error) {
+    console.error('Error updating preferences:', error);
+    res.status(500).json({ error: 'Failed to update preferences' });
+  }
+});
+
+// Get user statistics
+app.get('/api/user/stats', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const result = await db.query(
+      `SELECT
+        (SELECT COUNT(*) FROM favorites WHERE user_id = $1) as favorites_count,
+        (SELECT COUNT(*) FROM meal_plan_history WHERE user_id = $1) as total_meal_plans,
+        (SELECT MAX(created_at) FROM meal_plan_history WHERE user_id = $1) as last_meal_plan,
+        (SELECT COUNT(*) FROM meal_plan_history
+         WHERE user_id = $1 AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30 days') as meal_plans_this_month,
+        (SELECT created_at FROM users WHERE id = $1) as member_since,
+        (SELECT COUNT(DISTINCT activity_type) FROM user_activity WHERE user_id = $1) as activity_types,
+        (SELECT COUNT(*) FROM user_activity
+         WHERE user_id = $1 AND activity_type = 'login'
+         AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30 days') as logins_this_month
+      `,
+      [userId]
+    );
+
+    res.json({ stats: result.rows[0] });
+
+  } catch (error) {
+    console.error('Error fetching stats:', error);
+    res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+});
+
+// Get user activity log
+app.get('/api/user/activity', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { limit = 50, offset = 0 } = req.query;
+
+    const result = await db.query(
+      `SELECT id, activity_type, activity_data, created_at
+       FROM user_activity
+       WHERE user_id = $1
+       ORDER BY created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [userId, parseInt(limit), parseInt(offset)]
+    );
+
+    res.json({ activities: result.rows });
+
+  } catch (error) {
+    console.error('Error fetching activity:', error);
+    res.status(500).json({ error: 'Failed to fetch activity' });
+  }
+});
+
 const port = PORT || 5000;
 app.listen(port, () => {
   console.log(`server listening on port ${port}`);

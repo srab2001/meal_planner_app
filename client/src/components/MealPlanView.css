@@ -48,6 +48,8 @@
 }
 
 .btn-feedback,
+.btn-history,
+.btn-profile,
 .btn-print,
 .btn-secondary,
 .btn-logout {
@@ -67,6 +69,26 @@
 
 .btn-feedback:hover {
   background: #f57c00;
+  transform: translateY(-2px);
+}
+
+.btn-history {
+  background: #9c27b0;
+  color: white;
+}
+
+.btn-history:hover {
+  background: #7b1fa2;
+  transform: translateY(-2px);
+}
+
+.btn-profile {
+  background: #2196F3;
+  color: white;
+}
+
+.btn-profile:hover {
+  background: #1976D2;
   transform: translateY(-2px);
 }
 

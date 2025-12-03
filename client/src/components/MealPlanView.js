@@ -4,7 +4,7 @@ import ShoppingList from './ShoppingList';
 
 const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
 
-function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver, onLogout }) {
+function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver, onLogout, onViewProfile }) {
   const [selectedDay, setSelectedDay] = useState('Monday');
   const [selectedMeal, setSelectedMeal] = useState(null);
   const [activeTab, setActiveTab] = useState('meals');
@@ -274,6 +274,11 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
           <button onClick={() => handleViewHistory()} className="btn-history">
             📜 History
           </button>
+          {onViewProfile && (
+            <button onClick={onViewProfile} className="btn-profile">
+              👤 Profile
+            </button>
+          )}
           <button onClick={handlePrintAllRecipes} className="btn-print">
             🖨️ Print All Recipes
           </button>
