@@ -16,6 +16,11 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
+  // Recipe customization state
+  const [customServings, setCustomServings] = useState(null);
+  const [recipeNotes, setRecipeNotes] = useState('');
+  const [savingCustomization, setSavingCustomization] = useState(false);
+
   // Load favorites and save meal plan to history on mount
   // This useEffect must come before any early returns to follow React hooks rules
   useEffect(() => {
@@ -84,10 +89,78 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
 
   const handleMealClick = (meal) => {
     setSelectedMeal(meal);
+    setCustomServings(meal.servings || 2);
+    setRecipeNotes('');
   };
 
   const closeModal = () => {
     setSelectedMeal(null);
+    setCustomServings(null);
+    setRecipeNotes('');
+  };
+
+  const adjustServings = (change) => {
+    setCustomServings(prev => Math.max(1, (prev || 2) + change));
+  };
+
+  const calculateScaledIngredient = (ingredient, originalServings, newServings) => {
+    if (!originalServings || !newServings || originalServings === newServings) {
+      return ingredient;
+    }
+
+    const scale = newServings / originalServings;
+    // Try to find and scale numbers in the ingredient string
+    return ingredient.replace(/(\d+(?:\.\d+)?)\s*(\/?)\s*(\d+(?:\.\d+)?)?/g, (match, num1, slash, num2) => {
+      if (slash && num2) {
+        // Handle fractions like "1/2"
+        const scaled = (parseFloat(num1) / parseFloat(num2)) * scale;
+        if (scaled >= 1) {
+          return Math.round(scaled * 4) / 4; // Round to nearest quarter
+        }
+        return scaled.toFixed(2);
+      } else {
+        // Handle regular numbers
+        const scaled = parseFloat(num1) * scale;
+        return Math.round(scaled * 4) / 4; // Round to nearest quarter
+      }
+    });
+  };
+
+  const handleSaveCustomizedFavorite = async () => {
+    if (!selectedMeal) return;
+
+    setSavingCustomization(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+
+      const response = await fetch(`${API_BASE}/api/favorites/add`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
+        body: JSON.stringify({
+          meal: selectedMeal,
+          mealType: 'dinner', // Default type
+          servings_adjustment: customServings,
+          user_notes: recipeNotes
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setFavorites(prev => [...prev, data.favorite]);
+        alert('✅ Customized recipe saved to favorites!');
+        closeModal();
+      } else {
+        throw new Error('Failed to save');
+      }
+    } catch (error) {
+      console.error('Error saving customized favorite:', error);
+      alert('Failed to save customized recipe');
+    } finally {
+      setSavingCustomization(false);
+    }
   };
 
   const handleRegenerateMeal = async (day, mealType) => {
@@ -501,9 +574,9 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close" onClick={closeModal}>✕</button>
-            
+
             <h2 className="recipe-title">{selectedMeal.name}</h2>
-            
+
             <div className="recipe-meta">
               {selectedMeal.prepTime && (
                 <span>⏱️ Prep: {selectedMeal.prepTime}</span>
@@ -511,11 +584,23 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
               {selectedMeal.cookTime && (
                 <span>🔥 Cook: {selectedMeal.cookTime}</span>
               )}
-              {selectedMeal.servings && (
-                <span>👥 Serves: {selectedMeal.servings}</span>
-              )}
               {selectedMeal.estimatedCost && (
                 <span>💰 Cost: {selectedMeal.estimatedCost}</span>
+              )}
+            </div>
+
+            {/* Servings Adjuster */}
+            <div className="servings-adjuster">
+              <label>👥 Servings:</label>
+              <div className="servings-controls">
+                <button onClick={() => adjustServings(-1)} className="adjust-btn">−</button>
+                <span className="servings-display">{customServings || selectedMeal.servings || 2}</span>
+                <button onClick={() => adjustServings(1)} className="adjust-btn">+</button>
+              </div>
+              {customServings !== selectedMeal.servings && (
+                <span className="scaling-note">
+                  (scaled from {selectedMeal.servings} servings)
+                </span>
               )}
             </div>
 
@@ -523,7 +608,9 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
               <h3>Ingredients</h3>
               <ul className="ingredients-list">
                 {selectedMeal.ingredients?.map((ingredient, index) => (
-                  <li key={index}>{ingredient}</li>
+                  <li key={index}>
+                    {calculateScaledIngredient(ingredient, selectedMeal.servings, customServings)}
+                  </li>
                 ))}
               </ul>
             </div>
@@ -537,9 +624,30 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
               </ol>
             </div>
 
-            <button className="print-recipe-btn" onClick={() => window.print()}>
-              🖨️ Print This Recipe
-            </button>
+            {/* Personal Notes */}
+            <div className="recipe-section">
+              <h3>📝 Personal Notes</h3>
+              <textarea
+                className="recipe-notes"
+                placeholder="Add your own notes, ingredient swaps, or cooking tips..."
+                value={recipeNotes}
+                onChange={(e) => setRecipeNotes(e.target.value)}
+                rows={3}
+              />
+            </div>
+
+            <div className="modal-actions">
+              <button className="print-recipe-btn" onClick={() => window.print()}>
+                🖨️ Print Recipe
+              </button>
+              <button
+                className="save-custom-btn"
+                onClick={handleSaveCustomizedFavorite}
+                disabled={savingCustomization}
+              >
+                {savingCustomization ? '⏳ Saving...' : '❤️ Save to Favorites'}
+              </button>
+            </div>
           </div>
         </div>
       )}
