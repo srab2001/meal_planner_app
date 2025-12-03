@@ -283,6 +283,9 @@ app.get(
   (req, res) => {
     // Log successful authentication
     console.log('OAuth callback successful for user:', req.user?.email);
+    console.log('Session ID after auth:', req.sessionID);
+    console.log('Session data after auth:', JSON.stringify(req.session));
+    console.log('req.user after auth:', JSON.stringify(req.user));
 
     // Save session before redirecting to avoid race condition
     req.session.save((err) => {
@@ -290,7 +293,8 @@ app.get(
         console.error('Session save error:', err);
         return res.redirect((FRONTEND_BASE || 'http://localhost:3000') + '/login?error=1');
       }
-      console.log('Session saved, redirecting to frontend');
+      console.log('Session saved successfully to PostgreSQL');
+      console.log('Session ID after save:', req.sessionID);
       const frontend = FRONTEND_BASE || 'http://localhost:3000';
       res.redirect(frontend);
     });
@@ -300,6 +304,9 @@ app.get(
 // current user
 app.get('/auth/user', (req, res) => {
   console.log('GET /auth/user - Session ID:', req.sessionID, 'User:', req.user?.email || 'none');
+  console.log('Session data on /auth/user:', JSON.stringify(req.session));
+  console.log('req.user on /auth/user:', JSON.stringify(req.user));
+  console.log('Cookie header:', req.headers.cookie);
 
   if (!req.user) {
     return res.status(401).json({ user: null });
