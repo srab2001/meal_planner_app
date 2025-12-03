@@ -302,6 +302,13 @@ app.get(
     console.log('Session ID after auth:', req.sessionID);
     console.log('Session data after auth:', JSON.stringify(req.session));
     console.log('req.user after auth:', JSON.stringify(req.user));
+    console.log('Request headers:', {
+      host: req.get('host'),
+      'x-forwarded-host': req.get('x-forwarded-host'),
+      'x-forwarded-proto': req.get('x-forwarded-proto'),
+      origin: req.get('origin'),
+      referer: req.get('referer')
+    });
 
     // Save session before redirecting to avoid race condition
     req.session.save((err) => {
@@ -324,6 +331,13 @@ app.get('/auth/user', (req, res) => {
   console.log('Session data on /auth/user:', JSON.stringify(req.session));
   console.log('req.user on /auth/user:', JSON.stringify(req.user));
   console.log('Cookie header:', req.headers.cookie);
+  console.log('Request headers:', {
+    host: req.get('host'),
+    'x-forwarded-host': req.get('x-forwarded-host'),
+    'x-forwarded-proto': req.get('x-forwarded-proto'),
+    origin: req.get('origin'),
+    referer: req.get('referer')
+  });
 
   if (!req.user) {
     return res.status(401).json({ user: null });
