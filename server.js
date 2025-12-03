@@ -8,6 +8,7 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const OpenAI = require('openai');
 const rateLimit = require('express-rate-limit');
 const db = require('./db');
+const jwt = require('jsonwebtoken');
 const pgSession = require('connect-pg-simple')(session);
 
 const {
@@ -22,6 +23,9 @@ const {
   STRIPE_SECRET_KEY,
   STRIPE_PUBLISHABLE_KEY
 } = process.env;
+
+// Use SESSION_SECRET for JWT as well
+const JWT_SECRET = SESSION_SECRET;
 
 // basic env checks
 console.log('GOOGLE_CLIENT_ID present:', !!GOOGLE_CLIENT_ID);
@@ -269,10 +273,47 @@ passport.use(
   )
 );
 
-function requireAuth(req, res, next) {
-  if (!req.user) {
-    return res.status(401).json({ error: 'not_authenticated' });
+// JWT Helper Functions
+function generateToken(user) {
+  return jwt.sign(
+    {
+      id: user.id,
+      email: user.email,
+      googleId: user.googleId,
+      displayName: user.displayName,
+      picture: user.picture
+    },
+    JWT_SECRET,
+    { expiresIn: '30d' }
+  );
+}
+
+function verifyToken(token) {
+  try {
+    return jwt.verify(token, JWT_SECRET);
+  } catch (err) {
+    return null;
   }
+}
+
+// JWT Authentication Middleware
+function requireAuth(req, res, next) {
+  // Check for token in Authorization header or query parameter
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ')
+    ? authHeader.substring(7)
+    : req.query.token;
+
+  if (!token) {
+    return res.status(401).json({ error: 'not_authenticated', message: 'No token provided' });
+  }
+
+  const decoded = verifyToken(token);
+  if (!decoded) {
+    return res.status(401).json({ error: 'invalid_token', message: 'Invalid or expired token' });
+  }
+
+  req.user = decoded;
   next();
 }
 
@@ -295,75 +336,62 @@ app.get(
   passport.authenticate('google', {
     failureRedirect:
       (FRONTEND_BASE || 'http://localhost:3000') + '/login?error=1',
-    session: true
+    session: false // No longer using sessions, using JWT tokens instead
   }),
   (req, res) => {
-    // Log successful authentication
+    // Generate JWT token for the authenticated user
     console.log('OAuth callback successful for user:', req.user?.email);
-    console.log('Session ID after auth:', req.sessionID);
-    console.log('Session data after auth:', JSON.stringify(req.session));
-    console.log('req.user after auth:', JSON.stringify(req.user));
-    console.log('Request headers:', {
-      host: req.get('host'),
-      'x-forwarded-host': req.get('x-forwarded-host'),
-      'x-forwarded-proto': req.get('x-forwarded-proto'),
-      origin: req.get('origin'),
-      referer: req.get('referer')
-    });
 
-    // Save session before redirecting to avoid race condition
-    req.session.save((err) => {
-      if (err) {
-        console.error('Session save error:', err);
-        return res.redirect((FRONTEND_BASE || 'http://localhost:3000') + '/login?error=1');
-      }
-      console.log('Session saved successfully to PostgreSQL');
-      console.log('Session ID after save:', req.sessionID);
-      console.log('Set-Cookie header will be:', res.getHeader('Set-Cookie'));
+    try {
+      const token = generateToken(req.user);
+      console.log('✅ JWT token generated for:', req.user.email);
+
+      // Redirect to frontend with token in URL hash (more secure than query param)
       const frontend = FRONTEND_BASE || 'http://localhost:3000';
-      res.redirect(frontend);
-    });
+      res.redirect(`${frontend}#token=${token}`);
+    } catch (err) {
+      console.error('❌ Error generating token:', err);
+      res.redirect((FRONTEND_BASE || 'http://localhost:3000') + '/login?error=1');
+    }
   }
 );
 
-// current user
+// current user (JWT-based)
 app.get('/auth/user', (req, res) => {
-  console.log('GET /auth/user - Session ID:', req.sessionID, 'User:', req.user?.email || 'none');
-  console.log('Session data on /auth/user:', JSON.stringify(req.session));
-  console.log('req.user on /auth/user:', JSON.stringify(req.user));
-  console.log('Cookie header:', req.headers.cookie);
-  console.log('Request headers:', {
-    host: req.get('host'),
-    'x-forwarded-host': req.get('x-forwarded-host'),
-    'x-forwarded-proto': req.get('x-forwarded-proto'),
-    origin: req.get('origin'),
-    referer: req.get('referer')
-  });
+  // Extract token from Authorization header
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
 
-  if (!req.user) {
+  console.log('GET /auth/user - Token present:', !!token);
+
+  if (!token) {
+    console.log('No token provided');
     return res.status(401).json({ user: null });
   }
 
+  const decoded = verifyToken(token);
+  if (!decoded) {
+    console.log('Invalid or expired token');
+    return res.status(401).json({ user: null, error: 'invalid_token' });
+  }
+
+  console.log('✅ Token verified for user:', decoded.email);
+
   res.json({
     user: {
-      id: req.user.id,
-      email: req.user.email,
-      full_name: req.user.full_name,
-      role: req.user.role || null,
-      picture: req.user.picture || null
+      id: decoded.id,
+      email: decoded.email,
+      displayName: decoded.displayName,
+      picture: decoded.picture
     }
   });
 });
 
-// logout
-app.post('/auth/logout', (req, res, next) => {
-  req.logout(err => {
-    if (err) return next(err);
-    req.session.destroy(() => {
-      res.clearCookie('connect.sid');
-      res.json({ success: true });
-    });
-  });
+// logout (JWT - handled client-side by deleting token)
+app.post('/auth/logout', (req, res) => {
+  // With JWT, logout is handled by the client deleting the token from localStorage
+  console.log('Logout request received');
+  res.json({ success: true, message: 'Logged out successfully' });
 });
 
 // simple profile endpoint
