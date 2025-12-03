@@ -1298,7 +1298,7 @@ app.get('/api/discount-usage-stats', (req, res) => {
 // Add meal to favorites
 app.post('/api/favorites/add', requireAuth, async (req, res) => {
   try {
-    const { meal, mealType } = req.body;
+    const { meal, mealType, servings_adjustment, user_notes } = req.body;
 
     if (!meal || !meal.name) {
       return res.status(400).json({ error: 'Invalid meal data' });
@@ -1309,19 +1309,33 @@ app.post('/api/favorites/add', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Invalid meal type' });
     }
 
-    // Insert favorite
+    // Insert favorite with customization data
     const result = await db.query(`
-      INSERT INTO favorites (user_id, meal_type, meal_data, meal_name)
-      VALUES ($1, $2, $3, $4)
-      ON CONFLICT (user_id, meal_name, meal_type) DO NOTHING
+      INSERT INTO favorites (
+        user_id, meal_type, meal_data, meal_name,
+        servings_adjustment, user_notes
+      )
+      VALUES ($1, $2, $3, $4, $5, $6)
+      ON CONFLICT (user_id, meal_name, meal_type)
+      DO UPDATE SET
+        servings_adjustment = EXCLUDED.servings_adjustment,
+        user_notes = EXCLUDED.user_notes
       RETURNING *
-    `, [req.user.id, mealType, JSON.stringify(meal), meal.name]);
+    `, [
+      req.user.id,
+      mealType,
+      JSON.stringify(meal),
+      meal.name,
+      servings_adjustment || null,
+      user_notes || null
+    ]);
 
     if (result.rows.length > 0) {
-      console.log(`❤️  ${req.user.email} saved favorite: ${meal.name}`);
+      const customInfo = servings_adjustment || user_notes ? ' (customized)' : '';
+      console.log(`❤️  ${req.user.email} saved favorite: ${meal.name}${customInfo}`);
       res.json({ success: true, favorite: result.rows[0] });
     } else {
-      res.json({ success: true, message: 'Favorite already exists' });
+      res.json({ success: true, message: 'Favorite updated' });
     }
 
   } catch (error) {

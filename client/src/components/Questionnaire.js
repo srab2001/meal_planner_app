@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './Questionnaire.css';
+
+const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
 
 const CUISINE_OPTIONS = [
   'Italian', 'Mexican', 'Chinese', 'Japanese', 'Indian',
@@ -44,6 +46,84 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
   });
   const [leftovers, setLeftovers] = useState(['']);
   const [errors, setErrors] = useState({});
+  const [loadingPreferences, setLoadingPreferences] = useState(true);
+
+  // Load user preferences on mount
+  useEffect(() => {
+    const loadPreferences = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch(`${API_BASE}/api/user/preferences`, {
+          headers: {
+            'Authorization': token ? `Bearer ${token}` : ''
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const prefs = data.preferences;
+
+          if (prefs) {
+            // Pre-fill cuisines
+            if (prefs.default_cuisines && prefs.default_cuisines.length > 0) {
+              setCuisines(prefs.default_cuisines);
+            }
+
+            // Pre-fill number of people
+            if (prefs.default_people) {
+              setNumberOfPeople(prefs.default_people);
+            }
+
+            // Pre-fill meals (convert array to object)
+            if (prefs.default_meals && prefs.default_meals.length > 0) {
+              const mealsObj = {
+                breakfast: prefs.default_meals.includes('breakfast'),
+                lunch: prefs.default_meals.includes('lunch'),
+                dinner: prefs.default_meals.includes('dinner')
+              };
+              setMeals(mealsObj);
+            }
+
+            // Pre-fill days (convert array to object)
+            if (prefs.default_days && prefs.default_days.length > 0) {
+              const daysObj = {
+                Monday: prefs.default_days.includes('Monday'),
+                Tuesday: prefs.default_days.includes('Tuesday'),
+                Wednesday: prefs.default_days.includes('Wednesday'),
+                Thursday: prefs.default_days.includes('Thursday'),
+                Friday: prefs.default_days.includes('Friday'),
+                Saturday: prefs.default_days.includes('Saturday'),
+                Sunday: prefs.default_days.includes('Sunday')
+              };
+              setSelectedDays(daysObj);
+            }
+
+            // Pre-fill dietary preferences (convert array to object)
+            if (prefs.default_dietary && prefs.default_dietary.length > 0) {
+              const dietaryObj = {
+                diabetic: prefs.default_dietary.includes('diabetic'),
+                dairyFree: prefs.default_dietary.includes('dairyFree'),
+                glutenFree: prefs.default_dietary.includes('glutenFree'),
+                peanutFree: prefs.default_dietary.includes('peanutFree'),
+                vegetarian: prefs.default_dietary.includes('vegetarian'),
+                kosher: prefs.default_dietary.includes('kosher')
+              };
+              setDietaryPreferences(dietaryObj);
+            }
+
+            console.log('✅ Preferences loaded and applied');
+          }
+        }
+      } catch (error) {
+        console.error('Error loading preferences:', error);
+        // Fail silently - user can still fill out the form manually
+      } finally {
+        setLoadingPreferences(false);
+      }
+    };
+
+    loadPreferences();
+  }, []);
 
   const toggleCuisine = (cuisine) => {
     setCuisines(prev => {
