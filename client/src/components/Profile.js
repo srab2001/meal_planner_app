@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './Profile.css';
 
-const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5000';
+const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
 
 const CUISINE_OPTIONS = [
   'Italian', 'Mexican', 'Chinese', 'Japanese', 'Indian',
