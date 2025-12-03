@@ -8,6 +8,7 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const OpenAI = require('openai');
 const rateLimit = require('express-rate-limit');
 const db = require('./db');
+const pgSession = require('connect-pg-simple')(session);
 
 const {
   PORT,
@@ -150,16 +151,25 @@ console.log('- AI: 30 requests per 15 minutes');
 
 app.use(
   session({
+    store: new pgSession({
+      pool: db.pool,
+      tableName: 'session',
+      createTableIfMissing: false, // We create it via migration
+      pruneSessionInterval: 60 * 15 // Cleanup expired sessions every 15 minutes
+    }),
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
       secure: NODE_ENV === 'production',
       httpOnly: true,
-      sameSite: NODE_ENV === 'production' ? 'none' : 'lax'
+      sameSite: 'lax', // lax works with Vercel proxy (same-origin from browser perspective)
+      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     }
   })
 );
+
+console.log('✅ Session storage: PostgreSQL (persistent across restarts)');
 
 app.use(passport.initialize());
 app.use(passport.session());
@@ -273,6 +283,9 @@ app.get(
   (req, res) => {
     // Log successful authentication
     console.log('OAuth callback successful for user:', req.user?.email);
+    console.log('Session ID after auth:', req.sessionID);
+    console.log('Session data after auth:', JSON.stringify(req.session));
+    console.log('req.user after auth:', JSON.stringify(req.user));
 
     // Save session before redirecting to avoid race condition
     req.session.save((err) => {
@@ -280,7 +293,9 @@ app.get(
         console.error('Session save error:', err);
         return res.redirect((FRONTEND_BASE || 'http://localhost:3000') + '/login?error=1');
       }
-      console.log('Session saved, redirecting to frontend');
+      console.log('Session saved successfully to PostgreSQL');
+      console.log('Session ID after save:', req.sessionID);
+      console.log('Set-Cookie header will be:', res.getHeader('Set-Cookie'));
       const frontend = FRONTEND_BASE || 'http://localhost:3000';
       res.redirect(frontend);
     });
@@ -290,6 +305,9 @@ app.get(
 // current user
 app.get('/auth/user', (req, res) => {
   console.log('GET /auth/user - Session ID:', req.sessionID, 'User:', req.user?.email || 'none');
+  console.log('Session data on /auth/user:', JSON.stringify(req.session));
+  console.log('req.user on /auth/user:', JSON.stringify(req.user));
+  console.log('Cookie header:', req.headers.cookie);
 
   if (!req.user) {
     return res.status(401).json({ user: null });
