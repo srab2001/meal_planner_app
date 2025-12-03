@@ -295,6 +295,7 @@ app.get(
       }
       console.log('Session saved successfully to PostgreSQL');
       console.log('Session ID after save:', req.sessionID);
+      console.log('Set-Cookie header will be:', res.getHeader('Set-Cookie'));
       const frontend = FRONTEND_BASE || 'http://localhost:3000';
       res.redirect(frontend);
     });
