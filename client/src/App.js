@@ -7,6 +7,7 @@ import Questionnaire from './components/Questionnaire';
 import PaymentPage from './components/PaymentPage';
 import MealPlanView from './components/MealPlanView';
 import Profile from './components/Profile';
+import Admin from './components/Admin';
 
 // Use relative paths in production (proxied by Vercel) or localhost in development
 const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
@@ -41,6 +42,12 @@ function App() {
 
   // Check for token in URL hash (from OAuth redirect) and authenticate
   useEffect(() => {
+    // Check if accessing admin panel
+    if (window.location.pathname === '/admin') {
+      setCurrentView('admin');
+      return;
+    }
+
     // Check if there's a token in the URL hash (from OAuth redirect)
     const hash = window.location.hash;
     if (hash && hash.includes('token=')) {
@@ -290,6 +297,10 @@ function App() {
           user={user}
           onBack={handleBackFromProfile}
         />
+      )}
+
+      {currentView === 'admin' && (
+        <Admin />
       )}
     </div>
   );
