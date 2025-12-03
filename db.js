@@ -11,9 +11,23 @@ const pool = new Pool({
   connectionTimeoutMillis: 2000,
 });
 
-// Test connection
+// Test connection on startup
+(async () => {
+  try {
+    const client = await pool.connect();
+    console.log('✅ PostgreSQL connected successfully');
+    client.release();
+  } catch (err) {
+    console.error('❌ Failed to connect to PostgreSQL:', err.message);
+    console.error('DATABASE_URL present:', !!process.env.DATABASE_URL);
+    if (process.env.DATABASE_URL) {
+      console.error('DATABASE_URL prefix:', process.env.DATABASE_URL.substring(0, 30) + '...');
+    }
+  }
+})();
+
 pool.on('connect', () => {
-  console.log('✅ PostgreSQL connected');
+  console.log('✅ PostgreSQL pool connection established');
 });
 
 pool.on('error', (err) => {
