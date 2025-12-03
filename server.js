@@ -1539,11 +1539,15 @@ app.put('/api/user/profile', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Log activity
-    await db.query(
-      `SELECT log_user_activity($1, 'profile_updated', $2)`,
-      [userId, JSON.stringify({ fields_updated: Object.keys(req.body) })]
-    );
+    // Log activity (non-blocking - don't fail if logging fails)
+    try {
+      await db.query(
+        `SELECT log_user_activity($1, 'profile_updated', $2)`,
+        [userId, JSON.stringify({ fields_updated: Object.keys(req.body) })]
+      );
+    } catch (logError) {
+      console.warn('Failed to log profile update activity:', logError.message);
+    }
 
     res.json({ user: result.rows[0] });
 
@@ -1675,11 +1679,15 @@ app.put('/api/user/preferences', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'Preferences not found' });
     }
 
-    // Log activity
-    await db.query(
-      `SELECT log_user_activity($1, 'preferences_updated', $2)`,
-      [userId, JSON.stringify({ fields_updated: Object.keys(req.body) })]
-    );
+    // Log activity (non-blocking - don't fail if logging fails)
+    try {
+      await db.query(
+        `SELECT log_user_activity($1, 'preferences_updated', $2)`,
+        [userId, JSON.stringify({ fields_updated: Object.keys(req.body) })]
+      );
+    } catch (logError) {
+      console.warn('Failed to log preferences update activity:', logError.message);
+    }
 
     res.json({ preferences: result.rows[0] });
 
