@@ -164,7 +164,7 @@ app.use(
     cookie: {
       secure: NODE_ENV === 'production',
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: NODE_ENV === 'production' ? 'none' : 'lax', // 'none' required for cross-domain OAuth
       maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     }
   })
