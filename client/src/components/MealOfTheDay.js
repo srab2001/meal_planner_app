@@ -25,6 +25,42 @@ function MealOfTheDay() {
     }
   };
 
+  const handleNativeShare = async () => {
+    if (!meal) return;
+
+    const shareUrl = `${window.location.origin}/meal-of-the-day`;
+    const shareText = `Check out today's Meal of the Day: ${meal.title}!\n\n${meal.description || ''}`;
+
+    // Check if native share is available
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Meal of the Day: ${meal.title}`,
+          text: shareText,
+          url: shareUrl
+        });
+
+        // Track the share
+        const token = localStorage.getItem('auth_token');
+        await fetch(`${API_BASE}/api/meal-of-the-day/${meal.id}/share`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : ''
+          },
+          body: JSON.stringify({ platform: 'native' })
+        });
+
+        setShareSuccess('Shared successfully!');
+        setTimeout(() => setShareSuccess(''), 3000);
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.error('Error sharing:', error);
+        }
+      }
+    }
+  };
+
   const handleShare = async (platform) => {
     if (!meal) return;
 
@@ -162,6 +198,12 @@ function MealOfTheDay() {
         <h3>Share this recipe!</h3>
         {shareSuccess && <div className="share-success">{shareSuccess}</div>}
         <div className="share-buttons">
+          {/* Native share button for mobile devices */}
+          {navigator.share && (
+            <button onClick={handleNativeShare} className="share-btn native-share">
+              <span>📤</span> Share
+            </button>
+          )}
           <button onClick={() => handleShare('facebook')} className="share-btn facebook">
             <span>📘</span> Facebook
           </button>
