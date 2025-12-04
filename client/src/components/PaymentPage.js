@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './PaymentPage.css';
 
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
 
 function PaymentPage({ user, onPaymentComplete, onLogout, selectedStores, preferences }) {
   const [discountCode, setDiscountCode] = useState('');
@@ -22,10 +22,15 @@ function PaymentPage({ user, onPaymentComplete, onLogout, selectedStores, prefer
     setCodeError('');
 
     try {
+      // Get JWT token from localStorage
+      const token = localStorage.getItem('auth_token');
+
       const response = await fetch(`${API_BASE}/api/validate-discount`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
         body: JSON.stringify({ code: discountCode.trim() }),
       });
 
@@ -50,12 +55,17 @@ function PaymentPage({ user, onPaymentComplete, onLogout, selectedStores, prefer
     setIsProcessingPayment(true);
 
     try {
+      // Get JWT token from localStorage
+      const token = localStorage.getItem('auth_token');
+
       // If discount is 100%, skip payment and mark as complete
       if (discountApplied && discountApplied.percentOff === 100) {
         const response = await fetch(`${API_BASE}/api/apply-free-access`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : ''
+          },
           body: JSON.stringify({ code: discountCode.trim() }),
         });
 
@@ -68,8 +78,10 @@ function PaymentPage({ user, onPaymentComplete, onLogout, selectedStores, prefer
       // For paid plans, create Stripe checkout session
       const response = await fetch(`${API_BASE}/api/create-checkout-session`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
         body: JSON.stringify({
           discountCode: discountApplied ? discountCode.trim() : null,
         }),

@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './MealPlanView.css';
 import ShoppingList from './ShoppingList';
 
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
 
-function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver, onLogout }) {
+function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver, onLogout, onViewProfile }) {
   const [selectedDay, setSelectedDay] = useState('Monday');
   const [selectedMeal, setSelectedMeal] = useState(null);
   const [activeTab, setActiveTab] = useState('meals');
@@ -16,13 +16,34 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
+  // Recipe customization state
+  const [customServings, setCustomServings] = useState(null);
+  const [recipeNotes, setRecipeNotes] = useState('');
+  const [savingCustomization, setSavingCustomization] = useState(false);
+
+  // Mobile UI state
+  const [showFabMenu, setShowFabMenu] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Touch gesture refs
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
+  const pullStartY = useRef(0);
+  const mealsContentRef = useRef(null);
+
   // Load favorites and save meal plan to history on mount
   // This useEffect must come before any early returns to follow React hooks rules
   useEffect(() => {
     const loadFavorites = async () => {
       try {
+        // Get JWT token from localStorage
+        const token = localStorage.getItem('auth_token');
+
         const response = await fetch(`${API_BASE}/api/favorites`, {
-          credentials: 'include',
+          headers: {
+            'Authorization': token ? `Bearer ${token}` : ''
+          }
         });
         if (response.ok) {
           const data = await response.json();
@@ -35,10 +56,15 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
 
     const saveMealPlanToHistory = async () => {
       try {
+        // Get JWT token from localStorage
+        const token = localStorage.getItem('auth_token');
+
         await fetch(`${API_BASE}/api/save-meal-plan`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : ''
+          },
           body: JSON.stringify({
             mealPlan: localMealPlan,
             preferences,
@@ -74,10 +100,78 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
 
   const handleMealClick = (meal) => {
     setSelectedMeal(meal);
+    setCustomServings(meal.servings || 2);
+    setRecipeNotes('');
   };
 
   const closeModal = () => {
     setSelectedMeal(null);
+    setCustomServings(null);
+    setRecipeNotes('');
+  };
+
+  const adjustServings = (change) => {
+    setCustomServings(prev => Math.max(1, (prev || 2) + change));
+  };
+
+  const calculateScaledIngredient = (ingredient, originalServings, newServings) => {
+    if (!originalServings || !newServings || originalServings === newServings) {
+      return ingredient;
+    }
+
+    const scale = newServings / originalServings;
+    // Try to find and scale numbers in the ingredient string
+    return ingredient.replace(/(\d+(?:\.\d+)?)\s*(\/?)\s*(\d+(?:\.\d+)?)?/g, (match, num1, slash, num2) => {
+      if (slash && num2) {
+        // Handle fractions like "1/2"
+        const scaled = (parseFloat(num1) / parseFloat(num2)) * scale;
+        if (scaled >= 1) {
+          return Math.round(scaled * 4) / 4; // Round to nearest quarter
+        }
+        return scaled.toFixed(2);
+      } else {
+        // Handle regular numbers
+        const scaled = parseFloat(num1) * scale;
+        return Math.round(scaled * 4) / 4; // Round to nearest quarter
+      }
+    });
+  };
+
+  const handleSaveCustomizedFavorite = async () => {
+    if (!selectedMeal) return;
+
+    setSavingCustomization(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+
+      const response = await fetch(`${API_BASE}/api/favorites/add`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
+        body: JSON.stringify({
+          meal: selectedMeal,
+          mealType: 'dinner', // Default type
+          servings_adjustment: customServings,
+          user_notes: recipeNotes
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setFavorites(prev => [...prev, data.favorite]);
+        alert('✅ Customized recipe saved to favorites!');
+        closeModal();
+      } else {
+        throw new Error('Failed to save');
+      }
+    } catch (error) {
+      console.error('Error saving customized favorite:', error);
+      alert('Failed to save customized recipe');
+    } finally {
+      setSavingCustomization(false);
+    }
   };
 
   const handleRegenerateMeal = async (day, mealType) => {
@@ -87,12 +181,15 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
     try {
       console.log('🔄 Regenerating meal:', day, mealType);
 
+      // Get JWT token from localStorage
+      const token = localStorage.getItem('auth_token');
+
       const response = await fetch(`${API_BASE}/api/regenerate-meal`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
         },
-        credentials: 'include',
         body: JSON.stringify({
           cuisines: preferences?.cuisines || [],
           people: preferences?.people || 2,
@@ -135,8 +232,7 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   };
 
   const handleFeedback = () => {
-    // TODO: Replace this URL with your Google Form URL
-    const feedbackURL = 'https://forms.gle/YOUR-FORM-ID-HERE';
+    const feedbackURL = 'https://docs.google.com/forms/d/e/1FAIpQLSfNbdZD1GdQYzQvrvZkWDjlLw97fd15NX-X3Z53me5IbK_rhA/viewform?usp=header';
     window.open(feedbackURL, '_blank');
   };
 
@@ -145,10 +241,15 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
     setFavoritingMeal(key);
 
     try {
+      // Get JWT token from localStorage
+      const token = localStorage.getItem('auth_token');
+
       const response = await fetch(`${API_BASE}/api/favorites/add`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
         body: JSON.stringify({ meal, mealType }),
       });
 
@@ -167,9 +268,14 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
 
   const handleRemoveFavorite = async (favoriteId) => {
     try {
+      // Get JWT token from localStorage
+      const token = localStorage.getItem('auth_token');
+
       const response = await fetch(`${API_BASE}/api/favorites/${favoriteId}`, {
         method: 'DELETE',
-        credentials: 'include',
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
       });
 
       if (response.ok) {
@@ -200,11 +306,18 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   const handleViewHistory = async (days = null) => {
     setLoadingHistory(true);
     try {
+      // Get JWT token from localStorage
+      const token = localStorage.getItem('auth_token');
+
       const url = days
         ? `${API_BASE}/api/meal-plan-history?days=${days}`
         : `${API_BASE}/api/meal-plan-history`;
 
-      const response = await fetch(url, { credentials: 'include' });
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : ''
+        }
+      });
       if (response.ok) {
         const data = await response.json();
         setHistory(data.history || []);
@@ -220,6 +333,59 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
 
   const isFavorited = (mealName) => {
     return favorites.some(fav => fav.meal.name === mealName);
+  };
+
+  // Touch gesture handlers for swipeable day selector
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchMove = (e) => {
+    touchEndX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    const swipeDistance = touchStartX.current - touchEndX.current;
+    const minSwipeDistance = 50;
+    const currentDayIndex = days.indexOf(selectedDay);
+
+    if (Math.abs(swipeDistance) > minSwipeDistance) {
+      if (swipeDistance > 0 && currentDayIndex < days.length - 1) {
+        // Swipe left -> next day
+        setSelectedDay(days[currentDayIndex + 1]);
+      } else if (swipeDistance < 0 && currentDayIndex > 0) {
+        // Swipe right -> previous day
+        setSelectedDay(days[currentDayIndex - 1]);
+      }
+    }
+  };
+
+  // Pull-to-refresh handler
+  const handlePullStart = (e) => {
+    if (window.scrollY === 0) {
+      pullStartY.current = e.touches[0].clientY;
+    }
+  };
+
+  const handlePullMove = (e) => {
+    const pullDistance = e.touches[0].clientY - pullStartY.current;
+    if (pullDistance > 100 && window.scrollY === 0 && !refreshing) {
+      setRefreshing(true);
+      // Reload the current view
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+    }
+  };
+
+  // Handle FAB menu toggle
+  const toggleFabMenu = () => {
+    setShowFabMenu(!showFabMenu);
+  };
+
+  // Handle more menu toggle
+  const toggleMoreMenu = () => {
+    setShowMoreMenu(!showMoreMenu);
   };
 
   return (
@@ -245,6 +411,11 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
           <button onClick={() => handleViewHistory()} className="btn-history">
             📜 History
           </button>
+          {onViewProfile && (
+            <button onClick={onViewProfile} className="btn-profile">
+              👤 Profile
+            </button>
+          )}
           <button onClick={handlePrintAllRecipes} className="btn-print">
             🖨️ Print All Recipes
           </button>
@@ -283,7 +454,13 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
       <div className="tab-content">
         {/* Meals Tab */}
         {activeTab === 'meals' && (
-          <div className="meals-view">
+          <div
+            className="meals-view"
+            ref={mealsContentRef}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
             {/* Day Selector */}
             <div className="day-selector">
               {days.map((day) => (
@@ -467,9 +644,9 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close" onClick={closeModal}>✕</button>
-            
+
             <h2 className="recipe-title">{selectedMeal.name}</h2>
-            
+
             <div className="recipe-meta">
               {selectedMeal.prepTime && (
                 <span>⏱️ Prep: {selectedMeal.prepTime}</span>
@@ -477,11 +654,23 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
               {selectedMeal.cookTime && (
                 <span>🔥 Cook: {selectedMeal.cookTime}</span>
               )}
-              {selectedMeal.servings && (
-                <span>👥 Serves: {selectedMeal.servings}</span>
-              )}
               {selectedMeal.estimatedCost && (
                 <span>💰 Cost: {selectedMeal.estimatedCost}</span>
+              )}
+            </div>
+
+            {/* Servings Adjuster */}
+            <div className="servings-adjuster">
+              <label>👥 Servings:</label>
+              <div className="servings-controls">
+                <button onClick={() => adjustServings(-1)} className="adjust-btn">−</button>
+                <span className="servings-display">{customServings || selectedMeal.servings || 2}</span>
+                <button onClick={() => adjustServings(1)} className="adjust-btn">+</button>
+              </div>
+              {customServings !== selectedMeal.servings && (
+                <span className="scaling-note">
+                  (scaled from {selectedMeal.servings} servings)
+                </span>
               )}
             </div>
 
@@ -489,7 +678,9 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
               <h3>Ingredients</h3>
               <ul className="ingredients-list">
                 {selectedMeal.ingredients?.map((ingredient, index) => (
-                  <li key={index}>{ingredient}</li>
+                  <li key={index}>
+                    {calculateScaledIngredient(ingredient, selectedMeal.servings, customServings)}
+                  </li>
                 ))}
               </ul>
             </div>
@@ -503,9 +694,30 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
               </ol>
             </div>
 
-            <button className="print-recipe-btn" onClick={() => window.print()}>
-              🖨️ Print This Recipe
-            </button>
+            {/* Personal Notes */}
+            <div className="recipe-section">
+              <h3>📝 Personal Notes</h3>
+              <textarea
+                className="recipe-notes"
+                placeholder="Add your own notes, ingredient swaps, or cooking tips..."
+                value={recipeNotes}
+                onChange={(e) => setRecipeNotes(e.target.value)}
+                rows={3}
+              />
+            </div>
+
+            <div className="modal-actions">
+              <button className="print-recipe-btn" onClick={() => window.print()}>
+                🖨️ Print Recipe
+              </button>
+              <button
+                className="save-custom-btn"
+                onClick={handleSaveCustomizedFavorite}
+                disabled={savingCustomization}
+              >
+                {savingCustomization ? '⏳ Saving...' : '❤️ Save to Favorites'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -533,31 +745,47 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
               const meal = localMealPlan.mealPlan[day][mealType];
               return (
                 <div key={mealType} className="print-meal">
-                  <h3>{mealType.toUpperCase()}: {meal.name}</h3>
-                  
-                  <div className="print-meal-meta">
-                    {meal.prepTime && <span>Prep: {meal.prepTime}</span>}
-                    {meal.cookTime && <span>Cook: {meal.cookTime}</span>}
-                    {meal.servings && <span>Serves: {meal.servings}</span>}
-                    {meal.estimatedCost && <span>Cost: {meal.estimatedCost}</span>}
+                  <div className="print-meal-header">
+                    <div className="print-meal-title-section">
+                      <h3>{mealType.toUpperCase()}: {meal.name}</h3>
+
+                      <div className="print-meal-meta">
+                        {meal.prepTime && <span>⏱️ Prep: {meal.prepTime}</span>}
+                        {meal.cookTime && <span>🔥 Cook: {meal.cookTime}</span>}
+                        {meal.servings && <span>👥 Serves: {meal.servings}</span>}
+                        {meal.estimatedCost && <span>💰 Cost: {meal.estimatedCost}</span>}
+                      </div>
+                    </div>
+
+                    {(meal.imageUrl || meal.image_url || meal.image) && (
+                      <div className="print-meal-image">
+                        <img
+                          src={meal.imageUrl || meal.image_url || meal.image}
+                          alt={meal.name}
+                          onError={(e) => { e.target.style.display = 'none'; }}
+                        />
+                      </div>
+                    )}
                   </div>
 
-                  <div className="print-ingredients">
-                    <h4>Ingredients:</h4>
-                    <ul>
-                      {meal.ingredients?.map((ingredient, index) => (
-                        <li key={index}>{ingredient}</li>
-                      ))}
-                    </ul>
-                  </div>
+                  <div className="print-meal-content">
+                    <div className="print-ingredients">
+                      <h4>📝 Ingredients:</h4>
+                      <ul>
+                        {meal.ingredients?.map((ingredient, index) => (
+                          <li key={index}>{ingredient}</li>
+                        ))}
+                      </ul>
+                    </div>
 
-                  <div className="print-instructions">
-                    <h4>Instructions:</h4>
-                    <ol>
-                      {meal.instructions?.map((instruction, index) => (
-                        <li key={index}>{instruction}</li>
-                      ))}
-                    </ol>
+                    <div className="print-instructions">
+                      <h4>👨‍🍳 Instructions:</h4>
+                      <ol>
+                        {meal.instructions?.map((instruction, index) => (
+                          <li key={index}>{instruction}</li>
+                        ))}
+                      </ol>
+                    </div>
                   </div>
                 </div>
               );
@@ -648,6 +876,100 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Mobile Bottom Navigation */}
+      <div className="mobile-bottom-nav">
+        <button
+          className={`mobile-nav-item ${activeTab === 'meals' ? 'active' : ''}`}
+          onClick={() => setActiveTab('meals')}
+        >
+          <span className="mobile-nav-icon">🍽️</span>
+          <span>Meals</span>
+        </button>
+        <button
+          className={`mobile-nav-item ${activeTab === 'favorites' ? 'active' : ''}`}
+          onClick={() => setActiveTab('favorites')}
+        >
+          <span className="mobile-nav-icon">⭐</span>
+          <span>Favorites</span>
+        </button>
+        <button
+          className={`mobile-nav-item ${activeTab === 'shopping' ? 'active' : ''}`}
+          onClick={() => setActiveTab('shopping')}
+        >
+          <span className="mobile-nav-icon">🛒</span>
+          <span>Shopping</span>
+        </button>
+        <button
+          className="mobile-nav-item"
+          onClick={onViewProfile}
+        >
+          <span className="mobile-nav-icon">👤</span>
+          <span>Profile</span>
+        </button>
+        <button
+          className={`mobile-nav-item ${showMoreMenu ? 'active' : ''}`}
+          onClick={toggleMoreMenu}
+        >
+          <span className="mobile-nav-icon">⋯</span>
+          <span>More</span>
+        </button>
+      </div>
+
+      {/* Mobile More Menu Modal */}
+      {showMoreMenu && (
+        <div className="modal-overlay" onClick={toggleMoreMenu}>
+          <div className="mobile-more-menu" onClick={(e) => e.stopPropagation()}>
+            <h3>More Options</h3>
+            <button onClick={() => { handleFeedback(); toggleMoreMenu(); }} className="more-menu-item">
+              💬 Send Feedback
+            </button>
+            <button onClick={() => { handleViewHistory(); toggleMoreMenu(); }} className="more-menu-item">
+              📜 History
+            </button>
+            <button onClick={() => { handlePrintAllRecipes(); toggleMoreMenu(); }} className="more-menu-item">
+              🖨️ Print All Recipes
+            </button>
+            <button onClick={() => { onStartOver(); toggleMoreMenu(); }} className="more-menu-item">
+              🔄 Start Over
+            </button>
+            <button onClick={() => { onLogout(); toggleMoreMenu(); }} className="more-menu-item">
+              🚪 Logout
+            </button>
+            <button onClick={toggleMoreMenu} className="more-menu-item cancel">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Action Button */}
+      <button className="fab-button" onClick={toggleFabMenu}>
+        {showFabMenu ? '✕' : '+'}
+      </button>
+
+      {/* FAB Menu */}
+      {showFabMenu && (
+        <div className="fab-menu">
+          <button onClick={() => { handlePrintAllRecipes(); toggleFabMenu(); }} className="fab-menu-item">
+            🖨️ Print Recipes
+          </button>
+          <button onClick={() => { handleViewHistory(); toggleFabMenu(); }} className="fab-menu-item">
+            📜 View History
+          </button>
+          <button onClick={() => { handleFeedback(); toggleFabMenu(); }} className="fab-menu-item">
+            💬 Feedback
+          </button>
+        </div>
+      )}
+
+      {/* Pull to Refresh Indicator */}
+      {refreshing && (
+        <div className="refresh-indicator">
+          <div className="spinner"></div>
+          <p>Refreshing...</p>
         </div>
       )}
     </div>

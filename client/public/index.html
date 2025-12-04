@@ -2,13 +2,51 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
-    <meta
-      name="description"
-      content="AI-powered meal planning application"
-    />
-    <title>AI Meal Planner</title>
+
+    <!-- Viewport for Mobile Optimization -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
+
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#667eea" />
+    <meta name="msapplication-TileColor" content="#667eea" />
+
+    <!-- Primary Meta Tags -->
+    <title>AI Meal Planner - Weekly Meal Planning with Price Comparison</title>
+    <meta name="title" content="AI Meal Planner - Weekly Meal Planning with Price Comparison" />
+    <meta name="description" content="Generate personalized weekly meal plans with AI. Compare grocery prices across stores and save money on shopping. Get custom recipes based on your dietary preferences." />
+    <meta name="keywords" content="meal planning, grocery price comparison, AI recipes, weekly meal planner, shopping list, dietary preferences" />
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+
+    <!-- Apple iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Meal Planner" />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/icon-192.png" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="192x192" href="%PUBLIC_URL%/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="%PUBLIC_URL%/icon-512.png" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="AI Meal Planner - Weekly Meal Planning" />
+    <meta property="og:description" content="Generate personalized weekly meal plans with AI and compare grocery prices." />
+    <meta property="og:image" content="%PUBLIC_URL%/og-image.png" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:title" content="AI Meal Planner - Weekly Meal Planning" />
+    <meta property="twitter:description" content="Generate personalized weekly meal plans with AI and compare grocery prices." />
+    <meta property="twitter:image" content="%PUBLIC_URL%/twitter-image.png" />
+
+    <!-- Prevent zoom on input focus (iOS) -->
+    <style>
+      input, select, textarea {
+        font-size: 16px !important;
+      }
+    </style>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
