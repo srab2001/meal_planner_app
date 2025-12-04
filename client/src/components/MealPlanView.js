@@ -745,31 +745,47 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
               const meal = localMealPlan.mealPlan[day][mealType];
               return (
                 <div key={mealType} className="print-meal">
-                  <h3>{mealType.toUpperCase()}: {meal.name}</h3>
-                  
-                  <div className="print-meal-meta">
-                    {meal.prepTime && <span>Prep: {meal.prepTime}</span>}
-                    {meal.cookTime && <span>Cook: {meal.cookTime}</span>}
-                    {meal.servings && <span>Serves: {meal.servings}</span>}
-                    {meal.estimatedCost && <span>Cost: {meal.estimatedCost}</span>}
+                  <div className="print-meal-header">
+                    <div className="print-meal-title-section">
+                      <h3>{mealType.toUpperCase()}: {meal.name}</h3>
+
+                      <div className="print-meal-meta">
+                        {meal.prepTime && <span>⏱️ Prep: {meal.prepTime}</span>}
+                        {meal.cookTime && <span>🔥 Cook: {meal.cookTime}</span>}
+                        {meal.servings && <span>👥 Serves: {meal.servings}</span>}
+                        {meal.estimatedCost && <span>💰 Cost: {meal.estimatedCost}</span>}
+                      </div>
+                    </div>
+
+                    {(meal.imageUrl || meal.image_url || meal.image) && (
+                      <div className="print-meal-image">
+                        <img
+                          src={meal.imageUrl || meal.image_url || meal.image}
+                          alt={meal.name}
+                          onError={(e) => { e.target.style.display = 'none'; }}
+                        />
+                      </div>
+                    )}
                   </div>
 
-                  <div className="print-ingredients">
-                    <h4>Ingredients:</h4>
-                    <ul>
-                      {meal.ingredients?.map((ingredient, index) => (
-                        <li key={index}>{ingredient}</li>
-                      ))}
-                    </ul>
-                  </div>
+                  <div className="print-meal-content">
+                    <div className="print-ingredients">
+                      <h4>📝 Ingredients:</h4>
+                      <ul>
+                        {meal.ingredients?.map((ingredient, index) => (
+                          <li key={index}>{ingredient}</li>
+                        ))}
+                      </ul>
+                    </div>
 
-                  <div className="print-instructions">
-                    <h4>Instructions:</h4>
-                    <ol>
-                      {meal.instructions?.map((instruction, index) => (
-                        <li key={index}>{instruction}</li>
-                      ))}
-                    </ol>
+                    <div className="print-instructions">
+                      <h4>👨‍🍳 Instructions:</h4>
+                      <ol>
+                        {meal.instructions?.map((instruction, index) => (
+                          <li key={index}>{instruction}</li>
+                        ))}
+                      </ol>
+                    </div>
                   </div>
                 </div>
               );
