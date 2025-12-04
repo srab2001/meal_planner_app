@@ -28,6 +28,12 @@ function Admin() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
+  // Options management
+  const [cuisines, setCuisines] = useState([]);
+  const [dietaryOptions, setDietaryOptions] = useState([]);
+  const [newCuisine, setNewCuisine] = useState({ name: '', display_order: '' });
+  const [newDietaryOption, setNewDietaryOption] = useState({ key: '', label: '', display_order: '' });
+
   useEffect(() => {
     const token = localStorage.getItem('admin_token');
     if (token) {
@@ -93,6 +99,20 @@ function Admin() {
         });
         const data = await response.json();
         setFreeMealPlansLimit(data.settings.free_meal_plans_limit);
+      } else if (activeTab === 'options') {
+        // Load cuisines
+        const cuisinesResponse = await fetch(`${API_BASE}/api/admin/cuisines`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const cuisinesData = await cuisinesResponse.json();
+        setCuisines(cuisinesData.cuisines || []);
+
+        // Load dietary options
+        const dietaryResponse = await fetch(`${API_BASE}/api/admin/dietary-options`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const dietaryData = await dietaryResponse.json();
+        setDietaryOptions(dietaryData.options || []);
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -212,6 +232,163 @@ function Admin() {
     }
   };
 
+  // Cuisine management functions
+  const handleCreateCuisine = async (e) => {
+    e.preventDefault();
+    const token = localStorage.getItem('admin_token');
+    setSaving(true);
+    setMessage('');
+
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/cuisines`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: newCuisine.name,
+          display_order: newCuisine.display_order ? parseInt(newCuisine.display_order) : 0
+        })
+      });
+
+      if (response.ok) {
+        setMessage('✅ Cuisine added successfully!');
+        setNewCuisine({ name: '', display_order: '' });
+        loadData();
+      } else {
+        const data = await response.json();
+        setMessage(`❌ ${data.error}`);
+      }
+    } catch (error) {
+      setMessage('❌ Failed to add cuisine');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleCuisine = async (id, currentActive) => {
+    const token = localStorage.getItem('admin_token');
+
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/cuisines/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ active: !currentActive })
+      });
+
+      if (response.ok) {
+        loadData();
+      }
+    } catch (error) {
+      console.error('Error toggling cuisine:', error);
+    }
+  };
+
+  const handleDeleteCuisine = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this cuisine?')) {
+      return;
+    }
+
+    const token = localStorage.getItem('admin_token');
+
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/cuisines/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        setMessage('✅ Cuisine deleted');
+        loadData();
+      }
+    } catch (error) {
+      setMessage('❌ Failed to delete cuisine');
+    }
+  };
+
+  // Dietary option management functions
+  const handleCreateDietaryOption = async (e) => {
+    e.preventDefault();
+    const token = localStorage.getItem('admin_token');
+    setSaving(true);
+    setMessage('');
+
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/dietary-options`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          key: newDietaryOption.key,
+          label: newDietaryOption.label,
+          display_order: newDietaryOption.display_order ? parseInt(newDietaryOption.display_order) : 0
+        })
+      });
+
+      if (response.ok) {
+        setMessage('✅ Dietary option added successfully!');
+        setNewDietaryOption({ key: '', label: '', display_order: '' });
+        loadData();
+      } else {
+        const data = await response.json();
+        setMessage(`❌ ${data.error}`);
+      }
+    } catch (error) {
+      setMessage('❌ Failed to add dietary option');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleDietaryOption = async (id, currentActive) => {
+    const token = localStorage.getItem('admin_token');
+
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/dietary-options/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ active: !currentActive })
+      });
+
+      if (response.ok) {
+        loadData();
+      }
+    } catch (error) {
+      console.error('Error toggling dietary option:', error);
+    }
+  };
+
+  const handleDeleteDietaryOption = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this dietary option?')) {
+      return;
+    }
+
+    const token = localStorage.getItem('admin_token');
+
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/dietary-options/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        setMessage('✅ Dietary option deleted');
+        loadData();
+      }
+    } catch (error) {
+      setMessage('❌ Failed to delete dietary option');
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="admin-login">
@@ -254,6 +431,12 @@ function Admin() {
           onClick={() => setActiveTab('codes')}
         >
           🎟️ Discount Codes
+        </button>
+        <button
+          className={`admin-tab ${activeTab === 'options' ? 'active' : ''}`}
+          onClick={() => setActiveTab('options')}
+        >
+          🍽️ Options
         </button>
         <button
           className={`admin-tab ${activeTab === 'settings' ? 'active' : ''}`}
@@ -402,6 +585,164 @@ function Admin() {
                   </tbody>
                 </table>
               )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'options' && (
+          <div className="options-section">
+            <div className="codes-section">
+              {/* Cuisines Management */}
+              <div className="create-code-form">
+                <h2>Manage Cuisines</h2>
+                <form onSubmit={handleCreateCuisine}>
+                  <div className="form-row">
+                    <input
+                      type="text"
+                      placeholder="Cuisine Name (e.g., Ethiopian)"
+                      value={newCuisine.name}
+                      onChange={(e) => setNewCuisine({...newCuisine, name: e.target.value})}
+                      required
+                    />
+                    <input
+                      type="number"
+                      placeholder="Display Order (optional)"
+                      value={newCuisine.display_order}
+                      onChange={(e) => setNewCuisine({...newCuisine, display_order: e.target.value})}
+                    />
+                  </div>
+                  <button type="submit" className="create-btn" disabled={saving}>
+                    {saving ? 'Adding...' : 'Add Cuisine'}
+                  </button>
+                </form>
+
+                <div className="codes-list" style={{marginTop: '20px'}}>
+                  <h3>Existing Cuisines</h3>
+                  {cuisines.length === 0 ? (
+                    <p>No cuisines yet</p>
+                  ) : (
+                    <table className="codes-table">
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                          <th>Display Order</th>
+                          <th>Status</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {cuisines.map(cuisine => (
+                          <tr key={cuisine.id}>
+                            <td><strong>{cuisine.name}</strong></td>
+                            <td>{cuisine.display_order}</td>
+                            <td>
+                              <span className={`status ${cuisine.active ? 'active' : 'inactive'}`}>
+                                {cuisine.active ? 'Active' : 'Inactive'}
+                              </span>
+                            </td>
+                            <td>
+                              <button
+                                onClick={() => handleToggleCuisine(cuisine.id, cuisine.active)}
+                                className="toggle-btn"
+                              >
+                                {cuisine.active ? 'Deactivate' : 'Activate'}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteCuisine(cuisine.id)}
+                                className="delete-btn"
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+
+              {/* Dietary Options Management */}
+              <div className="create-code-form">
+                <h2>Manage Dietary Options</h2>
+                <form onSubmit={handleCreateDietaryOption}>
+                  <div className="form-row">
+                    <input
+                      type="text"
+                      placeholder="Key (e.g., lowSodium)"
+                      value={newDietaryOption.key}
+                      onChange={(e) => setNewDietaryOption({...newDietaryOption, key: e.target.value})}
+                      required
+                    />
+                    <input
+                      type="text"
+                      placeholder="Label (e.g., Low-Sodium)"
+                      value={newDietaryOption.label}
+                      onChange={(e) => setNewDietaryOption({...newDietaryOption, label: e.target.value})}
+                      required
+                    />
+                  </div>
+                  <div className="form-row">
+                    <input
+                      type="number"
+                      placeholder="Display Order (optional)"
+                      value={newDietaryOption.display_order}
+                      onChange={(e) => setNewDietaryOption({...newDietaryOption, display_order: e.target.value})}
+                    />
+                    <div></div>
+                  </div>
+                  <button type="submit" className="create-btn" disabled={saving}>
+                    {saving ? 'Adding...' : 'Add Dietary Option'}
+                  </button>
+                </form>
+
+                <div className="codes-list" style={{marginTop: '20px'}}>
+                  <h3>Existing Dietary Options</h3>
+                  {dietaryOptions.length === 0 ? (
+                    <p>No dietary options yet</p>
+                  ) : (
+                    <table className="codes-table">
+                      <thead>
+                        <tr>
+                          <th>Key</th>
+                          <th>Label</th>
+                          <th>Display Order</th>
+                          <th>Status</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dietaryOptions.map(option => (
+                          <tr key={option.id}>
+                            <td><code>{option.key}</code></td>
+                            <td><strong>{option.label}</strong></td>
+                            <td>{option.display_order}</td>
+                            <td>
+                              <span className={`status ${option.active ? 'active' : 'inactive'}`}>
+                                {option.active ? 'Active' : 'Inactive'}
+                              </span>
+                            </td>
+                            <td>
+                              <button
+                                onClick={() => handleToggleDietaryOption(option.id, option.active)}
+                                className="toggle-btn"
+                              >
+                                {option.active ? 'Deactivate' : 'Activate'}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteDietaryOption(option.id)}
+                                className="delete-btn"
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}

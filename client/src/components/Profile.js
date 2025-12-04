@@ -3,22 +3,11 @@ import './Profile.css';
 
 const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
 
-const CUISINE_OPTIONS = [
-  'Italian', 'Mexican', 'Chinese', 'Japanese', 'Indian',
-  'Thai', 'Mediterranean', 'American', 'French', 'Korean',
-  'Vietnamese', 'Greek', 'Spanish', 'Middle Eastern'
-];
-
-const DIETARY_OPTIONS = [
-  { id: 'diabetic', label: 'Diabetic-Friendly' },
-  { id: 'dairyFree', label: 'Dairy-Free' },
-  { id: 'glutenFree', label: 'Gluten-Free' },
-  { id: 'peanutFree', label: 'Peanut-Free' },
-  { id: 'vegetarian', label: 'Vegetarian' },
-  { id: 'kosher', label: 'Kosher' }
-];
-
 function Profile({ user, onBack }) {
+  // Dynamic options loaded from API
+  const [cuisineOptions, setCuisineOptions] = useState([]);
+  const [dietaryOptionsData, setDietaryOptionsData] = useState([]);
+
   const [activeTab, setActiveTab] = useState('profile');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -45,6 +34,31 @@ function Profile({ user, onBack }) {
     promotions: false
   });
   const [theme, setTheme] = useState('light');
+
+  // Load cuisine and dietary options on mount
+  useEffect(() => {
+    const loadOptions = async () => {
+      try {
+        // Load cuisines
+        const cuisinesResponse = await fetch(`${API_BASE}/api/cuisines`);
+        if (cuisinesResponse.ok) {
+          const cuisinesData = await cuisinesResponse.json();
+          setCuisineOptions(cuisinesData.cuisines.map(c => c.name));
+        }
+
+        // Load dietary options
+        const dietaryResponse = await fetch(`${API_BASE}/api/dietary-options`);
+        if (dietaryResponse.ok) {
+          const dietaryData = await dietaryResponse.json();
+          setDietaryOptionsData(dietaryData.options);
+        }
+      } catch (error) {
+        console.error('Error loading options:', error);
+      }
+    };
+
+    loadOptions();
+  }, []);
 
   useEffect(() => {
     loadProfileData();
@@ -326,7 +340,7 @@ function Profile({ user, onBack }) {
             <div className="form-section">
               <label>Favorite Cuisines</label>
               <div className="cuisine-grid">
-                {CUISINE_OPTIONS.map(cuisine => (
+                {cuisineOptions.map(cuisine => (
                   <button
                     key={cuisine}
                     type="button"
@@ -370,12 +384,12 @@ function Profile({ user, onBack }) {
             <div className="form-section">
               <label>Dietary Preferences</label>
               <div className="dietary-grid">
-                {DIETARY_OPTIONS.map(option => (
+                {dietaryOptionsData.map(option => (
                   <button
-                    key={option.id}
+                    key={option.key}
                     type="button"
-                    className={`dietary-btn ${defaultDietary.includes(option.id) ? 'selected' : ''}`}
-                    onClick={() => toggleDietary(option.id)}
+                    className={`dietary-btn ${defaultDietary.includes(option.key) ? 'selected' : ''}`}
+                    onClick={() => toggleDietary(option.key)}
                   >
                     {option.label}
                   </button>
