@@ -129,15 +129,34 @@ function Admin() {
         const cuisinesResponse = await fetch(`${API_BASE}/api/admin/cuisines`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        const cuisinesData = await cuisinesResponse.json();
-        setCuisines(cuisinesData.cuisines || []);
+
+        if (!cuisinesResponse.ok) {
+          const errorText = await cuisinesResponse.text();
+          console.error('Error loading cuisines:', errorText);
+          if (cuisinesResponse.status === 500) {
+            setMessage('❌ Database error: cuisine_options table may not exist. Please run migration 005_cuisine_dietary_options.sql');
+          }
+          setCuisines([]);
+        } else {
+          const cuisinesData = await cuisinesResponse.json();
+          console.log('✅ Loaded cuisines:', cuisinesData.cuisines.length);
+          setCuisines(cuisinesData.cuisines || []);
+        }
 
         // Load dietary options
         const dietaryResponse = await fetch(`${API_BASE}/api/admin/dietary-options`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        const dietaryData = await dietaryResponse.json();
-        setDietaryOptions(dietaryData.options || []);
+
+        if (!dietaryResponse.ok) {
+          const errorText = await dietaryResponse.text();
+          console.error('Error loading dietary options:', errorText);
+          setDietaryOptions([]);
+        } else {
+          const dietaryData = await dietaryResponse.json();
+          console.log('✅ Loaded dietary options:', dietaryData.options.length);
+          setDietaryOptions(dietaryData.options || []);
+        }
       } else if (activeTab === 'meals') {
         // Load meals of the day
         const mealsResponse = await fetch(`${API_BASE}/api/admin/meal-of-the-day`, {
@@ -155,6 +174,7 @@ function Admin() {
       }
     } catch (error) {
       console.error('Error loading data:', error);
+      setMessage(`❌ Error loading data: ${error.message}`);
     }
   };
 
@@ -279,6 +299,8 @@ function Admin() {
     setMessage('');
 
     try {
+      console.log('🍽️ Creating cuisine:', newCuisine.name);
+
       const response = await fetch(`${API_BASE}/api/admin/cuisines`, {
         method: 'POST',
         headers: {
@@ -292,15 +314,19 @@ function Admin() {
       });
 
       if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Cuisine created:', result);
         setMessage('✅ Cuisine added successfully!');
         setNewCuisine({ name: '', display_order: '' });
         loadData();
       } else {
         const data = await response.json();
+        console.error('❌ Failed to create cuisine:', data);
         setMessage(`❌ ${data.error}`);
       }
     } catch (error) {
-      setMessage('❌ Failed to add cuisine');
+      console.error('❌ Error creating cuisine:', error);
+      setMessage(`❌ Failed to add cuisine: ${error.message}`);
     } finally {
       setSaving(false);
     }
@@ -830,10 +856,34 @@ function Admin() {
 
         {activeTab === 'options' && (
           <div className="options-section">
+            <div style={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              padding: '20px',
+              borderRadius: '12px',
+              marginBottom: '20px',
+              boxShadow: '0 4px 12px rgba(102, 126, 234, 0.2)'
+            }}>
+              <h3 style={{margin: '0 0 10px 0', fontSize: '20px'}}>🍽️ Cuisine & Dietary Options Management</h3>
+              <p style={{margin: 0, opacity: 0.95}}>
+                Add, edit, and manage cuisine types and dietary preferences that appear in the questionnaire.
+                These options are loaded dynamically across the app.
+              </p>
+              {cuisines.length === 0 && dietaryOptions.length === 0 && (
+                <div style={{marginTop: '15px', background: 'rgba(255, 255, 255, 0.2)', padding: '12px', borderRadius: '8px'}}>
+                  ⚠️ <strong>Migration Required:</strong> If you see no data below, please run <code>migrations/005_cuisine_dietary_options.sql</code> in TablePlus.
+                </div>
+              )}
+            </div>
+
             <div className="codes-section">
               {/* Cuisines Management */}
               <div className="create-code-form">
                 <h2>Manage Cuisines</h2>
+                <p style={{color: '#666', marginBottom: '15px', fontSize: '14px'}}>
+                  Add new cuisine types that will appear in the questionnaire and profile settings.
+                  Display order controls the sort order (lower numbers appear first).
+                </p>
                 <form onSubmit={handleCreateCuisine}>
                   <div className="form-row">
                     <input
