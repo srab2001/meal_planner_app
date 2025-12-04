@@ -543,22 +543,40 @@ function Admin() {
 
   const handleCreateMeal = async (e) => {
     e.preventDefault();
+    console.log('🔵 Create Meal button clicked');
     const token = localStorage.getItem('admin_token');
     setSaving(true);
     setMessage('');
 
     try {
+      console.log('🔵 Current meal data:', newMeal);
+
       // Filter out empty ingredients and instructions
       const cleanedIngredients = newMeal.ingredients.filter(i => i.trim() !== '');
       const cleanedInstructions = newMeal.instructions.filter(i => i.trim() !== '');
 
+      console.log('🔵 Cleaned ingredients:', cleanedIngredients);
+      console.log('🔵 Cleaned instructions:', cleanedInstructions);
+
       if (cleanedIngredients.length === 0 || cleanedInstructions.length === 0) {
-        setMessage('❌ Please add at least one ingredient and instruction');
+        const errorMsg = '❌ Please add at least one ingredient and instruction';
+        console.log('🔴 Validation error:', errorMsg);
+        setMessage(errorMsg);
         setSaving(false);
         return;
       }
 
       const tags = newMeal.tags ? newMeal.tags.split(',').map(t => t.trim()).filter(t => t) : [];
+
+      const payload = {
+        ...newMeal,
+        ingredients: cleanedIngredients,
+        instructions: cleanedInstructions,
+        tags,
+        servings: parseInt(newMeal.servings)
+      };
+
+      console.log('🔵 Sending payload to API:', payload);
 
       const response = await fetch(`${API_BASE}/api/admin/meal-of-the-day`, {
         method: 'POST',
@@ -566,17 +584,14 @@ function Admin() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          ...newMeal,
-          ingredients: cleanedIngredients,
-          instructions: cleanedInstructions,
-          tags,
-          servings: parseInt(newMeal.servings)
-        })
+        body: JSON.stringify(payload)
       });
+
+      console.log('🔵 Response status:', response.status);
 
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ Meal created successfully:', data);
         const wasPublished = newMeal.active;
 
         if (wasPublished) {
@@ -612,10 +627,12 @@ function Admin() {
         }, 100);
       } else {
         const data = await response.json();
+        console.log('🔴 API error:', data);
         setMessage(`❌ ${data.error}`);
       }
     } catch (error) {
-      setMessage('❌ Failed to create meal');
+      console.error('🔴 Caught error:', error);
+      setMessage(`❌ Failed to create meal: ${error.message}`);
     } finally {
       setSaving(false);
     }
