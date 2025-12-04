@@ -48,12 +48,15 @@ function ShoppingList({ shoppingList, totalCost, priceComparison, selectedStores
     setAddingCustomItems(true);
 
     try {
+      // Get JWT token from localStorage
+      const token = localStorage.getItem('auth_token');
+
       const response = await fetch(`${API_BASE}/api/custom-item-prices`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
         },
-        credentials: 'include',
         body: JSON.stringify({
           items: itemsToAdd,
           primaryStore: selectedStores?.primaryStore?.name,

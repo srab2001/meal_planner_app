@@ -1,9 +1,10 @@
 import React from 'react';
 
-const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
-const LOGIN_URL = (API_BASE || '').replace(/\/$/, '') + '/auth/google';
+// OAuth must use Render backend directly (not Vercel proxy) because Google redirects bypass proxy
+const OAUTH_BASE = process.env.REACT_APP_OAUTH_URL || (process.env.NODE_ENV === 'production' ? 'https://meal-planner-app-mve2.onrender.com' : 'http://localhost:5000');
+const LOGIN_URL = OAUTH_BASE + '/auth/google';
 
-console.log('LoginPage API_BASE:', API_BASE);
+console.log('LoginPage OAUTH_BASE:', OAUTH_BASE);
 console.log('LoginPage LOGIN_URL:', LOGIN_URL);
 
 function LoginPage() {
