@@ -485,20 +485,33 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
 
                 return (
                   <div key={mealType} className="meal-card">
-                    <div className="meal-type">{mealType}</div>
-                    <h3 className="meal-name">{meal.name}</h3>
-                    {meal.prepTime && (
-                      <p className="meal-time">⏱️ Prep: {meal.prepTime}</p>
+                    {(meal.imageUrl || meal.image_url || meal.image) && (
+                      <div className="meal-card-image">
+                        <img
+                          src={meal.imageUrl || meal.image_url || meal.image}
+                          alt={meal.name}
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.parentElement.style.display = 'none';
+                          }}
+                        />
+                      </div>
                     )}
-                    {meal.cookTime && (
-                      <p className="meal-time">🔥 Cook: {meal.cookTime}</p>
-                    )}
-                    {meal.servings && (
-                      <p className="meal-servings">👥 Serves {meal.servings}</p>
-                    )}
-                    {meal.estimatedCost && (
-                      <p className="meal-cost">💰 {meal.estimatedCost}</p>
-                    )}
+                    <div className="meal-card-content">
+                      <div className="meal-type">{mealType}</div>
+                      <h3 className="meal-name">{meal.name}</h3>
+                      {meal.prepTime && (
+                        <p className="meal-time">⏱️ Prep: {meal.prepTime}</p>
+                      )}
+                      {meal.cookTime && (
+                        <p className="meal-time">🔥 Cook: {meal.cookTime}</p>
+                      )}
+                      {meal.servings && (
+                        <p className="meal-servings">👥 Serves {meal.servings}</p>
+                      )}
+                      {meal.estimatedCost && (
+                        <p className="meal-cost">💰 {meal.estimatedCost}</p>
+                      )}
 
                     <div className="meal-card-actions">
                       <button
@@ -531,6 +544,7 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                           <>🔄 New Meal</>
                         )}
                       </button>
+                    </div>
                     </div>
                   </div>
                 );
