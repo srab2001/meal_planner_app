@@ -2000,6 +2000,242 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
   }
 });
 
+// ============================================================================
+// CUISINE AND DIETARY OPTIONS MANAGEMENT
+// ============================================================================
+
+// Public endpoint - Get active cuisines (no auth required)
+app.get('/api/cuisines', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT id, name, display_order
+      FROM cuisine_options
+      WHERE active = TRUE
+      ORDER BY display_order ASC, name ASC
+    `);
+
+    res.json({ cuisines: result.rows });
+  } catch (error) {
+    console.error('Error fetching cuisines:', error);
+    // Return empty array if table doesn't exist yet
+    res.json({ cuisines: [] });
+  }
+});
+
+// Public endpoint - Get active dietary options (no auth required)
+app.get('/api/dietary-options', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT id, key, label, display_order
+      FROM dietary_options
+      WHERE active = TRUE
+      ORDER BY display_order ASC, label ASC
+    `);
+
+    res.json({ options: result.rows });
+  } catch (error) {
+    console.error('Error fetching dietary options:', error);
+    // Return empty array if table doesn't exist yet
+    res.json({ options: [] });
+  }
+});
+
+// Admin - Get all cuisines (including inactive)
+app.get('/api/admin/cuisines', requireAdmin, async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT id, name, display_order, active, created_at, updated_at
+      FROM cuisine_options
+      ORDER BY display_order ASC, name ASC
+    `);
+
+    res.json({ cuisines: result.rows });
+  } catch (error) {
+    console.error('Error fetching cuisines:', error);
+    res.status(500).json({ error: 'Failed to fetch cuisines' });
+  }
+});
+
+// Admin - Create cuisine
+app.post('/api/admin/cuisines', requireAdmin, async (req, res) => {
+  try {
+    const { name, display_order } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Cuisine name is required' });
+    }
+
+    const result = await db.query(`
+      INSERT INTO cuisine_options (name, display_order)
+      VALUES ($1, $2)
+      RETURNING *
+    `, [name.trim(), display_order || 0]);
+
+    console.log(`✅ Admin created cuisine: ${name}`);
+    res.json({ success: true, cuisine: result.rows[0] });
+  } catch (error) {
+    if (error.code === '23505') { // Unique constraint violation
+      return res.status(400).json({ error: 'Cuisine already exists' });
+    }
+    console.error('Error creating cuisine:', error);
+    res.status(500).json({ error: 'Failed to create cuisine' });
+  }
+});
+
+// Admin - Update cuisine
+app.put('/api/admin/cuisines/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, display_order, active } = req.body;
+
+    const result = await db.query(`
+      UPDATE cuisine_options
+      SET
+        name = COALESCE($1, name),
+        display_order = COALESCE($2, display_order),
+        active = COALESCE($3, active),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $4
+      RETURNING *
+    `, [name, display_order, active, id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Cuisine not found' });
+    }
+
+    console.log(`✅ Admin updated cuisine: ${result.rows[0].name}`);
+    res.json({ success: true, cuisine: result.rows[0] });
+  } catch (error) {
+    if (error.code === '23505') {
+      return res.status(400).json({ error: 'Cuisine name already exists' });
+    }
+    console.error('Error updating cuisine:', error);
+    res.status(500).json({ error: 'Failed to update cuisine' });
+  }
+});
+
+// Admin - Delete cuisine
+app.delete('/api/admin/cuisines/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await db.query(`
+      DELETE FROM cuisine_options
+      WHERE id = $1
+      RETURNING name
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Cuisine not found' });
+    }
+
+    console.log(`✅ Admin deleted cuisine: ${result.rows[0].name}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting cuisine:', error);
+    res.status(500).json({ error: 'Failed to delete cuisine' });
+  }
+});
+
+// Admin - Get all dietary options (including inactive)
+app.get('/api/admin/dietary-options', requireAdmin, async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT id, key, label, display_order, active, created_at, updated_at
+      FROM dietary_options
+      ORDER BY display_order ASC, label ASC
+    `);
+
+    res.json({ options: result.rows });
+  } catch (error) {
+    console.error('Error fetching dietary options:', error);
+    res.status(500).json({ error: 'Failed to fetch dietary options' });
+  }
+});
+
+// Admin - Create dietary option
+app.post('/api/admin/dietary-options', requireAdmin, async (req, res) => {
+  try {
+    const { key, label, display_order } = req.body;
+
+    if (!key || !key.trim() || !label || !label.trim()) {
+      return res.status(400).json({ error: 'Key and label are required' });
+    }
+
+    // Validate key format (lowercase camelCase)
+    if (!/^[a-z][a-zA-Z0-9]*$/.test(key)) {
+      return res.status(400).json({ error: 'Key must be in camelCase format (e.g., glutenFree)' });
+    }
+
+    const result = await db.query(`
+      INSERT INTO dietary_options (key, label, display_order)
+      VALUES ($1, $2, $3)
+      RETURNING *
+    `, [key.trim(), label.trim(), display_order || 0]);
+
+    console.log(`✅ Admin created dietary option: ${label} (${key})`);
+    res.json({ success: true, option: result.rows[0] });
+  } catch (error) {
+    if (error.code === '23505') { // Unique constraint violation
+      return res.status(400).json({ error: 'Dietary option key already exists' });
+    }
+    console.error('Error creating dietary option:', error);
+    res.status(500).json({ error: 'Failed to create dietary option' });
+  }
+});
+
+// Admin - Update dietary option
+app.put('/api/admin/dietary-options/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { label, display_order, active } = req.body;
+
+    const result = await db.query(`
+      UPDATE dietary_options
+      SET
+        label = COALESCE($1, label),
+        display_order = COALESCE($2, display_order),
+        active = COALESCE($3, active),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $4
+      RETURNING *
+    `, [label, display_order, active, id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Dietary option not found' });
+    }
+
+    console.log(`✅ Admin updated dietary option: ${result.rows[0].label}`);
+    res.json({ success: true, option: result.rows[0] });
+  } catch (error) {
+    console.error('Error updating dietary option:', error);
+    res.status(500).json({ error: 'Failed to update dietary option' });
+  }
+});
+
+// Admin - Delete dietary option
+app.delete('/api/admin/dietary-options/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await db.query(`
+      DELETE FROM dietary_options
+      WHERE id = $1
+      RETURNING label
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Dietary option not found' });
+    }
+
+    console.log(`✅ Admin deleted dietary option: ${result.rows[0].label}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting dietary option:', error);
+    res.status(500).json({ error: 'Failed to delete dietary option' });
+  }
+});
+
 const port = PORT || 5000;
 app.listen(port, () => {
   console.log(`server listening on port ${port}`);
