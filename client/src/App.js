@@ -177,14 +177,23 @@ function App() {
     try {
       const startTime = Date.now();
 
+      const requestBody = {
+        ...prefs,
+        zipCode,
+        primaryStore: selectedStores.primaryStore,
+        comparisonStore: selectedStores.comparisonStore
+      };
+
+      console.log('🚀 Generating meal plan with request:', {
+        selectedDays: requestBody.selectedDays,
+        selectedMeals: requestBody.selectedMeals,
+        cuisines: requestBody.cuisines,
+        people: requestBody.people
+      });
+
       const response = await fetchWithAuth(`${API_BASE}/api/generate-meals`, {
         method: 'POST',
-        body: JSON.stringify({
-          ...prefs,
-          zipCode,
-          primaryStore: selectedStores.primaryStore,
-          comparisonStore: selectedStores.comparisonStore
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
