@@ -25,6 +25,7 @@ function Admin() {
 
   // Settings
   const [freeMealPlansLimit, setFreeMealPlansLimit] = useState(10);
+  const [testUserEmail, setTestUserEmail] = useState('');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -124,6 +125,7 @@ function Admin() {
         });
         const data = await response.json();
         setFreeMealPlansLimit(data.settings.free_meal_plans_limit);
+        setTestUserEmail(data.settings.test_user_email || '');
       } else if (activeTab === 'options') {
         // Load cuisines
         const cuisinesResponse = await fetch(`${API_BASE}/api/admin/cuisines`, {
@@ -276,7 +278,10 @@ function Admin() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ free_meal_plans_limit: parseInt(freeMealPlansLimit) })
+        body: JSON.stringify({
+          free_meal_plans_limit: parseInt(freeMealPlansLimit),
+          test_user_email: testUserEmail.trim()
+        })
       });
 
       if (response.ok) {
@@ -1453,6 +1458,26 @@ function Admin() {
                   Number of free meal plans each user can generate per month before requiring payment.
                 </p>
               </div>
+
+              <div className="setting-item" style={{marginTop: '30px'}}>
+                <label htmlFor="testUserEmail">
+                  🧪 Test User Email (Unlimited Meal Plans):
+                </label>
+                <input
+                  id="testUserEmail"
+                  type="email"
+                  placeholder="test@example.com"
+                  value={testUserEmail}
+                  onChange={(e) => setTestUserEmail(e.target.value)}
+                  className="setting-input"
+                  style={{fontFamily: 'monospace'}}
+                />
+                <p className="setting-description">
+                  Enter an email address for testing. This user will bypass all meal plan limits and get unlimited generations.
+                  Leave empty to disable test mode.
+                </p>
+              </div>
+
               <button type="submit" className="save-btn" disabled={saving}>
                 {saving ? 'Saving...' : 'Save Settings'}
               </button>
