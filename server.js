@@ -2326,6 +2326,31 @@ app.post('/api/meal-of-the-day/:id/share', async (req, res) => {
   }
 });
 
+// Public endpoint - Get meal of the day by ID (for adding to plan)
+app.get('/api/meal-of-the-day/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await db.query(`
+      SELECT
+        id, title, description, meal_type, cuisine, prep_time, cook_time,
+        servings, ingredients, instructions, image_url, nutrition_info, tags,
+        featured_date
+      FROM meal_of_the_day
+      WHERE id = $1 AND active = TRUE
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Meal not found' });
+    }
+
+    res.json({ meal: result.rows[0] });
+  } catch (error) {
+    console.error('Error fetching meal:', error);
+    res.status(500).json({ error: 'Failed to fetch meal' });
+  }
+});
+
 // Admin - Get all meals of the day
 app.get('/api/admin/meal-of-the-day', requireAdmin, async (req, res) => {
   try {
