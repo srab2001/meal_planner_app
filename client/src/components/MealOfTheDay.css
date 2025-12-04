@@ -313,6 +313,16 @@
   background: #4a4d50;
 }
 
+.share-btn.native-share {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  grid-column: 1 / -1;
+  font-size: 16px;
+}
+
+.share-btn.native-share:hover {
+  background: linear-gradient(135deg, #5568d3 0%, #6640 8d 100%);
+}
+
 /* Stats Footer */
 .stats-footer {
   display: flex;
