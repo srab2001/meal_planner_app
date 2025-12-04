@@ -1,21 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
 import './RecipeCard.css';
 
 const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
 
 function RecipeCard() {
-  const { id } = useParams();
-  const navigate = useNavigate();
   const [meal, setMeal] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Extract meal ID from URL path
+  const getMealIdFromUrl = () => {
+    const path = window.location.pathname;
+    const parts = path.split('/');
+    return parts[parts.length - 1];
+  };
+
   useEffect(() => {
     fetchMeal();
-  }, [id]);
+  }, []);
 
   const fetchMeal = async () => {
     try {
+      const id = getMealIdFromUrl();
       const token = localStorage.getItem('admin_token');
       const response = await fetch(`${API_BASE}/api/admin/meal-of-the-day`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -40,9 +45,14 @@ function RecipeCard() {
   };
 
   const handleEmail = () => {
+    if (!meal) return;
     const subject = encodeURIComponent(`Recipe: ${meal.title}`);
     const body = encodeURIComponent(`Check out this delicious recipe!\n\n${meal.title}\n\nView the full recipe at: ${window.location.origin}/meal-of-the-day`);
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  };
+
+  const handleBack = () => {
+    window.location.href = '/admin';
   };
 
   if (loading) {
@@ -58,7 +68,7 @@ function RecipeCard() {
       <div className="recipe-card-container">
         <p style={{textAlign: 'center', fontSize: '18px', color: '#666'}}>Meal not found</p>
         <div className="print-buttons">
-          <button onClick={() => navigate('/admin')} className="print-btn back-btn">
+          <button onClick={handleBack} className="print-btn back-btn">
             ← Back to Admin
           </button>
         </div>
@@ -75,7 +85,7 @@ function RecipeCard() {
         <button onClick={handleEmail} className="print-btn">
           ✉️ Email Recipe
         </button>
-        <button onClick={() => navigate('/admin')} className="print-btn back-btn">
+        <button onClick={handleBack} className="print-btn back-btn">
           ← Back to Admin
         </button>
       </div>
