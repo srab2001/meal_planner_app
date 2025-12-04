@@ -25,6 +25,7 @@ function Admin() {
 
   // Settings
   const [freeMealPlansLimit, setFreeMealPlansLimit] = useState(10);
+  const [testUserEmail, setTestUserEmail] = useState('');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -124,6 +125,7 @@ function Admin() {
         });
         const data = await response.json();
         setFreeMealPlansLimit(data.settings.free_meal_plans_limit);
+        setTestUserEmail(data.settings.test_user_email || '');
       } else if (activeTab === 'options') {
         // Load cuisines
         const cuisinesResponse = await fetch(`${API_BASE}/api/admin/cuisines`, {
@@ -276,7 +278,10 @@ function Admin() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ free_meal_plans_limit: parseInt(freeMealPlansLimit) })
+        body: JSON.stringify({
+          free_meal_plans_limit: parseInt(freeMealPlansLimit),
+          test_user_email: testUserEmail.trim()
+        })
       });
 
       if (response.ok) {
@@ -543,22 +548,40 @@ function Admin() {
 
   const handleCreateMeal = async (e) => {
     e.preventDefault();
+    console.log('🔵 Create Meal button clicked');
     const token = localStorage.getItem('admin_token');
     setSaving(true);
     setMessage('');
 
     try {
+      console.log('🔵 Current meal data:', newMeal);
+
       // Filter out empty ingredients and instructions
       const cleanedIngredients = newMeal.ingredients.filter(i => i.trim() !== '');
       const cleanedInstructions = newMeal.instructions.filter(i => i.trim() !== '');
 
+      console.log('🔵 Cleaned ingredients:', cleanedIngredients);
+      console.log('🔵 Cleaned instructions:', cleanedInstructions);
+
       if (cleanedIngredients.length === 0 || cleanedInstructions.length === 0) {
-        setMessage('❌ Please add at least one ingredient and instruction');
+        const errorMsg = '❌ Please add at least one ingredient and instruction';
+        console.log('🔴 Validation error:', errorMsg);
+        setMessage(errorMsg);
         setSaving(false);
         return;
       }
 
       const tags = newMeal.tags ? newMeal.tags.split(',').map(t => t.trim()).filter(t => t) : [];
+
+      const payload = {
+        ...newMeal,
+        ingredients: cleanedIngredients,
+        instructions: cleanedInstructions,
+        tags,
+        servings: parseInt(newMeal.servings)
+      };
+
+      console.log('🔵 Sending payload to API:', payload);
 
       const response = await fetch(`${API_BASE}/api/admin/meal-of-the-day`, {
         method: 'POST',
@@ -566,17 +589,22 @@ function Admin() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          ...newMeal,
-          ingredients: cleanedIngredients,
-          instructions: cleanedInstructions,
-          tags,
-          servings: parseInt(newMeal.servings)
-        })
+        body: JSON.stringify(payload)
       });
 
+      console.log('🔵 Response status:', response.status);
+
       if (response.ok) {
-        setMessage('✅ Meal of the Day created successfully!');
+        const data = await response.json();
+        console.log('✅ Meal created successfully:', data);
+        const wasPublished = newMeal.active;
+
+        if (wasPublished) {
+          setMessage('✅ Meal created! Click "Recipe Card" to print/email it, or "View" to see it live.');
+        } else {
+          setMessage('✅ Meal created as draft. Click "Recipe Card" to see printable version.');
+        }
+
         setNewMeal({
           title: '',
           description: '',
@@ -594,12 +622,22 @@ function Admin() {
         });
         setShowAiForm(true);
         loadData();
+
+        // Scroll to the meals list to show the new meal
+        setTimeout(() => {
+          const mealsList = document.querySelector('.codes-list');
+          if (mealsList) {
+            mealsList.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 100);
       } else {
         const data = await response.json();
+        console.log('🔴 API error:', data);
         setMessage(`❌ ${data.error}`);
       }
     } catch (error) {
-      setMessage('❌ Failed to create meal');
+      console.error('🔴 Caught error:', error);
+      setMessage(`❌ Failed to create meal: ${error.message}`);
     } finally {
       setSaving(false);
     }
@@ -1294,7 +1332,38 @@ function Admin() {
 
               {/* Meals List */}
               <div className="codes-list">
-                <h2>Published Meals</h2>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
+                  <h2 style={{margin: 0}}>Published Meals</h2>
+                  {meals.length > 0 && (
+                    <a
+                      href="/meal-of-the-day"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="create-btn"
+                      style={{background: '#4ade80', padding: '10px 20px', textDecoration: 'none', display: 'inline-block'}}
+                    >
+                      👁️ View Public Page
+                    </a>
+                  )}
+                </div>
+
+                {meals.some(m => m.active) && (
+                  <div style={{
+                    background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)',
+                    color: 'white',
+                    padding: '12px 20px',
+                    borderRadius: '8px',
+                    marginBottom: '15px',
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px'
+                  }}>
+                    <span>🎉</span>
+                    <span>Your meal is live! Share <strong>/meal-of-the-day</strong> on social media to drive traffic to your app.</span>
+                  </div>
+                )}
+
                 {meals.length === 0 ? (
                   <p>No meals created yet</p>
                 ) : (
@@ -1327,6 +1396,24 @@ function Admin() {
                             </span>
                           </td>
                           <td>
+                            <a
+                              href="/meal-of-the-day"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="create-btn"
+                              style={{marginRight: '5px', padding: '8px 16px', fontSize: '13px', background: '#4ade80', textDecoration: 'none', display: 'inline-block'}}
+                            >
+                              👁️ View
+                            </a>
+                            <a
+                              href={`/recipe-card/${meal.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="create-btn"
+                              style={{marginRight: '5px', padding: '8px 16px', fontSize: '13px', background: '#667eea', textDecoration: 'none', display: 'inline-block'}}
+                            >
+                              🖨️ Recipe Card
+                            </a>
                             <button
                               onClick={() => handleToggleMeal(meal.id, meal.active)}
                               className="toggle-btn"
@@ -1371,6 +1458,26 @@ function Admin() {
                   Number of free meal plans each user can generate per month before requiring payment.
                 </p>
               </div>
+
+              <div className="setting-item" style={{marginTop: '30px'}}>
+                <label htmlFor="testUserEmail">
+                  🧪 Test User Email (Unlimited Meal Plans):
+                </label>
+                <input
+                  id="testUserEmail"
+                  type="email"
+                  placeholder="test@example.com"
+                  value={testUserEmail}
+                  onChange={(e) => setTestUserEmail(e.target.value)}
+                  className="setting-input"
+                  style={{fontFamily: 'monospace'}}
+                />
+                <p className="setting-description">
+                  Enter an email address for testing. This user will bypass all meal plan limits and get unlimited generations.
+                  Leave empty to disable test mode.
+                </p>
+              </div>
+
               <button type="submit" className="save-btn" disabled={saving}>
                 {saving ? 'Saving...' : 'Save Settings'}
               </button>

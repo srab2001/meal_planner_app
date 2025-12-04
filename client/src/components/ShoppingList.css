@@ -514,3 +514,157 @@
     width: 100%;
   }
 }
+
+/* ========================================
+   MOBILE CARD LAYOUT FOR COMPARISON
+   ======================================== */
+
+/* Hide mobile cards on desktop, show table */
+.mobile-only {
+  display: none;
+}
+
+.desktop-only {
+  display: table;
+}
+
+@media (max-width: 768px) {
+  /* Hide desktop table, show mobile cards */
+  .desktop-only {
+    display: none;
+  }
+
+  .mobile-only {
+    display: block;
+  }
+
+  /* Mobile comparison cards */
+  .mobile-comparison-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .mobile-item-card {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s;
+  }
+
+  .mobile-item-card.checked {
+    opacity: 0.5;
+  }
+
+  .mobile-item-card:active {
+    transform: scale(0.98);
+  }
+
+  .mobile-item-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  .item-checkbox {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+  }
+
+  .mobile-item-name {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #333;
+    flex: 1;
+  }
+
+  .mobile-item-quantity {
+    color: #666;
+    font-size: 0.9rem;
+    background: #f5f5f5;
+    padding: 4px 12px;
+    border-radius: 12px;
+    flex-shrink: 0;
+  }
+
+  .mobile-price-comparison {
+    display: flex;
+    gap: 10px;
+  }
+
+  .mobile-store-price {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    background: #f9f9f9;
+    text-align: center;
+    transition: all 0.2s;
+  }
+
+  .mobile-store-price.cheaper {
+    background: #d4edda;
+    border: 2px solid #28a745;
+  }
+
+  .mobile-store-name {
+    font-size: 0.75rem;
+    color: #666;
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+
+  .mobile-price-amount {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+  }
+
+  .mobile-store-price.cheaper .mobile-price-amount {
+    color: #28a745;
+  }
+
+  /* Better category titles on mobile */
+  .category-title {
+    font-size: 1.3rem;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+  }
+
+  /* Shopping list header adjustments */
+  .shopping-list-header h2 {
+    font-size: 1.5rem;
+  }
+
+  .store-name {
+    font-size: 0.9rem;
+  }
+
+  /* Print button adjustments */
+  .print-button {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+  }
+
+  /* Comparison totals mobile layout */
+  .comparison-totals {
+    flex-direction: column;
+    gap: 15px;
+    padding: 15px;
+  }
+
+  .store-total {
+    width: 100%;
+  }
+
+  .savings-banner {
+    text-align: center;
+    padding: 15px;
+  }
+}

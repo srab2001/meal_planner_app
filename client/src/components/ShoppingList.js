@@ -252,48 +252,83 @@ function ShoppingList({ shoppingList, totalCost, priceComparison, selectedStores
             <h3 className="category-title">{category}</h3>
 
             {isComparisonMode ? (
-              // Comparison table view
-              <table className="comparison-table">
-                <thead>
-                  <tr>
-                    <th className="checkbox-col"></th>
-                    <th className="item-col">Item</th>
-                    <th className="quantity-col">Quantity</th>
-                    <th className="price-col">{selectedStores.primaryStore.name}</th>
-                    <th className="price-col">{selectedStores.comparisonStore.name}</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <>
+                {/* Desktop table view */}
+                <table className="comparison-table desktop-only">
+                  <thead>
+                    <tr>
+                      <th className="checkbox-col"></th>
+                      <th className="item-col">Item</th>
+                      <th className="quantity-col">Quantity</th>
+                      <th className="price-col">{selectedStores.primaryStore.name}</th>
+                      <th className="price-col">{selectedStores.comparisonStore.name}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {shoppingList[category].map((item, index) => {
+                      const key = `${category}-${index}`;
+                      const cheaperStore = getCheaperStore(item.primaryStorePrice, item.comparisonStorePrice);
+
+                      return (
+                        <tr
+                          key={index}
+                          className={`shopping-item ${checkedItems[key] ? 'checked' : ''}`}
+                        >
+                          <td className="checkbox-col">
+                            <input
+                              type="checkbox"
+                              checked={checkedItems[key] || false}
+                              onChange={() => handleCheck(category, index)}
+                              className="item-checkbox"
+                            />
+                          </td>
+                          <td className="item-col">{item.item}</td>
+                          <td className="quantity-col">{item.quantity}</td>
+                          <td className={`price-col ${cheaperStore === 'primary' ? 'cheaper-price' : ''}`}>
+                            {item.primaryStorePrice || '-'}
+                          </td>
+                          <td className={`price-col ${cheaperStore === 'comparison' ? 'cheaper-price' : ''}`}>
+                            {item.comparisonStorePrice || '-'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+
+                {/* Mobile card view */}
+                <div className="mobile-comparison-cards mobile-only">
                   {shoppingList[category].map((item, index) => {
                     const key = `${category}-${index}`;
                     const cheaperStore = getCheaperStore(item.primaryStorePrice, item.comparisonStorePrice);
 
                     return (
-                      <tr
-                        key={index}
-                        className={`shopping-item ${checkedItems[key] ? 'checked' : ''}`}
-                      >
-                        <td className="checkbox-col">
+                      <div key={index} className={`mobile-item-card ${checkedItems[key] ? 'checked' : ''}`}>
+                        <div className="mobile-item-header">
                           <input
                             type="checkbox"
                             checked={checkedItems[key] || false}
                             onChange={() => handleCheck(category, index)}
                             className="item-checkbox"
                           />
-                        </td>
-                        <td className="item-col">{item.item}</td>
-                        <td className="quantity-col">{item.quantity}</td>
-                        <td className={`price-col ${cheaperStore === 'primary' ? 'cheaper-price' : ''}`}>
-                          {item.primaryStorePrice || '-'}
-                        </td>
-                        <td className={`price-col ${cheaperStore === 'comparison' ? 'cheaper-price' : ''}`}>
-                          {item.comparisonStorePrice || '-'}
-                        </td>
-                      </tr>
+                          <span className="mobile-item-name">{item.item}</span>
+                          <span className="mobile-item-quantity">{item.quantity}</span>
+                        </div>
+                        <div className="mobile-price-comparison">
+                          <div className={`mobile-store-price ${cheaperStore === 'primary' ? 'cheaper' : ''}`}>
+                            <div className="mobile-store-name">{selectedStores.primaryStore.name}</div>
+                            <div className="mobile-price-amount">{item.primaryStorePrice || '-'}</div>
+                          </div>
+                          <div className={`mobile-store-price ${cheaperStore === 'comparison' ? 'cheaper' : ''}`}>
+                            <div className="mobile-store-name">{selectedStores.comparisonStore.name}</div>
+                            <div className="mobile-price-amount">{item.comparisonStorePrice || '-'}</div>
+                          </div>
+                        </div>
+                      </div>
                     );
                   })}
-                </tbody>
-              </table>
+                </div>
+              </>
             ) : (
               // Standard list view
               <ul className="items-list">

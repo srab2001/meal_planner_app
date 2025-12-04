@@ -25,6 +25,42 @@ function MealOfTheDay() {
     }
   };
 
+  const handleNativeShare = async () => {
+    if (!meal) return;
+
+    const shareUrl = `${window.location.origin}/meal-of-the-day`;
+    const shareText = `Check out today's Meal of the Day: ${meal.title}!\n\n${meal.description || ''}`;
+
+    // Check if native share is available
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Meal of the Day: ${meal.title}`,
+          text: shareText,
+          url: shareUrl
+        });
+
+        // Track the share
+        const token = localStorage.getItem('auth_token');
+        await fetch(`${API_BASE}/api/meal-of-the-day/${meal.id}/share`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : ''
+          },
+          body: JSON.stringify({ platform: 'native' })
+        });
+
+        setShareSuccess('Shared successfully!');
+        setTimeout(() => setShareSuccess(''), 3000);
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.error('Error sharing:', error);
+        }
+      }
+    }
+  };
+
   const handleShare = async (platform) => {
     if (!meal) return;
 
@@ -149,12 +185,12 @@ function MealOfTheDay() {
 
       <div className="cta-section">
         <div className="cta-card">
-          <h2>🍽️ Want More Recipes Like This?</h2>
-          <p>Get personalized meal plans with recipes, shopping lists, and price comparisons from your local stores!</p>
-          <a href="/" className="cta-button">
-            ✨ Try Our Meal Planner App
+          <h2>🍽️ Want This Meal in Your Plan?</h2>
+          <p>Sign up and we'll add this recipe to your personalized meal plan with shopping list and store price comparisons!</p>
+          <a href={`/?add_meal=${meal.id}`} className="cta-button">
+            ✨ Add to My Meal Plan
           </a>
-          <p className="cta-subtext">Create custom meal plans in minutes • Compare store prices • Save money</p>
+          <p className="cta-subtext">Instant signup • Get this recipe + shopping list • Compare store prices • Save money</p>
         </div>
       </div>
 
@@ -162,6 +198,12 @@ function MealOfTheDay() {
         <h3>Share this recipe!</h3>
         {shareSuccess && <div className="share-success">{shareSuccess}</div>}
         <div className="share-buttons">
+          {/* Native share button for mobile devices */}
+          {navigator.share && (
+            <button onClick={handleNativeShare} className="share-btn native-share">
+              <span>📤</span> Share
+            </button>
+          )}
           <button onClick={() => handleShare('facebook')} className="share-btn facebook">
             <span>📘</span> Facebook
           </button>

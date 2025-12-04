@@ -1,0 +1,262 @@
+/* Recipe Card - Print & Email Ready */
+.recipe-card-container {
+  max-width: 800px;
+  margin: 40px auto;
+  padding: 20px;
+}
+
+.recipe-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  font-family: 'Georgia', serif;
+}
+
+.recipe-card-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 40px;
+  text-align: center;
+}
+
+.recipe-card-header h1 {
+  margin: 0 0 12px 0;
+  font-size: 42px;
+  font-weight: bold;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.recipe-card-header p {
+  margin: 0;
+  font-size: 18px;
+  opacity: 0.95;
+  font-style: italic;
+}
+
+.recipe-card-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 20px;
+  padding: 30px 40px;
+  background: #f8f9fa;
+  border-bottom: 3px solid #667eea;
+}
+
+.recipe-meta-item {
+  text-align: center;
+}
+
+.recipe-meta-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #666;
+  font-weight: 600;
+  letter-spacing: 1px;
+  margin-bottom: 5px;
+}
+
+.recipe-meta-value {
+  font-size: 20px;
+  color: #333;
+  font-weight: bold;
+}
+
+.recipe-card-image {
+  width: 100%;
+  height: 400px;
+  object-fit: cover;
+  display: block;
+}
+
+.recipe-card-content {
+  padding: 40px;
+}
+
+.recipe-section {
+  margin-bottom: 40px;
+}
+
+.recipe-section:last-child {
+  margin-bottom: 0;
+}
+
+.recipe-section h2 {
+  font-size: 28px;
+  color: #667eea;
+  margin: 0 0 20px 0;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #667eea;
+}
+
+.ingredients-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ingredients-list li {
+  padding: 12px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.ingredients-list li:before {
+  content: '✓ ';
+  color: #22c55e;
+  font-weight: bold;
+  margin-right: 10px;
+}
+
+.instructions-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  counter-reset: step-counter;
+}
+
+.instructions-list li {
+  padding: 20px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 16px;
+  line-height: 1.8;
+  counter-increment: step-counter;
+  position: relative;
+  padding-left: 60px;
+}
+
+.instructions-list li:before {
+  content: counter(step-counter);
+  position: absolute;
+  left: 0;
+  top: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 18px;
+}
+
+.recipe-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 30px;
+  padding-top: 30px;
+  border-top: 2px solid #eee;
+}
+
+.recipe-tag {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.recipe-card-footer {
+  background: #f8f9fa;
+  padding: 30px 40px;
+  text-align: center;
+  border-top: 3px solid #667eea;
+}
+
+.recipe-card-footer h3 {
+  margin: 0 0 10px 0;
+  font-size: 24px;
+  color: #333;
+}
+
+.recipe-card-footer p {
+  margin: 0;
+  color: #666;
+  font-size: 16px;
+}
+
+.recipe-card-footer .app-url {
+  color: #667eea;
+  font-weight: bold;
+  font-size: 18px;
+  margin-top: 10px;
+  display: block;
+}
+
+.print-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-bottom: 30px;
+}
+
+.print-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 14px 32px;
+  border-radius: 50px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  transition: all 0.3s ease;
+}
+
+.print-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+.back-btn {
+  background: #6c757d;
+}
+
+.back-btn:hover {
+  background: #5a6268;
+}
+
+/* Print Styles */
+@media print {
+  body {
+    background: white;
+  }
+
+  .print-buttons {
+    display: none;
+  }
+
+  .recipe-card-container {
+    margin: 0;
+    padding: 0;
+    max-width: 100%;
+  }
+
+  .recipe-card {
+    box-shadow: none;
+    border-radius: 0;
+    page-break-inside: avoid;
+  }
+
+  .recipe-card-image {
+    page-break-after: avoid;
+    max-height: 300px;
+  }
+
+  .recipe-section {
+    page-break-inside: avoid;
+  }
+
+  .instructions-list li {
+    page-break-inside: avoid;
+  }
+
+  @page {
+    margin: 1.5cm;
+  }
+}
