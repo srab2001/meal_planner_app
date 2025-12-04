@@ -9,6 +9,7 @@ import MealPlanView from './components/MealPlanView';
 import Profile from './components/Profile';
 import Admin from './components/Admin';
 import MealOfTheDay from './components/MealOfTheDay';
+import RecipeCard from './components/RecipeCard';
 
 // Use relative paths in production (proxied by Vercel) or localhost in development
 const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
@@ -53,6 +54,24 @@ function App() {
     if (window.location.pathname === '/meal-of-the-day') {
       setCurrentView('meal-of-the-day');
       return;
+    }
+
+    // Check if accessing recipe card
+    if (window.location.pathname.startsWith('/recipe-card/')) {
+      setCurrentView('recipe-card');
+      return;
+    }
+
+    // Check for add_meal query parameter (from meal of the day CTA)
+    const urlParams = new URLSearchParams(window.location.search);
+    const mealToAdd = urlParams.get('add_meal');
+    if (mealToAdd) {
+      console.log('🍽️ User wants to add meal:', mealToAdd);
+      localStorage.setItem('pending_meal_id', mealToAdd);
+      // Show a friendly message that they need to sign up first
+      alert('✨ Great choice! Sign in or create an account to add this meal to your personalized plan.');
+      // Clean up URL
+      window.history.replaceState(null, '', window.location.pathname);
     }
 
     // Check if there's a token in the URL hash (from OAuth redirect)
@@ -312,6 +331,10 @@ function App() {
 
       {currentView === 'meal-of-the-day' && (
         <MealOfTheDay />
+      )}
+
+      {currentView === 'recipe-card' && (
+        <RecipeCard />
       )}
     </div>
   );

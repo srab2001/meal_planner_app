@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './MealPlanView.css';
 import ShoppingList from './ShoppingList';
 
@@ -20,6 +20,17 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   const [customServings, setCustomServings] = useState(null);
   const [recipeNotes, setRecipeNotes] = useState('');
   const [savingCustomization, setSavingCustomization] = useState(false);
+
+  // Mobile UI state
+  const [showFabMenu, setShowFabMenu] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Touch gesture refs
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
+  const pullStartY = useRef(0);
+  const mealsContentRef = useRef(null);
 
   // Load favorites and save meal plan to history on mount
   // This useEffect must come before any early returns to follow React hooks rules
@@ -324,6 +335,59 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
     return favorites.some(fav => fav.meal.name === mealName);
   };
 
+  // Touch gesture handlers for swipeable day selector
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchMove = (e) => {
+    touchEndX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    const swipeDistance = touchStartX.current - touchEndX.current;
+    const minSwipeDistance = 50;
+    const currentDayIndex = days.indexOf(selectedDay);
+
+    if (Math.abs(swipeDistance) > minSwipeDistance) {
+      if (swipeDistance > 0 && currentDayIndex < days.length - 1) {
+        // Swipe left -> next day
+        setSelectedDay(days[currentDayIndex + 1]);
+      } else if (swipeDistance < 0 && currentDayIndex > 0) {
+        // Swipe right -> previous day
+        setSelectedDay(days[currentDayIndex - 1]);
+      }
+    }
+  };
+
+  // Pull-to-refresh handler
+  const handlePullStart = (e) => {
+    if (window.scrollY === 0) {
+      pullStartY.current = e.touches[0].clientY;
+    }
+  };
+
+  const handlePullMove = (e) => {
+    const pullDistance = e.touches[0].clientY - pullStartY.current;
+    if (pullDistance > 100 && window.scrollY === 0 && !refreshing) {
+      setRefreshing(true);
+      // Reload the current view
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+    }
+  };
+
+  // Handle FAB menu toggle
+  const toggleFabMenu = () => {
+    setShowFabMenu(!showFabMenu);
+  };
+
+  // Handle more menu toggle
+  const toggleMoreMenu = () => {
+    setShowMoreMenu(!showMoreMenu);
+  };
+
   return (
     <div className="meal-plan-container">
       {/* Header */}
@@ -390,7 +454,13 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
       <div className="tab-content">
         {/* Meals Tab */}
         {activeTab === 'meals' && (
-          <div className="meals-view">
+          <div
+            className="meals-view"
+            ref={mealsContentRef}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
             {/* Day Selector */}
             <div className="day-selector">
               {days.map((day) => (
@@ -415,20 +485,33 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
 
                 return (
                   <div key={mealType} className="meal-card">
-                    <div className="meal-type">{mealType}</div>
-                    <h3 className="meal-name">{meal.name}</h3>
-                    {meal.prepTime && (
-                      <p className="meal-time">⏱️ Prep: {meal.prepTime}</p>
+                    {(meal.imageUrl || meal.image_url || meal.image) && (
+                      <div className="meal-card-image">
+                        <img
+                          src={meal.imageUrl || meal.image_url || meal.image}
+                          alt={meal.name}
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.parentElement.style.display = 'none';
+                          }}
+                        />
+                      </div>
                     )}
-                    {meal.cookTime && (
-                      <p className="meal-time">🔥 Cook: {meal.cookTime}</p>
-                    )}
-                    {meal.servings && (
-                      <p className="meal-servings">👥 Serves {meal.servings}</p>
-                    )}
-                    {meal.estimatedCost && (
-                      <p className="meal-cost">💰 {meal.estimatedCost}</p>
-                    )}
+                    <div className="meal-card-content">
+                      <div className="meal-type">{mealType}</div>
+                      <h3 className="meal-name">{meal.name}</h3>
+                      {meal.prepTime && (
+                        <p className="meal-time">⏱️ Prep: {meal.prepTime}</p>
+                      )}
+                      {meal.cookTime && (
+                        <p className="meal-time">🔥 Cook: {meal.cookTime}</p>
+                      )}
+                      {meal.servings && (
+                        <p className="meal-servings">👥 Serves {meal.servings}</p>
+                      )}
+                      {meal.estimatedCost && (
+                        <p className="meal-cost">💰 {meal.estimatedCost}</p>
+                      )}
 
                     <div className="meal-card-actions">
                       <button
@@ -461,6 +544,7 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                           <>🔄 New Meal</>
                         )}
                       </button>
+                    </div>
                     </div>
                   </div>
                 );
@@ -675,31 +759,47 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
               const meal = localMealPlan.mealPlan[day][mealType];
               return (
                 <div key={mealType} className="print-meal">
-                  <h3>{mealType.toUpperCase()}: {meal.name}</h3>
-                  
-                  <div className="print-meal-meta">
-                    {meal.prepTime && <span>Prep: {meal.prepTime}</span>}
-                    {meal.cookTime && <span>Cook: {meal.cookTime}</span>}
-                    {meal.servings && <span>Serves: {meal.servings}</span>}
-                    {meal.estimatedCost && <span>Cost: {meal.estimatedCost}</span>}
+                  <div className="print-meal-header">
+                    <div className="print-meal-title-section">
+                      <h3>{mealType.toUpperCase()}: {meal.name}</h3>
+
+                      <div className="print-meal-meta">
+                        {meal.prepTime && <span>⏱️ Prep: {meal.prepTime}</span>}
+                        {meal.cookTime && <span>🔥 Cook: {meal.cookTime}</span>}
+                        {meal.servings && <span>👥 Serves: {meal.servings}</span>}
+                        {meal.estimatedCost && <span>💰 Cost: {meal.estimatedCost}</span>}
+                      </div>
+                    </div>
+
+                    {(meal.imageUrl || meal.image_url || meal.image) && (
+                      <div className="print-meal-image">
+                        <img
+                          src={meal.imageUrl || meal.image_url || meal.image}
+                          alt={meal.name}
+                          onError={(e) => { e.target.style.display = 'none'; }}
+                        />
+                      </div>
+                    )}
                   </div>
 
-                  <div className="print-ingredients">
-                    <h4>Ingredients:</h4>
-                    <ul>
-                      {meal.ingredients?.map((ingredient, index) => (
-                        <li key={index}>{ingredient}</li>
-                      ))}
-                    </ul>
-                  </div>
+                  <div className="print-meal-content">
+                    <div className="print-ingredients">
+                      <h4>📝 Ingredients:</h4>
+                      <ul>
+                        {meal.ingredients?.map((ingredient, index) => (
+                          <li key={index}>{ingredient}</li>
+                        ))}
+                      </ul>
+                    </div>
 
-                  <div className="print-instructions">
-                    <h4>Instructions:</h4>
-                    <ol>
-                      {meal.instructions?.map((instruction, index) => (
-                        <li key={index}>{instruction}</li>
-                      ))}
-                    </ol>
+                    <div className="print-instructions">
+                      <h4>👨‍🍳 Instructions:</h4>
+                      <ol>
+                        {meal.instructions?.map((instruction, index) => (
+                          <li key={index}>{instruction}</li>
+                        ))}
+                      </ol>
+                    </div>
                   </div>
                 </div>
               );
@@ -790,6 +890,100 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Mobile Bottom Navigation */}
+      <div className="mobile-bottom-nav">
+        <button
+          className={`mobile-nav-item ${activeTab === 'meals' ? 'active' : ''}`}
+          onClick={() => setActiveTab('meals')}
+        >
+          <span className="mobile-nav-icon">🍽️</span>
+          <span>Meals</span>
+        </button>
+        <button
+          className={`mobile-nav-item ${activeTab === 'favorites' ? 'active' : ''}`}
+          onClick={() => setActiveTab('favorites')}
+        >
+          <span className="mobile-nav-icon">⭐</span>
+          <span>Favorites</span>
+        </button>
+        <button
+          className={`mobile-nav-item ${activeTab === 'shopping' ? 'active' : ''}`}
+          onClick={() => setActiveTab('shopping')}
+        >
+          <span className="mobile-nav-icon">🛒</span>
+          <span>Shopping</span>
+        </button>
+        <button
+          className="mobile-nav-item"
+          onClick={onViewProfile}
+        >
+          <span className="mobile-nav-icon">👤</span>
+          <span>Profile</span>
+        </button>
+        <button
+          className={`mobile-nav-item ${showMoreMenu ? 'active' : ''}`}
+          onClick={toggleMoreMenu}
+        >
+          <span className="mobile-nav-icon">⋯</span>
+          <span>More</span>
+        </button>
+      </div>
+
+      {/* Mobile More Menu Modal */}
+      {showMoreMenu && (
+        <div className="modal-overlay" onClick={toggleMoreMenu}>
+          <div className="mobile-more-menu" onClick={(e) => e.stopPropagation()}>
+            <h3>More Options</h3>
+            <button onClick={() => { handleFeedback(); toggleMoreMenu(); }} className="more-menu-item">
+              💬 Send Feedback
+            </button>
+            <button onClick={() => { handleViewHistory(); toggleMoreMenu(); }} className="more-menu-item">
+              📜 History
+            </button>
+            <button onClick={() => { handlePrintAllRecipes(); toggleMoreMenu(); }} className="more-menu-item">
+              🖨️ Print All Recipes
+            </button>
+            <button onClick={() => { onStartOver(); toggleMoreMenu(); }} className="more-menu-item">
+              🔄 Start Over
+            </button>
+            <button onClick={() => { onLogout(); toggleMoreMenu(); }} className="more-menu-item">
+              🚪 Logout
+            </button>
+            <button onClick={toggleMoreMenu} className="more-menu-item cancel">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Action Button */}
+      <button className="fab-button" onClick={toggleFabMenu}>
+        {showFabMenu ? '✕' : '+'}
+      </button>
+
+      {/* FAB Menu */}
+      {showFabMenu && (
+        <div className="fab-menu">
+          <button onClick={() => { handlePrintAllRecipes(); toggleFabMenu(); }} className="fab-menu-item">
+            🖨️ Print Recipes
+          </button>
+          <button onClick={() => { handleViewHistory(); toggleFabMenu(); }} className="fab-menu-item">
+            📜 View History
+          </button>
+          <button onClick={() => { handleFeedback(); toggleFabMenu(); }} className="fab-menu-item">
+            💬 Feedback
+          </button>
+        </div>
+      )}
+
+      {/* Pull to Refresh Indicator */}
+      {refreshing && (
+        <div className="refresh-indicator">
+          <div className="spinner"></div>
+          <p>Refreshing...</p>
         </div>
       )}
     </div>

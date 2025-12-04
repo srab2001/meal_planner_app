@@ -514,41 +514,59 @@ app.post('/api/generate-meals', aiLimiter, requireAuth, async (req, res) => {
 
     console.log(`Generating meal plan for user: ${req.user.email}`);
 
-    // Check user subscription status and usage limits
-    const subscription = await db.query(
-      'SELECT plan_type FROM subscriptions WHERE user_id = $1',
-      [req.user.id]
-    );
-
-    const planType = subscription.rows[0]?.plan_type || 'free';
-
-    if (planType === 'free') {
-      // Check monthly usage for free tier
-      const usageResult = await db.query(`
-        SELECT COUNT(*) as count
-        FROM usage_stats
-        WHERE user_id = $1
-          AND action_type = 'meal_plan_generated'
-          AND created_at >= date_trunc('month', CURRENT_TIMESTAMP)
-      `, [req.user.id]);
-
-      const usageCount = parseInt(usageResult.rows[0].count);
-
-      if (usageCount >= 10) {
-        console.log(`⚠️  Free tier limit reached for ${req.user.email} (${usageCount}/10)`);
-        return res.status(403).json({
-          error: 'Free tier limit reached',
-          message: 'You have generated 10 meal plans this month. Upgrade to Premium for unlimited access.',
-          usageCount: usageCount,
-          limit: 10,
-          planType: 'free',
-          upgradeUrl: '/pricing'
-        });
+    // Check if this is the test user (bypass all limits)
+    let isTestUser = false;
+    try {
+      const testUserResult = await db.query(`
+        SELECT value FROM app_settings WHERE key = 'test_user_email'
+      `);
+      const testUserEmail = testUserResult.rows[0]?.value?.trim().toLowerCase();
+      if (testUserEmail && req.user.email.toLowerCase() === testUserEmail) {
+        isTestUser = true;
+        console.log(`🧪 Test user detected - bypassing all limits`);
       }
+    } catch (error) {
+      // If settings table doesn't exist, just continue normally
+      console.log('Could not check test user setting:', error.message);
+    }
 
-      console.log(`✅ Usage: ${usageCount}/10 meal plans this month`);
-    } else {
-      console.log(`✅ Premium user - unlimited access`);
+    if (!isTestUser) {
+      // Check user subscription status and usage limits
+      const subscription = await db.query(
+        'SELECT plan_type FROM subscriptions WHERE user_id = $1',
+        [req.user.id]
+      );
+
+      const planType = subscription.rows[0]?.plan_type || 'free';
+
+      if (planType === 'free') {
+        // Check monthly usage for free tier
+        const usageResult = await db.query(`
+          SELECT COUNT(*) as count
+          FROM usage_stats
+          WHERE user_id = $1
+            AND action_type = 'meal_plan_generated'
+            AND created_at >= date_trunc('month', CURRENT_TIMESTAMP)
+        `, [req.user.id]);
+
+        const usageCount = parseInt(usageResult.rows[0].count);
+
+        if (usageCount >= 10) {
+          console.log(`⚠️  Free tier limit reached for ${req.user.email} (${usageCount}/10)`);
+          return res.status(403).json({
+            error: 'Free tier limit reached',
+            message: 'You have generated 10 meal plans this month. Upgrade to Premium for unlimited access.',
+            usageCount: usageCount,
+            limit: 10,
+            planType: 'free',
+            upgradeUrl: '/pricing'
+          });
+        }
+
+        console.log(`✅ Usage: ${usageCount}/10 meal plans this month`);
+      } else {
+        console.log(`✅ Premium user - unlimited access`);
+      }
     }
 
     console.log(`Primary Store: ${primaryStore?.name}, ZIP: ${zipCode}`);
@@ -607,6 +625,7 @@ app.post('/api/generate-meals', aiLimiter, requireAuth, async (req, res) => {
     const shoppingListRequirement = `${requirementNumber++}. Create a consolidated shopping list organized by category\n`;
     const storeRequirement = `${requirementNumber++}. All items should be commonly available at the selected store(s)\n`;
     const timeRequirement = `${requirementNumber++}. Include prep time, cooking time, servings, and estimated cost for each meal\n`;
+    const imageRequirement = `${requirementNumber++}. **CRITICAL**: For EVERY meal, include an "imageUrl" field with a high-quality Unsplash food image URL that matches the dish. Use URLs in format: https://images.unsplash.com/photo-[id]?w=800&q=80\n`;
     const instructionsRequirement = `${requirementNumber++}. Provide simple, clear cooking instructions\n`;
 
     const comparisonRequirement = comparisonStore
@@ -615,7 +634,7 @@ app.post('/api/generate-meals', aiLimiter, requireAuth, async (req, res) => {
 
     // Create example meal structure for the prompt
     const mealStructureExample = mealTypes.map(mealType =>
-      `      "${mealType}": { "name": "...", "prepTime": "...", "cookTime": "...", "servings": ${preferences.people || 2}, "estimatedCost": "$X-Y", "ingredients": [...], "instructions": [...] }`
+      `      "${mealType}": { "name": "...", "prepTime": "...", "cookTime": "...", "servings": ${preferences.people || 2}, "estimatedCost": "$X-Y", "imageUrl": "https://images.unsplash.com/photo-...", "ingredients": [...], "instructions": [...] }`
     ).join(',\n');
 
     // Build shopping list format based on whether we have comparison store
@@ -701,7 +720,7 @@ ${leftoversText}
 1. Create a meal plan for these days: ${daysOfWeek.join(', ')} with ONLY these meal types: ${mealTypes.join(', ')}
 2. DO NOT include meal types that were not selected
 3. DO NOT include days that were not selected
-${leftoverRequirement}${cuisineRequirement}${dietaryRequirement}${shoppingListRequirement}${storeRequirement}${timeRequirement}${instructionsRequirement}${comparisonRequirement}
+${leftoverRequirement}${cuisineRequirement}${dietaryRequirement}${shoppingListRequirement}${storeRequirement}${timeRequirement}${imageRequirement}${instructionsRequirement}${comparisonRequirement}
 
 **Response Format:**
 Return ONLY valid JSON in this exact format:
@@ -822,10 +841,11 @@ ${dietaryRestrictionsText}
 ${dietaryPreferences && dietaryPreferences.length > 0 ? `3. **CRITICAL**: This recipe MUST comply with these dietary restrictions: ${dietaryPreferences.map(formatDietaryPreference).join('; ')}. Do not use any ingredients that violate these restrictions.
 4. Include prep time and cooking time` : '3. Include prep time and cooking time'}
 ${dietaryPreferences && dietaryPreferences.length > 0 ? '5' : '4'}. Include servings count (for ${people || 2} people)
-${dietaryPreferences && dietaryPreferences.length > 0 ? '6' : '5'}. List all ingredients with quantities
-${dietaryPreferences && dietaryPreferences.length > 0 ? '7' : '6'}. Provide clear, step-by-step cooking instructions
-${dietaryPreferences && dietaryPreferences.length > 0 ? '8' : '7'}. Estimate the cost
-${dietaryPreferences && dietaryPreferences.length > 0 ? '9' : '8'}. All ingredients should be commonly available at ${groceryStore?.name || 'the selected store'}
+${dietaryPreferences && dietaryPreferences.length > 0 ? '6' : '5'}. **CRITICAL**: Include an "imageUrl" field with a high-quality Unsplash food image URL that matches the dish. Use URLs in format: https://images.unsplash.com/photo-[id]?w=800&q=80
+${dietaryPreferences && dietaryPreferences.length > 0 ? '7' : '6'}. List all ingredients with quantities
+${dietaryPreferences && dietaryPreferences.length > 0 ? '8' : '7'}. Provide clear, step-by-step cooking instructions
+${dietaryPreferences && dietaryPreferences.length > 0 ? '9' : '8'}. Estimate the cost
+${dietaryPreferences && dietaryPreferences.length > 0 ? '10' : '9'}. All ingredients should be commonly available at ${groceryStore?.name || 'the selected store'}
 
 **Response Format:**
 Return ONLY valid JSON in this exact format:
@@ -835,6 +855,7 @@ Return ONLY valid JSON in this exact format:
   "cookTime": "20 mins",
   "servings": ${people || 2},
   "estimatedCost": "$8-12",
+  "imageUrl": "https://images.unsplash.com/photo-[id]?w=800&q=80",
   "ingredients": [
     "1 cup of ingredient",
     "2 tablespoons of ingredient"
@@ -1934,23 +1955,30 @@ app.get('/api/admin/settings', requireAdmin, async (req, res) => {
     const result = await db.query(`
       SELECT key, value, updated_at
       FROM app_settings
-      WHERE key = 'free_meal_plans_limit'
+      WHERE key IN ('free_meal_plans_limit', 'test_user_email')
     `);
 
-    const freeMealPlansLimit = result.rows.length > 0
-      ? parseInt(result.rows[0].value)
-      : 10; // Default
+    const settings = {};
+    result.rows.forEach(row => {
+      if (row.key === 'free_meal_plans_limit') {
+        settings.free_meal_plans_limit = parseInt(row.value);
+      } else if (row.key === 'test_user_email') {
+        settings.test_user_email = row.value;
+      }
+    });
 
     res.json({
       settings: {
-        free_meal_plans_limit: freeMealPlansLimit
+        free_meal_plans_limit: settings.free_meal_plans_limit || 10,
+        test_user_email: settings.test_user_email || ''
       }
     });
   } catch (error) {
     // Table might not exist yet, return defaults
     res.json({
       settings: {
-        free_meal_plans_limit: 10
+        free_meal_plans_limit: 10,
+        test_user_email: ''
       }
     });
   }
@@ -1959,7 +1987,7 @@ app.get('/api/admin/settings', requireAdmin, async (req, res) => {
 // Update app settings
 app.put('/api/admin/settings', requireAdmin, async (req, res) => {
   try {
-    const { free_meal_plans_limit } = req.body;
+    const { free_meal_plans_limit, test_user_email } = req.body;
 
     if (free_meal_plans_limit !== undefined) {
       await db.query(`
@@ -1970,6 +1998,17 @@ app.put('/api/admin/settings', requireAdmin, async (req, res) => {
       `, [free_meal_plans_limit.toString()]);
 
       console.log(`✅ Admin updated free meal plans limit: ${free_meal_plans_limit}`);
+    }
+
+    if (test_user_email !== undefined) {
+      await db.query(`
+        INSERT INTO app_settings (key, value)
+        VALUES ('test_user_email', $1)
+        ON CONFLICT (key)
+        DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP
+      `, [test_user_email.trim()]);
+
+      console.log(`✅ Admin updated test user email: ${test_user_email || '(cleared)'}`);
     }
 
     res.json({ success: true });
@@ -2326,6 +2365,31 @@ app.post('/api/meal-of-the-day/:id/share', async (req, res) => {
   }
 });
 
+// Public endpoint - Get meal of the day by ID (for adding to plan)
+app.get('/api/meal-of-the-day/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await db.query(`
+      SELECT
+        id, title, description, meal_type, cuisine, prep_time, cook_time,
+        servings, ingredients, instructions, image_url, nutrition_info, tags,
+        featured_date
+      FROM meal_of_the_day
+      WHERE id = $1 AND active = TRUE
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Meal not found' });
+    }
+
+    res.json({ meal: result.rows[0] });
+  } catch (error) {
+    console.error('Error fetching meal:', error);
+    res.status(500).json({ error: 'Failed to fetch meal' });
+  }
+});
+
 // Admin - Get all meals of the day
 app.get('/api/admin/meal-of-the-day', requireAdmin, async (req, res) => {
   try {
@@ -2352,6 +2416,9 @@ app.get('/api/admin/meal-of-the-day', requireAdmin, async (req, res) => {
 // Admin - Create meal of the day
 app.post('/api/admin/meal-of-the-day', requireAdmin, async (req, res) => {
   try {
+    console.log('🔵 Creating meal of the day, admin:', req.admin);
+    console.log('🔵 Request body:', req.body);
+
     const {
       title,
       description,
@@ -2369,13 +2436,17 @@ app.post('/api/admin/meal-of-the-day', requireAdmin, async (req, res) => {
       active = true
     } = req.body;
 
+    console.log('🔵 Extracted data - title:', title, 'ingredients:', ingredients?.length, 'instructions:', instructions?.length);
+
     // Validation
     if (!title || !ingredients || !instructions) {
+      console.log('🔴 Validation failed');
       return res.status(400).json({ error: 'Title, ingredients, and instructions are required' });
     }
 
     // If active and featured_date is set, deactivate any other meal for that date
     if (active && featured_date) {
+      console.log('🔵 Deactivating other meals for date:', featured_date);
       await db.query(`
         UPDATE meal_of_the_day
         SET active = FALSE
@@ -2383,6 +2454,7 @@ app.post('/api/admin/meal-of-the-day', requireAdmin, async (req, res) => {
       `, [featured_date]);
     }
 
+    console.log('🔵 Inserting meal into database...');
     const result = await db.query(`
       INSERT INTO meal_of_the_day (
         title, description, meal_type, cuisine, prep_time, cook_time,
@@ -2405,7 +2477,7 @@ app.post('/api/admin/meal-of-the-day', requireAdmin, async (req, res) => {
       tags ? JSON.stringify(tags) : '[]',
       featured_date || new Date().toISOString().split('T')[0],
       active,
-      req.admin.role, // 'admin' from JWT
+      req.admin?.role || 'admin', // Safely access role with fallback
       active ? new Date() : null
     ]);
 
@@ -2413,10 +2485,18 @@ app.post('/api/admin/meal-of-the-day', requireAdmin, async (req, res) => {
     res.json({ success: true, meal: result.rows[0] });
   } catch (error) {
     if (error.code === '23505') { // Unique constraint violation
+      console.error('🔴 Unique constraint violation:', error.message);
       return res.status(400).json({ error: 'A meal is already active for this date' });
     }
-    console.error('Error creating meal:', error);
-    res.status(500).json({ error: 'Failed to create meal' });
+    console.error('🔴 Error creating meal - Full error:', error);
+    console.error('🔴 Error code:', error.code);
+    console.error('🔴 Error message:', error.message);
+    console.error('🔴 Error detail:', error.detail);
+    res.status(500).json({
+      error: 'Failed to create meal',
+      details: error.message,
+      code: error.code
+    });
   }
 });
 
