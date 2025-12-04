@@ -1313,13 +1313,15 @@ function Admin() {
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
                   <h2 style={{margin: 0}}>Published Meals</h2>
                   {meals.length > 0 && (
-                    <button
-                      onClick={() => window.open('/meal-of-the-day', '_blank')}
+                    <a
+                      href="/meal-of-the-day"
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="create-btn"
-                      style={{background: '#4ade80', padding: '10px 20px'}}
+                      style={{background: '#4ade80', padding: '10px 20px', textDecoration: 'none', display: 'inline-block'}}
                     >
                       👁️ View Public Page
-                    </button>
+                    </a>
                   )}
                 </div>
 
@@ -1372,13 +1374,15 @@ function Admin() {
                             </span>
                           </td>
                           <td>
-                            <button
-                              onClick={() => window.open('/meal-of-the-day', '_blank')}
+                            <a
+                              href="/meal-of-the-day"
+                              target="_blank"
+                              rel="noopener noreferrer"
                               className="create-btn"
-                              style={{marginRight: '5px', padding: '8px 16px', fontSize: '13px', background: '#4ade80'}}
+                              style={{marginRight: '5px', padding: '8px 16px', fontSize: '13px', background: '#4ade80', textDecoration: 'none', display: 'inline-block'}}
                             >
                               👁️ View
-                            </button>
+                            </a>
                             <button
                               onClick={() => handleToggleMeal(meal.id, meal.active)}
                               className="toggle-btn"
