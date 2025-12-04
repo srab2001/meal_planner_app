@@ -744,6 +744,8 @@ ${shoppingListFormat}
 }`;
 
     console.log('Calling OpenAI to generate meal plan...');
+    console.log(`📋 Prompt includes days: ${daysOfWeek.join(', ')}`);
+    console.log(`📋 Prompt includes meals: ${mealTypes.join(', ')}`);
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -761,14 +763,29 @@ ${shoppingListFormat}
       max_tokens: 4000,
     });
 
+    // Check if response was truncated
+    if (completion.choices[0].finish_reason === 'length') {
+      console.warn('⚠️  WARNING: OpenAI response was truncated due to token limit!');
+    }
+
     let responseText = completion.choices[0].message.content.trim();
+    console.log(`📏 Response length: ${responseText.length} characters`);
 
     // Clean up response - remove markdown code blocks if present
     responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
     const mealPlanData = JSON.parse(responseText);
 
-    console.log('Meal plan generated successfully');
+    // Debug: Log what days OpenAI actually returned
+    const returnedDays = Object.keys(mealPlanData.mealPlan || {});
+    console.log('✅ Meal plan generated successfully');
+    console.log(`📅 Days requested: ${daysOfWeek.join(', ')}`);
+    console.log(`📅 Days returned by OpenAI: ${returnedDays.join(', ')}`);
+
+    if (returnedDays.length !== daysOfWeek.length) {
+      console.error(`❌ MISMATCH: Requested ${daysOfWeek.length} days but received ${returnedDays.length} days`);
+      console.error(`Missing days: ${daysOfWeek.filter(d => !returnedDays.includes(d)).join(', ')}`);
+    }
 
     // Track usage for analytics and quota enforcement
     await db.query(`
