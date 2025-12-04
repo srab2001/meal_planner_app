@@ -34,6 +34,25 @@ function Admin() {
   const [newCuisine, setNewCuisine] = useState({ name: '', display_order: '' });
   const [newDietaryOption, setNewDietaryOption] = useState({ key: '', label: '', display_order: '' });
 
+  // Meal of the Day management
+  const [meals, setMeals] = useState([]);
+  const [mealStats, setMealStats] = useState(null);
+  const [newMeal, setNewMeal] = useState({
+    title: '',
+    description: '',
+    meal_type: 'dinner',
+    cuisine: '',
+    prep_time: '',
+    cook_time: '',
+    servings: 2,
+    ingredients: [''],
+    instructions: [''],
+    image_url: '',
+    tags: '',
+    featured_date: new Date().toISOString().split('T')[0],
+    active: true
+  });
+
   useEffect(() => {
     const token = localStorage.getItem('admin_token');
     if (token) {
@@ -113,6 +132,20 @@ function Admin() {
         });
         const dietaryData = await dietaryResponse.json();
         setDietaryOptions(dietaryData.options || []);
+      } else if (activeTab === 'meals') {
+        // Load meals of the day
+        const mealsResponse = await fetch(`${API_BASE}/api/admin/meal-of-the-day`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const mealsData = await mealsResponse.json();
+        setMeals(mealsData.meals || []);
+
+        // Load meal stats
+        const statsResponse = await fetch(`${API_BASE}/api/admin/meal-of-the-day/stats`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const statsData = await statsResponse.json();
+        setMealStats(statsData.stats);
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -389,6 +422,143 @@ function Admin() {
     }
   };
 
+  // Meal of the Day management functions
+  const handleAddIngredient = () => {
+    setNewMeal({ ...newMeal, ingredients: [...newMeal.ingredients, ''] });
+  };
+
+  const handleRemoveIngredient = (index) => {
+    const updated = newMeal.ingredients.filter((_, i) => i !== index);
+    setNewMeal({ ...newMeal, ingredients: updated.length > 0 ? updated : [''] });
+  };
+
+  const handleIngredientChange = (index, value) => {
+    const updated = [...newMeal.ingredients];
+    updated[index] = value;
+    setNewMeal({ ...newMeal, ingredients: updated });
+  };
+
+  const handleAddInstruction = () => {
+    setNewMeal({ ...newMeal, instructions: [...newMeal.instructions, ''] });
+  };
+
+  const handleRemoveInstruction = (index) => {
+    const updated = newMeal.instructions.filter((_, i) => i !== index);
+    setNewMeal({ ...newMeal, instructions: updated.length > 0 ? updated : [''] });
+  };
+
+  const handleInstructionChange = (index, value) => {
+    const updated = [...newMeal.instructions];
+    updated[index] = value;
+    setNewMeal({ ...newMeal, instructions: updated });
+  };
+
+  const handleCreateMeal = async (e) => {
+    e.preventDefault();
+    const token = localStorage.getItem('admin_token');
+    setSaving(true);
+    setMessage('');
+
+    try {
+      // Filter out empty ingredients and instructions
+      const cleanedIngredients = newMeal.ingredients.filter(i => i.trim() !== '');
+      const cleanedInstructions = newMeal.instructions.filter(i => i.trim() !== '');
+
+      if (cleanedIngredients.length === 0 || cleanedInstructions.length === 0) {
+        setMessage('❌ Please add at least one ingredient and instruction');
+        setSaving(false);
+        return;
+      }
+
+      const tags = newMeal.tags ? newMeal.tags.split(',').map(t => t.trim()).filter(t => t) : [];
+
+      const response = await fetch(`${API_BASE}/api/admin/meal-of-the-day`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          ...newMeal,
+          ingredients: cleanedIngredients,
+          instructions: cleanedInstructions,
+          tags,
+          servings: parseInt(newMeal.servings)
+        })
+      });
+
+      if (response.ok) {
+        setMessage('✅ Meal of the Day created successfully!');
+        setNewMeal({
+          title: '',
+          description: '',
+          meal_type: 'dinner',
+          cuisine: '',
+          prep_time: '',
+          cook_time: '',
+          servings: 2,
+          ingredients: [''],
+          instructions: [''],
+          image_url: '',
+          tags: '',
+          featured_date: new Date().toISOString().split('T')[0],
+          active: true
+        });
+        loadData();
+      } else {
+        const data = await response.json();
+        setMessage(`❌ ${data.error}`);
+      }
+    } catch (error) {
+      setMessage('❌ Failed to create meal');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleMeal = async (id, currentActive) => {
+    const token = localStorage.getItem('admin_token');
+
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/meal-of-the-day/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ active: !currentActive })
+      });
+
+      if (response.ok) {
+        loadData();
+      }
+    } catch (error) {
+      console.error('Error toggling meal:', error);
+    }
+  };
+
+  const handleDeleteMeal = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this meal?')) {
+      return;
+    }
+
+    const token = localStorage.getItem('admin_token');
+
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/meal-of-the-day/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        setMessage('✅ Meal deleted');
+        loadData();
+      }
+    } catch (error) {
+      setMessage('❌ Failed to delete meal');
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="admin-login">
@@ -437,6 +607,12 @@ function Admin() {
           onClick={() => setActiveTab('options')}
         >
           🍽️ Options
+        </button>
+        <button
+          className={`admin-tab ${activeTab === 'meals' ? 'active' : ''}`}
+          onClick={() => setActiveTab('meals')}
+        >
+          ⭐ Meal of the Day
         </button>
         <button
           className={`admin-tab ${activeTab === 'settings' ? 'active' : ''}`}
@@ -742,6 +918,243 @@ function Admin() {
                     </table>
                   )}
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'meals' && (
+          <div className="meals-section">
+            {/* Stats Cards */}
+            {mealStats && (
+              <div className="stats-grid">
+                <div className="stat-card">
+                  <div className="stat-icon">📊</div>
+                  <div className="stat-value">{mealStats.total_meals || 0}</div>
+                  <div className="stat-label">Total Meals</div>
+                  <div className="stat-sublabel">{mealStats.active_meals || 0} active</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-icon">👀</div>
+                  <div className="stat-value">{mealStats.total_views || 0}</div>
+                  <div className="stat-label">Total Views</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-icon">📤</div>
+                  <div className="stat-value">{mealStats.total_shares || 0}</div>
+                  <div className="stat-label">Total Shares</div>
+                  <div className="stat-sublabel">{mealStats.platforms_used || 0} platforms</div>
+                </div>
+              </div>
+            )}
+
+            <div className="codes-section">
+              {/* Create Meal Form */}
+              <div className="create-code-form">
+                <h2>Create Meal of the Day</h2>
+                <form onSubmit={handleCreateMeal}>
+                  <div className="form-row">
+                    <input
+                      type="text"
+                      placeholder="Meal Title *"
+                      value={newMeal.title}
+                      onChange={(e) => setNewMeal({...newMeal, title: e.target.value})}
+                      required
+                    />
+                    <select
+                      value={newMeal.meal_type}
+                      onChange={(e) => setNewMeal({...newMeal, meal_type: e.target.value})}
+                    >
+                      <option value="breakfast">Breakfast</option>
+                      <option value="lunch">Lunch</option>
+                      <option value="dinner">Dinner</option>
+                      <option value="snack">Snack</option>
+                    </select>
+                  </div>
+
+                  <div className="form-row">
+                    <input
+                      type="text"
+                      placeholder="Cuisine (e.g., Italian)"
+                      value={newMeal.cuisine}
+                      onChange={(e) => setNewMeal({...newMeal, cuisine: e.target.value})}
+                    />
+                    <input
+                      type="number"
+                      placeholder="Servings"
+                      value={newMeal.servings}
+                      onChange={(e) => setNewMeal({...newMeal, servings: e.target.value})}
+                      min="1"
+                    />
+                  </div>
+
+                  <div className="form-row">
+                    <input
+                      type="text"
+                      placeholder="Prep Time (e.g., 15 mins)"
+                      value={newMeal.prep_time}
+                      onChange={(e) => setNewMeal({...newMeal, prep_time: e.target.value})}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Cook Time (e.g., 30 mins)"
+                      value={newMeal.cook_time}
+                      onChange={(e) => setNewMeal({...newMeal, cook_time: e.target.value})}
+                    />
+                  </div>
+
+                  <textarea
+                    placeholder="Description"
+                    value={newMeal.description}
+                    onChange={(e) => setNewMeal({...newMeal, description: e.target.value})}
+                    rows={3}
+                    style={{width: '100%', marginBottom: '15px', padding: '12px', borderRadius: '6px', border: '2px solid #ddd'}}
+                  />
+
+                  <div style={{marginBottom: '15px'}}>
+                    <label style={{display: 'block', fontWeight: '600', marginBottom: '8px'}}>Ingredients *</label>
+                    {newMeal.ingredients.map((ingredient, index) => (
+                      <div key={index} style={{display: 'flex', gap: '8px', marginBottom: '8px'}}>
+                        <input
+                          type="text"
+                          placeholder="e.g., 2 cups flour"
+                          value={ingredient}
+                          onChange={(e) => handleIngredientChange(index, e.target.value)}
+                          style={{flex: 1, padding: '12px', borderRadius: '6px', border: '2px solid #ddd'}}
+                        />
+                        {newMeal.ingredients.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveIngredient(index)}
+                            className="delete-btn"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button type="button" onClick={handleAddIngredient} className="toggle-btn" style={{marginTop: '8px'}}>
+                      + Add Ingredient
+                    </button>
+                  </div>
+
+                  <div style={{marginBottom: '15px'}}>
+                    <label style={{display: 'block', fontWeight: '600', marginBottom: '8px'}}>Instructions *</label>
+                    {newMeal.instructions.map((instruction, index) => (
+                      <div key={index} style={{display: 'flex', gap: '8px', marginBottom: '8px'}}>
+                        <input
+                          type="text"
+                          placeholder={`Step ${index + 1}`}
+                          value={instruction}
+                          onChange={(e) => handleInstructionChange(index, e.target.value)}
+                          style={{flex: 1, padding: '12px', borderRadius: '6px', border: '2px solid #ddd'}}
+                        />
+                        {newMeal.instructions.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveInstruction(index)}
+                            className="delete-btn"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button type="button" onClick={handleAddInstruction} className="toggle-btn" style={{marginTop: '8px'}}>
+                      + Add Step
+                    </button>
+                  </div>
+
+                  <input
+                    type="url"
+                    placeholder="Image URL (e.g., from Unsplash, Imgur)"
+                    value={newMeal.image_url}
+                    onChange={(e) => setNewMeal({...newMeal, image_url: e.target.value})}
+                    style={{width: '100%', marginBottom: '15px', padding: '12px', borderRadius: '6px', border: '2px solid #ddd'}}
+                  />
+
+                  <div className="form-row">
+                    <input
+                      type="text"
+                      placeholder="Tags (comma-separated: quick, healthy, vegan)"
+                      value={newMeal.tags}
+                      onChange={(e) => setNewMeal({...newMeal, tags: e.target.value})}
+                    />
+                    <input
+                      type="date"
+                      value={newMeal.featured_date}
+                      onChange={(e) => setNewMeal({...newMeal, featured_date: e.target.value})}
+                    />
+                  </div>
+
+                  <label style={{display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px'}}>
+                    <input
+                      type="checkbox"
+                      checked={newMeal.active}
+                      onChange={(e) => setNewMeal({...newMeal, active: e.target.checked})}
+                    />
+                    <span>Publish immediately</span>
+                  </label>
+
+                  <button type="submit" className="create-btn" disabled={saving}>
+                    {saving ? 'Creating...' : 'Create Meal of the Day'}
+                  </button>
+                </form>
+              </div>
+
+              {/* Meals List */}
+              <div className="codes-list">
+                <h2>Published Meals</h2>
+                {meals.length === 0 ? (
+                  <p>No meals created yet</p>
+                ) : (
+                  <table className="codes-table">
+                    <thead>
+                      <tr>
+                        <th>Title</th>
+                        <th>Type</th>
+                        <th>Featured Date</th>
+                        <th>Views</th>
+                        <th>Shares</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {meals.map(meal => (
+                        <tr key={meal.id}>
+                          <td>
+                            <strong>{meal.title}</strong>
+                            {meal.image_url && <div style={{fontSize: '11px', color: '#666'}}>📷 Has image</div>}
+                          </td>
+                          <td>{meal.meal_type || 'N/A'}</td>
+                          <td>{new Date(meal.featured_date).toLocaleDateString()}</td>
+                          <td>{meal.view_count}</td>
+                          <td>{meal.share_count}</td>
+                          <td>
+                            <span className={`status ${meal.active ? 'active' : 'inactive'}`}>
+                              {meal.active ? 'Active' : 'Inactive'}
+                            </span>
+                          </td>
+                          <td>
+                            <button
+                              onClick={() => handleToggleMeal(meal.id, meal.active)}
+                              className="toggle-btn"
+                            >
+                              {meal.active ? 'Deactivate' : 'Activate'}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteMeal(meal.id)}
+                              className="delete-btn"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </div>
           </div>

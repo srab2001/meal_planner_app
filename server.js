@@ -2236,6 +2236,318 @@ app.delete('/api/admin/dietary-options/:id', requireAdmin, async (req, res) => {
   }
 });
 
+// ============================================================================
+// MEAL OF THE DAY ENDPOINTS
+// ============================================================================
+
+// Public endpoint - Get current/latest meal of the day
+app.get('/api/meal-of-the-day', async (req, res) => {
+  try {
+    const { date } = req.query;
+
+    let query = `
+      SELECT
+        id, title, description, meal_type, cuisine, prep_time, cook_time,
+        servings, ingredients, instructions, image_url, nutrition_info, tags,
+        featured_date, view_count, share_count, published_at
+      FROM meal_of_the_day
+      WHERE active = TRUE
+    `;
+
+    const params = [];
+
+    if (date) {
+      query += ` AND featured_date = $1`;
+      params.push(date);
+    } else {
+      query += ` AND featured_date <= CURRENT_DATE`;
+    }
+
+    query += ` ORDER BY featured_date DESC LIMIT 1`;
+
+    const result = await db.query(query, params);
+
+    if (result.rows.length === 0) {
+      return res.json({ meal: null });
+    }
+
+    // Increment view count
+    await db.query(
+      `UPDATE meal_of_the_day SET view_count = view_count + 1 WHERE id = $1`,
+      [result.rows[0].id]
+    );
+
+    res.json({ meal: result.rows[0] });
+  } catch (error) {
+    console.error('Error fetching meal of the day:', error);
+    res.json({ meal: null });
+  }
+});
+
+// Public endpoint - Track social media share
+app.post('/api/meal-of-the-day/:id/share', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { platform } = req.body;
+
+    if (!platform) {
+      return res.status(400).json({ error: 'Platform is required' });
+    }
+
+    // Get user ID if authenticated
+    let userId = null;
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+
+    if (token) {
+      const decoded = verifyToken(token);
+      if (decoded) {
+        userId = decoded.id;
+      }
+    }
+
+    // Track the share
+    await db.query(`
+      INSERT INTO meal_of_day_shares (meal_id, platform, user_id)
+      VALUES ($1, $2, $3)
+    `, [id, platform, userId]);
+
+    // Increment share count
+    await db.query(
+      `UPDATE meal_of_the_day SET share_count = share_count + 1 WHERE id = $1`,
+      [id]
+    );
+
+    console.log(`📤 Meal ${id} shared on ${platform}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error tracking share:', error);
+    res.status(500).json({ error: 'Failed to track share' });
+  }
+});
+
+// Admin - Get all meals of the day
+app.get('/api/admin/meal-of-the-day', requireAdmin, async (req, res) => {
+  try {
+    const { limit = 50, offset = 0 } = req.query;
+
+    const result = await db.query(`
+      SELECT
+        id, title, description, meal_type, cuisine, prep_time, cook_time,
+        servings, ingredients, instructions, image_url, nutrition_info, tags,
+        featured_date, active, view_count, share_count, created_by,
+        created_at, updated_at, published_at
+      FROM meal_of_the_day
+      ORDER BY featured_date DESC
+      LIMIT $1 OFFSET $2
+    `, [parseInt(limit), parseInt(offset)]);
+
+    res.json({ meals: result.rows });
+  } catch (error) {
+    console.error('Error fetching meals:', error);
+    res.status(500).json({ error: 'Failed to fetch meals' });
+  }
+});
+
+// Admin - Create meal of the day
+app.post('/api/admin/meal-of-the-day', requireAdmin, async (req, res) => {
+  try {
+    const {
+      title,
+      description,
+      meal_type,
+      cuisine,
+      prep_time,
+      cook_time,
+      servings,
+      ingredients,
+      instructions,
+      image_url,
+      nutrition_info,
+      tags,
+      featured_date,
+      active = true
+    } = req.body;
+
+    // Validation
+    if (!title || !ingredients || !instructions) {
+      return res.status(400).json({ error: 'Title, ingredients, and instructions are required' });
+    }
+
+    // If active and featured_date is set, deactivate any other meal for that date
+    if (active && featured_date) {
+      await db.query(`
+        UPDATE meal_of_the_day
+        SET active = FALSE
+        WHERE featured_date = $1 AND active = TRUE
+      `, [featured_date]);
+    }
+
+    const result = await db.query(`
+      INSERT INTO meal_of_the_day (
+        title, description, meal_type, cuisine, prep_time, cook_time,
+        servings, ingredients, instructions, image_url, nutrition_info,
+        tags, featured_date, active, created_by, published_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+      RETURNING *
+    `, [
+      title,
+      description || null,
+      meal_type || null,
+      cuisine || null,
+      prep_time || null,
+      cook_time || null,
+      servings || 2,
+      JSON.stringify(ingredients),
+      JSON.stringify(instructions),
+      image_url || null,
+      nutrition_info ? JSON.stringify(nutrition_info) : null,
+      tags ? JSON.stringify(tags) : '[]',
+      featured_date || new Date().toISOString().split('T')[0],
+      active,
+      req.admin.role, // 'admin' from JWT
+      active ? new Date() : null
+    ]);
+
+    console.log(`✅ Admin created meal of the day: ${title}`);
+    res.json({ success: true, meal: result.rows[0] });
+  } catch (error) {
+    if (error.code === '23505') { // Unique constraint violation
+      return res.status(400).json({ error: 'A meal is already active for this date' });
+    }
+    console.error('Error creating meal:', error);
+    res.status(500).json({ error: 'Failed to create meal' });
+  }
+});
+
+// Admin - Update meal of the day
+app.put('/api/admin/meal-of-the-day/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      title,
+      description,
+      meal_type,
+      cuisine,
+      prep_time,
+      cook_time,
+      servings,
+      ingredients,
+      instructions,
+      image_url,
+      nutrition_info,
+      tags,
+      featured_date,
+      active
+    } = req.body;
+
+    // If activating and featured_date is changing, deactivate others for that date
+    if (active && featured_date) {
+      await db.query(`
+        UPDATE meal_of_the_day
+        SET active = FALSE
+        WHERE featured_date = $1 AND active = TRUE AND id != $2
+      `, [featured_date, id]);
+    }
+
+    const result = await db.query(`
+      UPDATE meal_of_the_day
+      SET
+        title = COALESCE($1, title),
+        description = COALESCE($2, description),
+        meal_type = COALESCE($3, meal_type),
+        cuisine = COALESCE($4, cuisine),
+        prep_time = COALESCE($5, prep_time),
+        cook_time = COALESCE($6, cook_time),
+        servings = COALESCE($7, servings),
+        ingredients = COALESCE($8, ingredients),
+        instructions = COALESCE($9, instructions),
+        image_url = COALESCE($10, image_url),
+        nutrition_info = COALESCE($11, nutrition_info),
+        tags = COALESCE($12, tags),
+        featured_date = COALESCE($13, featured_date),
+        active = COALESCE($14, active),
+        published_at = CASE WHEN $14 = TRUE AND published_at IS NULL THEN CURRENT_TIMESTAMP ELSE published_at END,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $15
+      RETURNING *
+    `, [
+      title,
+      description,
+      meal_type,
+      cuisine,
+      prep_time,
+      cook_time,
+      servings,
+      ingredients ? JSON.stringify(ingredients) : null,
+      instructions ? JSON.stringify(instructions) : null,
+      image_url,
+      nutrition_info ? JSON.stringify(nutrition_info) : null,
+      tags ? JSON.stringify(tags) : null,
+      featured_date,
+      active,
+      id
+    ]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Meal not found' });
+    }
+
+    console.log(`✅ Admin updated meal: ${result.rows[0].title}`);
+    res.json({ success: true, meal: result.rows[0] });
+  } catch (error) {
+    if (error.code === '23505') {
+      return res.status(400).json({ error: 'A meal is already active for this date' });
+    }
+    console.error('Error updating meal:', error);
+    res.status(500).json({ error: 'Failed to update meal' });
+  }
+});
+
+// Admin - Delete meal of the day
+app.delete('/api/admin/meal-of-the-day/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await db.query(`
+      DELETE FROM meal_of_the_day
+      WHERE id = $1
+      RETURNING title
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Meal not found' });
+    }
+
+    console.log(`✅ Admin deleted meal: ${result.rows[0].title}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting meal:', error);
+    res.status(500).json({ error: 'Failed to delete meal' });
+  }
+});
+
+// Admin - Get meal of the day statistics
+app.get('/api/admin/meal-of-the-day/stats', requireAdmin, async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT
+        COUNT(*) as total_meals,
+        SUM(view_count) as total_views,
+        SUM(share_count) as total_shares,
+        COUNT(CASE WHEN active = TRUE THEN 1 END) as active_meals,
+        (SELECT COUNT(DISTINCT platform) FROM meal_of_day_shares) as platforms_used,
+        (SELECT platform FROM meal_of_day_shares GROUP BY platform ORDER BY COUNT(*) DESC LIMIT 1) as most_used_platform
+      FROM meal_of_the_day
+    `);
+
+    res.json({ stats: result.rows[0] });
+  } catch (error) {
+    console.error('Error fetching meal stats:', error);
+    res.status(500).json({ error: 'Failed to fetch statistics' });
+  }
+});
+
 const port = PORT || 5000;
 app.listen(port, () => {
   console.log(`server listening on port ${port}`);
