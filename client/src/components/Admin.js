@@ -576,7 +576,15 @@ function Admin() {
       });
 
       if (response.ok) {
-        setMessage('✅ Meal of the Day created successfully!');
+        const data = await response.json();
+        const wasPublished = newMeal.active;
+
+        if (wasPublished) {
+          setMessage('✅ Meal of the Day created and published! Click "View" button below to see it live.');
+        } else {
+          setMessage('✅ Meal of the Day created as draft. Activate it to publish.');
+        }
+
         setNewMeal({
           title: '',
           description: '',
@@ -594,6 +602,14 @@ function Admin() {
         });
         setShowAiForm(true);
         loadData();
+
+        // Scroll to the meals list to show the new meal
+        setTimeout(() => {
+          const mealsList = document.querySelector('.codes-list');
+          if (mealsList) {
+            mealsList.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 100);
       } else {
         const data = await response.json();
         setMessage(`❌ ${data.error}`);
@@ -1294,7 +1310,36 @@ function Admin() {
 
               {/* Meals List */}
               <div className="codes-list">
-                <h2>Published Meals</h2>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
+                  <h2 style={{margin: 0}}>Published Meals</h2>
+                  {meals.length > 0 && (
+                    <button
+                      onClick={() => window.open('/meal-of-the-day', '_blank')}
+                      className="create-btn"
+                      style={{background: '#4ade80', padding: '10px 20px'}}
+                    >
+                      👁️ View Public Page
+                    </button>
+                  )}
+                </div>
+
+                {meals.some(m => m.active) && (
+                  <div style={{
+                    background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)',
+                    color: 'white',
+                    padding: '12px 20px',
+                    borderRadius: '8px',
+                    marginBottom: '15px',
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px'
+                  }}>
+                    <span>🎉</span>
+                    <span>Your meal is live! Share <strong>/meal-of-the-day</strong> on social media to drive traffic to your app.</span>
+                  </div>
+                )}
+
                 {meals.length === 0 ? (
                   <p>No meals created yet</p>
                 ) : (
@@ -1327,6 +1372,13 @@ function Admin() {
                             </span>
                           </td>
                           <td>
+                            <button
+                              onClick={() => window.open('/meal-of-the-day', '_blank')}
+                              className="create-btn"
+                              style={{marginRight: '5px', padding: '8px 16px', fontSize: '13px', background: '#4ade80'}}
+                            >
+                              👁️ View
+                            </button>
                             <button
                               onClick={() => handleToggleMeal(meal.id, meal.active)}
                               className="toggle-btn"
