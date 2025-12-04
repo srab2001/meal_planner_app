@@ -62,6 +62,18 @@ function App() {
       return;
     }
 
+    // Check for add_meal query parameter (from meal of the day CTA)
+    const urlParams = new URLSearchParams(window.location.search);
+    const mealToAdd = urlParams.get('add_meal');
+    if (mealToAdd) {
+      console.log('🍽️ User wants to add meal:', mealToAdd);
+      localStorage.setItem('pending_meal_id', mealToAdd);
+      // Show a friendly message that they need to sign up first
+      alert('✨ Great choice! Sign in or create an account to add this meal to your personalized plan.');
+      // Clean up URL
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+
     // Check if there's a token in the URL hash (from OAuth redirect)
     const hash = window.location.hash;
     if (hash && hash.includes('token=')) {

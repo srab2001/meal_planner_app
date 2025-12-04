@@ -149,12 +149,12 @@ function MealOfTheDay() {
 
       <div className="cta-section">
         <div className="cta-card">
-          <h2>🍽️ Want More Recipes Like This?</h2>
-          <p>Get personalized meal plans with recipes, shopping lists, and price comparisons from your local stores!</p>
-          <a href="/" className="cta-button">
-            ✨ Try Our Meal Planner App
+          <h2>🍽️ Want This Meal in Your Plan?</h2>
+          <p>Sign up and we'll add this recipe to your personalized meal plan with shopping list and store price comparisons!</p>
+          <a href={`/?add_meal=${meal.id}`} className="cta-button">
+            ✨ Add to My Meal Plan
           </a>
-          <p className="cta-subtext">Create custom meal plans in minutes • Compare store prices • Save money</p>
+          <p className="cta-subtext">Instant signup • Get this recipe + shopping list • Compare store prices • Save money</p>
         </div>
       </div>
 
