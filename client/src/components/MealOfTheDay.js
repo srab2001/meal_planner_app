@@ -147,6 +147,17 @@ function MealOfTheDay() {
         </div>
       </div>
 
+      <div className="cta-section">
+        <div className="cta-card">
+          <h2>🍽️ Want More Recipes Like This?</h2>
+          <p>Get personalized meal plans with recipes, shopping lists, and price comparisons from your local stores!</p>
+          <a href="/" className="cta-button">
+            ✨ Try Our Meal Planner App
+          </a>
+          <p className="cta-subtext">Create custom meal plans in minutes • Compare store prices • Save money</p>
+        </div>
+      </div>
+
       <div className="share-section">
         <h3>Share this recipe!</h3>
         {shareSuccess && <div className="share-success">{shareSuccess}</div>}
