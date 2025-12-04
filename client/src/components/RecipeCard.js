@@ -17,26 +17,36 @@ function RecipeCard() {
   };
 
   useEffect(() => {
+    console.log('🍽️ RecipeCard component mounted');
+    console.log('🍽️ Current URL:', window.location.pathname);
     fetchMeal();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchMeal = async () => {
     try {
       const id = getMealIdFromUrl();
+      console.log('🍽️ Fetching meal with ID:', id);
       const token = localStorage.getItem('admin_token');
       const response = await fetch(`${API_BASE}/api/admin/meal-of-the-day`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
+      console.log('🍽️ Response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('🍽️ Meals data:', data);
         const foundMeal = data.meals.find(m => m.id === id);
         if (foundMeal) {
+          console.log('✅ Meal found:', foundMeal.title);
           setMeal(foundMeal);
+        } else {
+          console.log('🔴 Meal not found with ID:', id);
         }
       }
     } catch (error) {
-      console.error('Error fetching meal:', error);
+      console.error('🔴 Error fetching meal:', error);
     } finally {
       setLoading(false);
     }
@@ -47,9 +57,20 @@ function RecipeCard() {
   };
 
   const handlePDF = () => {
-    if (!meal) return;
+    console.log('📄 Download PDF clicked');
+    if (!meal) {
+      console.log('🔴 No meal data available');
+      return;
+    }
 
     const element = document.querySelector('.recipe-card');
+    if (!element) {
+      console.log('🔴 Recipe card element not found');
+      alert('Error: Could not find recipe card to export');
+      return;
+    }
+
+    console.log('📄 Generating PDF...');
     const opt = {
       margin: 0.5,
       filename: `${meal.title.replace(/[^a-z0-9]/gi, '_')}_recipe.pdf`,
@@ -59,6 +80,7 @@ function RecipeCard() {
     };
 
     html2pdf().set(opt).from(element).save();
+    console.log('✅ PDF generation initiated');
   };
 
   const generateEmailTemplate = () => {
@@ -119,14 +141,22 @@ function RecipeCard() {
   };
 
   const handleEmail = () => {
-    if (!meal) return;
+    console.log('✉️ Copy Email HTML clicked');
+    if (!meal) {
+      console.log('🔴 No meal data available');
+      return;
+    }
 
     const emailHTML = generateEmailTemplate();
-    const subject = encodeURIComponent(`Recipe: ${meal.title}`);
+    console.log('✉️ Email HTML generated, length:', emailHTML.length);
 
     // Copy HTML to clipboard
     navigator.clipboard.writeText(emailHTML).then(() => {
+      console.log('✅ Email HTML copied to clipboard');
       alert('✅ Email HTML copied to clipboard!\n\nPaste this into your email client (Gmail, Mailchimp, etc.) and send.\n\nTip: Most email clients have an "Insert HTML" or "Code view" option.');
+    }).catch(err => {
+      console.error('🔴 Failed to copy to clipboard:', err);
+      alert('Error copying to clipboard. Please try again.');
     });
   };
 
@@ -151,11 +181,17 @@ ${hashtags} #Recipe #Cooking #MealPlanning #FoodLover #HomeCooking`;
   };
 
   const handleSocialPost = () => {
-    if (!meal) return;
+    console.log('📱 Copy Social Post clicked');
+    if (!meal) {
+      console.log('🔴 No meal data available');
+      return;
+    }
 
     const socialText = generateSocialPost();
+    console.log('📱 Social post generated, length:', socialText.length);
 
     navigator.clipboard.writeText(socialText).then(() => {
+      console.log('✅ Social post copied to clipboard');
       alert(`✅ Social media post copied to clipboard!
 
 Post this on:
@@ -165,6 +201,9 @@ Post this on:
 • LinkedIn
 
 The text includes hashtags and a link to your app.`);
+    }).catch(err => {
+      console.error('🔴 Failed to copy to clipboard:', err);
+      alert('Error copying to clipboard. Please try again.');
     });
   };
 
