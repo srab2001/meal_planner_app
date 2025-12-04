@@ -2377,6 +2377,9 @@ app.get('/api/admin/meal-of-the-day', requireAdmin, async (req, res) => {
 // Admin - Create meal of the day
 app.post('/api/admin/meal-of-the-day', requireAdmin, async (req, res) => {
   try {
+    console.log('🔵 Creating meal of the day, admin:', req.admin);
+    console.log('🔵 Request body:', req.body);
+
     const {
       title,
       description,
@@ -2394,13 +2397,17 @@ app.post('/api/admin/meal-of-the-day', requireAdmin, async (req, res) => {
       active = true
     } = req.body;
 
+    console.log('🔵 Extracted data - title:', title, 'ingredients:', ingredients?.length, 'instructions:', instructions?.length);
+
     // Validation
     if (!title || !ingredients || !instructions) {
+      console.log('🔴 Validation failed');
       return res.status(400).json({ error: 'Title, ingredients, and instructions are required' });
     }
 
     // If active and featured_date is set, deactivate any other meal for that date
     if (active && featured_date) {
+      console.log('🔵 Deactivating other meals for date:', featured_date);
       await db.query(`
         UPDATE meal_of_the_day
         SET active = FALSE
@@ -2408,6 +2415,7 @@ app.post('/api/admin/meal-of-the-day', requireAdmin, async (req, res) => {
       `, [featured_date]);
     }
 
+    console.log('🔵 Inserting meal into database...');
     const result = await db.query(`
       INSERT INTO meal_of_the_day (
         title, description, meal_type, cuisine, prep_time, cook_time,
@@ -2430,7 +2438,7 @@ app.post('/api/admin/meal-of-the-day', requireAdmin, async (req, res) => {
       tags ? JSON.stringify(tags) : '[]',
       featured_date || new Date().toISOString().split('T')[0],
       active,
-      req.admin.role, // 'admin' from JWT
+      req.admin?.role || 'admin', // Safely access role with fallback
       active ? new Date() : null
     ]);
 
@@ -2438,10 +2446,18 @@ app.post('/api/admin/meal-of-the-day', requireAdmin, async (req, res) => {
     res.json({ success: true, meal: result.rows[0] });
   } catch (error) {
     if (error.code === '23505') { // Unique constraint violation
+      console.error('🔴 Unique constraint violation:', error.message);
       return res.status(400).json({ error: 'A meal is already active for this date' });
     }
-    console.error('Error creating meal:', error);
-    res.status(500).json({ error: 'Failed to create meal' });
+    console.error('🔴 Error creating meal - Full error:', error);
+    console.error('🔴 Error code:', error.code);
+    console.error('🔴 Error message:', error.message);
+    console.error('🔴 Error detail:', error.detail);
+    res.status(500).json({
+      error: 'Failed to create meal',
+      details: error.message,
+      code: error.code
+    });
   }
 });
 
