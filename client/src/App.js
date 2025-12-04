@@ -9,6 +9,7 @@ import MealPlanView from './components/MealPlanView';
 import Profile from './components/Profile';
 import Admin from './components/Admin';
 import MealOfTheDay from './components/MealOfTheDay';
+import RecipeCard from './components/RecipeCard';
 
 // Use relative paths in production (proxied by Vercel) or localhost in development
 const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
@@ -52,6 +53,12 @@ function App() {
     // Check if accessing meal of the day
     if (window.location.pathname === '/meal-of-the-day') {
       setCurrentView('meal-of-the-day');
+      return;
+    }
+
+    // Check if accessing recipe card
+    if (window.location.pathname.startsWith('/recipe-card/')) {
+      setCurrentView('recipe-card');
       return;
     }
 
@@ -312,6 +319,10 @@ function App() {
 
       {currentView === 'meal-of-the-day' && (
         <MealOfTheDay />
+      )}
+
+      {currentView === 'recipe-card' && (
+        <RecipeCard />
       )}
     </div>
   );

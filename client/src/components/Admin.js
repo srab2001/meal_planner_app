@@ -580,9 +580,9 @@ function Admin() {
         const wasPublished = newMeal.active;
 
         if (wasPublished) {
-          setMessage('✅ Meal of the Day created and published! Click "View" button below to see it live.');
+          setMessage('✅ Meal created! Click "Recipe Card" to print/email it, or "View" to see it live.');
         } else {
-          setMessage('✅ Meal of the Day created as draft. Activate it to publish.');
+          setMessage('✅ Meal created as draft. Click "Recipe Card" to see printable version.');
         }
 
         setNewMeal({
@@ -1382,6 +1382,15 @@ function Admin() {
                               style={{marginRight: '5px', padding: '8px 16px', fontSize: '13px', background: '#4ade80', textDecoration: 'none', display: 'inline-block'}}
                             >
                               👁️ View
+                            </a>
+                            <a
+                              href={`/recipe-card/${meal.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="create-btn"
+                              style={{marginRight: '5px', padding: '8px 16px', fontSize: '13px', background: '#667eea', textDecoration: 'none', display: 'inline-block'}}
+                            >
+                              🖨️ Recipe Card
                             </a>
                             <button
                               onClick={() => handleToggleMeal(meal.id, meal.active)}
