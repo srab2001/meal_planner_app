@@ -514,41 +514,59 @@ app.post('/api/generate-meals', aiLimiter, requireAuth, async (req, res) => {
 
     console.log(`Generating meal plan for user: ${req.user.email}`);
 
-    // Check user subscription status and usage limits
-    const subscription = await db.query(
-      'SELECT plan_type FROM subscriptions WHERE user_id = $1',
-      [req.user.id]
-    );
-
-    const planType = subscription.rows[0]?.plan_type || 'free';
-
-    if (planType === 'free') {
-      // Check monthly usage for free tier
-      const usageResult = await db.query(`
-        SELECT COUNT(*) as count
-        FROM usage_stats
-        WHERE user_id = $1
-          AND action_type = 'meal_plan_generated'
-          AND created_at >= date_trunc('month', CURRENT_TIMESTAMP)
-      `, [req.user.id]);
-
-      const usageCount = parseInt(usageResult.rows[0].count);
-
-      if (usageCount >= 10) {
-        console.log(`⚠️  Free tier limit reached for ${req.user.email} (${usageCount}/10)`);
-        return res.status(403).json({
-          error: 'Free tier limit reached',
-          message: 'You have generated 10 meal plans this month. Upgrade to Premium for unlimited access.',
-          usageCount: usageCount,
-          limit: 10,
-          planType: 'free',
-          upgradeUrl: '/pricing'
-        });
+    // Check if this is the test user (bypass all limits)
+    let isTestUser = false;
+    try {
+      const testUserResult = await db.query(`
+        SELECT value FROM app_settings WHERE key = 'test_user_email'
+      `);
+      const testUserEmail = testUserResult.rows[0]?.value?.trim().toLowerCase();
+      if (testUserEmail && req.user.email.toLowerCase() === testUserEmail) {
+        isTestUser = true;
+        console.log(`🧪 Test user detected - bypassing all limits`);
       }
+    } catch (error) {
+      // If settings table doesn't exist, just continue normally
+      console.log('Could not check test user setting:', error.message);
+    }
 
-      console.log(`✅ Usage: ${usageCount}/10 meal plans this month`);
-    } else {
-      console.log(`✅ Premium user - unlimited access`);
+    if (!isTestUser) {
+      // Check user subscription status and usage limits
+      const subscription = await db.query(
+        'SELECT plan_type FROM subscriptions WHERE user_id = $1',
+        [req.user.id]
+      );
+
+      const planType = subscription.rows[0]?.plan_type || 'free';
+
+      if (planType === 'free') {
+        // Check monthly usage for free tier
+        const usageResult = await db.query(`
+          SELECT COUNT(*) as count
+          FROM usage_stats
+          WHERE user_id = $1
+            AND action_type = 'meal_plan_generated'
+            AND created_at >= date_trunc('month', CURRENT_TIMESTAMP)
+        `, [req.user.id]);
+
+        const usageCount = parseInt(usageResult.rows[0].count);
+
+        if (usageCount >= 10) {
+          console.log(`⚠️  Free tier limit reached for ${req.user.email} (${usageCount}/10)`);
+          return res.status(403).json({
+            error: 'Free tier limit reached',
+            message: 'You have generated 10 meal plans this month. Upgrade to Premium for unlimited access.',
+            usageCount: usageCount,
+            limit: 10,
+            planType: 'free',
+            upgradeUrl: '/pricing'
+          });
+        }
+
+        console.log(`✅ Usage: ${usageCount}/10 meal plans this month`);
+      } else {
+        console.log(`✅ Premium user - unlimited access`);
+      }
     }
 
     console.log(`Primary Store: ${primaryStore?.name}, ZIP: ${zipCode}`);
@@ -1934,23 +1952,30 @@ app.get('/api/admin/settings', requireAdmin, async (req, res) => {
     const result = await db.query(`
       SELECT key, value, updated_at
       FROM app_settings
-      WHERE key = 'free_meal_plans_limit'
+      WHERE key IN ('free_meal_plans_limit', 'test_user_email')
     `);
 
-    const freeMealPlansLimit = result.rows.length > 0
-      ? parseInt(result.rows[0].value)
-      : 10; // Default
+    const settings = {};
+    result.rows.forEach(row => {
+      if (row.key === 'free_meal_plans_limit') {
+        settings.free_meal_plans_limit = parseInt(row.value);
+      } else if (row.key === 'test_user_email') {
+        settings.test_user_email = row.value;
+      }
+    });
 
     res.json({
       settings: {
-        free_meal_plans_limit: freeMealPlansLimit
+        free_meal_plans_limit: settings.free_meal_plans_limit || 10,
+        test_user_email: settings.test_user_email || ''
       }
     });
   } catch (error) {
     // Table might not exist yet, return defaults
     res.json({
       settings: {
-        free_meal_plans_limit: 10
+        free_meal_plans_limit: 10,
+        test_user_email: ''
       }
     });
   }
@@ -1959,7 +1984,7 @@ app.get('/api/admin/settings', requireAdmin, async (req, res) => {
 // Update app settings
 app.put('/api/admin/settings', requireAdmin, async (req, res) => {
   try {
-    const { free_meal_plans_limit } = req.body;
+    const { free_meal_plans_limit, test_user_email } = req.body;
 
     if (free_meal_plans_limit !== undefined) {
       await db.query(`
@@ -1970,6 +1995,17 @@ app.put('/api/admin/settings', requireAdmin, async (req, res) => {
       `, [free_meal_plans_limit.toString()]);
 
       console.log(`✅ Admin updated free meal plans limit: ${free_meal_plans_limit}`);
+    }
+
+    if (test_user_email !== undefined) {
+      await db.query(`
+        INSERT INTO app_settings (key, value)
+        VALUES ('test_user_email', $1)
+        ON CONFLICT (key)
+        DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP
+      `, [test_user_email.trim()]);
+
+      console.log(`✅ Admin updated test user email: ${test_user_email || '(cleared)'}`);
     }
 
     res.json({ success: true });
