@@ -52,6 +52,12 @@ function Admin() {
     featured_date: new Date().toISOString().split('T')[0],
     active: true
   });
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiPreferences, setAiPreferences] = useState({
+    cuisine: '',
+    mealType: 'dinner'
+  });
+  const [showAiForm, setShowAiForm] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem('admin_token');
@@ -453,6 +459,62 @@ function Admin() {
     setNewMeal({ ...newMeal, instructions: updated });
   };
 
+  // AI Generation Handler
+  const handleGenerateAI = async (e) => {
+    e.preventDefault();
+    const token = localStorage.getItem('admin_token');
+    setAiGenerating(true);
+    setMessage('');
+
+    try {
+      setMessage('🤖 Generating meal with AI... This may take 30-60 seconds...');
+
+      const response = await fetch(`${API_BASE}/api/admin/meal-of-the-day/generate-ai`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          preferences: aiPreferences
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const generatedMeal = data.meal;
+
+        // Populate form with AI-generated content
+        setNewMeal({
+          title: generatedMeal.title,
+          description: generatedMeal.description,
+          meal_type: generatedMeal.meal_type,
+          cuisine: generatedMeal.cuisine,
+          prep_time: generatedMeal.prep_time,
+          cook_time: generatedMeal.cook_time,
+          servings: generatedMeal.servings,
+          ingredients: generatedMeal.ingredients,
+          instructions: generatedMeal.instructions,
+          image_url: generatedMeal.image_url,
+          tags: generatedMeal.tags.join(', '),
+          featured_date: generatedMeal.featured_date,
+          active: false // Let admin review before publishing
+        });
+
+        setShowAiForm(false);
+        setMessage('✅ AI meal generated! Review and edit if needed, then click "Create Meal of the Day" to publish.');
+      } else {
+        const data = await response.json();
+        setMessage(`❌ ${data.error || 'Failed to generate meal with AI'}`);
+      }
+    } catch (error) {
+      console.error('Error generating AI meal:', error);
+      setMessage('❌ Failed to generate meal with AI. Please try again.');
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
   const handleCreateMeal = async (e) => {
     e.preventDefault();
     const token = localStorage.getItem('admin_token');
@@ -504,6 +566,7 @@ function Admin() {
           featured_date: new Date().toISOString().split('T')[0],
           active: true
         });
+        setShowAiForm(true);
         loadData();
       } else {
         const data = await response.json();
@@ -949,9 +1012,86 @@ function Admin() {
             )}
 
             <div className="codes-section">
+              {/* AI Generation Form */}
+              {showAiForm && (
+                <div className="create-code-form" style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', marginBottom: '20px'}}>
+                  <h2 style={{color: 'white'}}>🤖 Generate Meal with AI</h2>
+                  <p style={{marginBottom: '15px', opacity: 0.9}}>Let AI create a persuasive meal with an image and complete recipe!</p>
+
+                  <form onSubmit={handleGenerateAI}>
+                    <div className="form-row">
+                      <input
+                        type="text"
+                        placeholder="Cuisine (optional, e.g., Italian, Thai, Mexican)"
+                        value={aiPreferences.cuisine}
+                        onChange={(e) => setAiPreferences({...aiPreferences, cuisine: e.target.value})}
+                        style={{background: 'white', color: '#333'}}
+                      />
+                      <select
+                        value={aiPreferences.mealType}
+                        onChange={(e) => setAiPreferences({...aiPreferences, mealType: e.target.value})}
+                        style={{background: 'white', color: '#333'}}
+                      >
+                        <option value="breakfast">Breakfast</option>
+                        <option value="lunch">Lunch</option>
+                        <option value="dinner">Dinner</option>
+                        <option value="snack">Snack</option>
+                      </select>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="create-btn"
+                      disabled={aiGenerating}
+                      style={{background: 'white', color: '#667eea', fontWeight: 'bold'}}
+                    >
+                      {aiGenerating ? '🤖 Generating... (30-60s)' : '✨ Generate Meal with AI'}
+                    </button>
+                  </form>
+
+                  <p style={{fontSize: '12px', marginTop: '10px', opacity: 0.8}}>
+                    AI will create: persuasive title, description, ingredients, instructions, and DALL-E generated image
+                  </p>
+                </div>
+              )}
+
               {/* Create Meal Form */}
               <div className="create-code-form">
-                <h2>Create Meal of the Day</h2>
+                <h2>
+                  {showAiForm ? 'Or Create Manually' : '📝 Review AI-Generated Meal'}
+                  {!showAiForm && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAiForm(true);
+                        setNewMeal({
+                          title: '',
+                          description: '',
+                          meal_type: 'dinner',
+                          cuisine: '',
+                          prep_time: '',
+                          cook_time: '',
+                          servings: 2,
+                          ingredients: [''],
+                          instructions: [''],
+                          image_url: '',
+                          tags: '',
+                          featured_date: new Date().toISOString().split('T')[0],
+                          active: true
+                        });
+                      }}
+                      className="toggle-btn"
+                      style={{marginLeft: '15px', fontSize: '14px'}}
+                    >
+                      🔄 Generate New
+                    </button>
+                  )}
+                </h2>
+                {newMeal.image_url && !showAiForm && (
+                  <div style={{marginBottom: '15px'}}>
+                    <img src={newMeal.image_url} alt="AI Generated Meal" style={{maxWidth: '100%', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)'}} />
+                  </div>
+                )}
                 <form onSubmit={handleCreateMeal}>
                   <div className="form-row">
                     <input

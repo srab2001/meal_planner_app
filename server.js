@@ -2548,6 +2548,109 @@ app.get('/api/admin/meal-of-the-day/stats', requireAdmin, async (req, res) => {
   }
 });
 
+// Admin - Generate meal of the day with AI
+app.post('/api/admin/meal-of-the-day/generate-ai', requireAdmin, async (req, res) => {
+  try {
+    const { preferences } = req.body;
+    console.log('🤖 Generating meal with AI...');
+
+    // Generate meal details with GPT
+    const mealPrompt = `Create a unique, delicious, and persuasive meal recipe. Make it sound irresistible!
+
+${preferences?.cuisine ? `Cuisine: ${preferences.cuisine}` : 'Choose any popular cuisine'}
+${preferences?.mealType ? `Meal type: ${preferences.mealType}` : 'Meal type: dinner'}
+
+Return a JSON object with:
+- title: A compelling, mouthwatering meal name (make it sound amazing!)
+- description: A persuasive 2-3 sentence description that makes people want to try this meal
+- cuisine: The cuisine type
+- meal_type: breakfast, lunch, dinner, or snack
+- prep_time: Realistic prep time (e.g., "15 mins")
+- cook_time: Realistic cook time (e.g., "30 mins")
+- servings: Number of servings (2-6)
+- ingredients: Array of ingredient strings with measurements (e.g., ["2 cups flour", "1 tsp salt"])
+- instructions: Array of step-by-step cooking instructions (at least 5 steps)
+- tags: Array of 3-5 descriptive tags (e.g., ["quick", "healthy", "family-friendly"])
+
+Make the meal sound amazing and ensure the recipe is complete and realistic!`;
+
+    const mealCompletion = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a professional chef and food writer who creates irresistible recipes. Always return valid JSON only, no markdown formatting.'
+        },
+        { role: 'user', content: mealPrompt }
+      ],
+      temperature: 0.8,
+      max_tokens: 2000
+    });
+
+    let mealData;
+    try {
+      const content = mealCompletion.choices[0].message.content.trim();
+      // Remove markdown code blocks if present
+      const jsonContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+      mealData = JSON.parse(jsonContent);
+    } catch (parseError) {
+      console.error('Error parsing GPT response:', parseError);
+      console.log('Raw response:', mealCompletion.choices[0].message.content);
+      return res.status(500).json({ error: 'Failed to parse AI response' });
+    }
+
+    console.log(`📝 Generated meal: ${mealData.title}`);
+
+    // Generate image with DALL-E
+    console.log('🎨 Generating meal image with DALL-E...');
+
+    const imagePrompt = `Professional food photography of ${mealData.title}.
+${mealData.description}
+The dish should look appetizing, well-plated, and restaurant-quality.
+Natural lighting, beautiful presentation, high-quality photo.`;
+
+    const imageResponse = await openai.images.generate({
+      model: 'dall-e-3',
+      prompt: imagePrompt,
+      n: 1,
+      size: '1024x1024',
+      quality: 'standard'
+    });
+
+    const imageUrl = imageResponse.data[0].url;
+    console.log('✅ Image generated successfully');
+
+    // Get app URL for the call-to-action link
+    const appUrl = process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : (process.env.NODE_ENV === 'production'
+        ? 'https://your-app.vercel.app'
+        : 'http://localhost:3000');
+
+    // Return generated meal data
+    res.json({
+      meal: {
+        ...mealData,
+        image_url: imageUrl,
+        app_link: `${appUrl}/meal-of-the-day`,
+        featured_date: new Date().toISOString().split('T')[0],
+        active: false // Don't auto-publish, let admin review first
+      }
+    });
+
+    console.log('✅ AI meal generation complete');
+  } catch (error) {
+    console.error('Error generating meal with AI:', error);
+    if (error.response) {
+      console.error('OpenAI API error:', error.response.data);
+    }
+    res.status(500).json({
+      error: 'Failed to generate meal with AI',
+      details: error.message
+    });
+  }
+});
+
 const port = PORT || 5000;
 app.listen(port, () => {
   console.log(`server listening on port ${port}`);
