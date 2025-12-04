@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './ZIPCodeInput.css';
 
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
 
 function ZIPCodeInput({ onSubmit, user }) {
   const [zipCode, setZipCode] = useState('');
@@ -16,7 +16,7 @@ function ZIPCodeInput({ onSubmit, user }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateZipCode(zipCode)) {
       setError('Please enter a valid ZIP code (e.g., 27617)');
       return;
@@ -26,13 +26,16 @@ function ZIPCodeInput({ onSubmit, user }) {
     setIsLoading(true);
 
     try {
+      // Get JWT token from localStorage
+      const token = localStorage.getItem('auth_token');
+
       // Call backend to find stores
       const response = await fetch(`${API_BASE}/api/find-stores`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
         },
-        credentials: 'include',
         body: JSON.stringify({
           zipCode: zipCode.trim(),
           storeName: storeName.trim() || undefined
@@ -44,7 +47,7 @@ function ZIPCodeInput({ onSubmit, user }) {
       }
 
       const data = await response.json();
-      
+
       // Pass ZIP and stores to parent
       onSubmit({
         zipCode: zipCode.trim(),

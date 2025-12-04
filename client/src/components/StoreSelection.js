@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './StoreSelection.css';
 
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
 
 function StoreSelection({ stores, zipCode, onSubmit, onBack, onRefreshStores }) {
   const [primaryStore, setPrimaryStore] = useState(null);
@@ -43,16 +43,19 @@ function StoreSelection({ stores, zipCode, onSubmit, onBack, onRefreshStores }) 
 
   const handleFindMoreStores = async () => {
     setIsLoading(true);
-    
+
     try {
       console.log('🔄 Finding more stores for ZIP:', zipCode);
+
+      // Get JWT token from localStorage
+      const token = localStorage.getItem('auth_token');
 
       const response = await fetch(`${API_BASE}/api/find-stores`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
         },
-        credentials: 'include',
         body: JSON.stringify({ zipCode }),
       });
 

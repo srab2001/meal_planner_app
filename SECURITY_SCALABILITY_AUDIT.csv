@@ -1,0 +1,21 @@
+Priority,Category,Issue,Severity,Current State,Risk Description,Impact,Recommended Solution,Implementation Effort,Estimated Cost,Timeline
+1,Security,CORS Misconfiguration,CRITICAL,"origin: true (accepts ALL domains)","Any website can make authenticated requests, steal user data, or perform actions on behalf of users",High - Data theft & unauthorized actions,"Whitelist specific origins: [FRONTEND_BASE, 'https://yourapp.vercel.app']",Low,Free,1-2 hours
+2,Security,No Rate Limiting,CRITICAL,No protection against abuse,"DoS attacks, brute force, API abuse, unlimited OpenAI API costs",Very High - Financial & availability,"Install express-rate-limit, set 100 req/15min per IP",Low,Free,2-3 hours
+3,Scalability,File-Based Storage,CRITICAL,"JSON files for favorites, history, discount tracking","Doesn't scale, file corruption, slow I/O, blocks event loop, no ACID guarantees",Very High - App failure at scale,Migrate to PostgreSQL or MongoDB,High,$0-25/mo,1-2 weeks
+4,Security,Session Storage In-Memory,HIGH,Sessions in process memory,"Sessions lost on restart, doesn't scale across servers, memory leaks",High - Poor UX & scalability,Implement Redis session store,Medium,$10-25/mo,1 week
+5,Security,No Input Validation,HIGH,Direct use of user input,"Prompt injection, XSS, path traversal, file system manipulation",High - Security breaches,Install express-validator or joi,Medium,Free,3-5 days
+6,Security,Missing Security Headers,HIGH,No helmet or security middleware,"XSS attacks, clickjacking, MIME sniffing",Medium - Security vulnerabilities,Install helmet middleware,Low,Free,1 hour
+7,Security,Weak Hashing (MD5),MEDIUM,MD5 for email hashing,MD5 is broken - emails can be reverse-engineered,Medium - Privacy breach,Switch to SHA-256 with HMAC or UUIDs,Low,Free,2-3 hours
+8,Security,Sensitive Data Logging,MEDIUM,Console.log with emails & session IDs,Production logs expose user emails & session data,Medium - Privacy violation,"Use pino/winston with redaction, remove console.logs",Medium,Free,1 week
+9,Scalability,Synchronous File Operations,HIGH,fs.readFileSync blocks event loop,Blocks ALL requests during file I/O,High - Performance degradation,Convert to fs.promises (async),Medium,Free,3-5 days
+10,Scalability,No Caching Strategy,MEDIUM,Every request hits OpenAI or reads files,High costs & slow responses,Medium - Cost & performance,"Implement node-cache or Redis, cache meal plans by preference hash",Medium,$0-25/mo,1 week
+11,Scalability,No OpenAI Rate Limit Handling,MEDIUM,No retry logic or backoff,Fails when hitting OpenAI limits,Medium - Poor UX,Implement retry with exponential backoff,Low,Free,1-2 days
+12,Security,No Admin Role System,MEDIUM,All authenticated users have same permissions,Anyone can access /api/discount-usage-stats,Low - Minor data exposure,Add admin role & RBAC middleware,Medium,Free,3-5 days
+13,Security,Session Fixation Vulnerability,MEDIUM,Session ID doesn't regenerate on login,Session hijacking possible,Medium - Account takeover,Call req.session.regenerate() after auth,Low,Free,1 hour
+14,Infrastructure,No Backup Strategy,HIGH,No backups for file data,Complete data loss on crash/restart,High - Data loss,Set up automated database backups,Low,$5-10/mo,2-3 days
+15,Infrastructure,Single Point of Failure,HIGH,Single Render service,Complete outage if server fails,High - Downtime,Multiple instances with load balancer,High,$20-50/mo,1-2 weeks
+16,Infrastructure,No Monitoring/Observability,HIGH,No error tracking or APM,Blind to errors & performance issues,Medium - Can't debug production,"Install Sentry (free tier), add health checks",Medium,Free-$26/mo,1 week
+17,Security,Environment Variable Security,LOW,Secrets in .env file,Accidental git commit or exposure,Low - Secret leaks,Use Render secret management,Low,Free,1 hour
+18,Cost,Unoptimized OpenAI Usage,MEDIUM,No caching of similar requests,$0.01-0.05 per meal plan × users,Medium - High API costs,"Cache similar requests, monitor token usage",Medium,Saves money,1 week
+19,Scalability,No Database Indexes,LOW,Linear search through JSON arrays,Slow queries as data grows,Low - Performance at scale,Add database indexes (after migration),Low,Free,1-2 days
+20,Scalability,No Data Migration Strategy,MEDIUM,No migration plan,Can't migrate to database easily,Medium - Technical debt,Write migration scripts now,Medium,Free,1 week
