@@ -1,11 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './Questionnaire.css';
 
-const CUISINE_OPTIONS = [
-  'Italian', 'Mexican', 'Chinese', 'Japanese', 'Indian',
-  'Thai', 'Mediterranean', 'American', 'French', 'Korean',
-  'Vietnamese', 'Greek', 'Spanish', 'Middle Eastern'
-];
+const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
 
 const DAYS_OF_WEEK = [
   { id: 'Monday', icon: '📅', label: 'Monday' },
@@ -17,7 +13,26 @@ const DAYS_OF_WEEK = [
   { id: 'Sunday', icon: '🎉', label: 'Sunday' }
 ];
 
+// Emoji icons for dietary preferences
+const DIETARY_ICONS = {
+  diabetic: '🩺',
+  dairyFree: '🥛',
+  glutenFree: '🌾',
+  peanutFree: '🥜',
+  vegetarian: '🥗',
+  kosher: '✡️',
+  vegan: '🌱',
+  lowCarb: '🥬',
+  keto: '🥑',
+  paleo: '🦴'
+};
+
 function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
+  // Dynamic options loaded from API
+  const [cuisineOptions, setCuisineOptions] = useState([]);
+  const [dietaryOptionsData, setDietaryOptionsData] = useState([]);
+
+  // User selections
   const [cuisines, setCuisines] = useState([]);
   const [numberOfPeople, setNumberOfPeople] = useState(2);
   const [meals, setMeals] = useState({
@@ -34,16 +49,120 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
     Saturday: true,
     Sunday: true
   });
-  const [dietaryPreferences, setDietaryPreferences] = useState({
-    diabetic: false,
-    dairyFree: false,
-    glutenFree: false,
-    peanutFree: false,
-    vegetarian: false,
-    kosher: false
-  });
+  const [dietaryPreferences, setDietaryPreferences] = useState({});
   const [leftovers, setLeftovers] = useState(['']);
   const [errors, setErrors] = useState({});
+  const [loadingPreferences, setLoadingPreferences] = useState(true);
+
+  // Load cuisine and dietary options from API on mount
+  useEffect(() => {
+    const loadOptions = async () => {
+      try {
+        // Load cuisines
+        const cuisinesResponse = await fetch(`${API_BASE}/api/cuisines`);
+        if (cuisinesResponse.ok) {
+          const cuisinesData = await cuisinesResponse.json();
+          setCuisineOptions(cuisinesData.cuisines.map(c => c.name));
+        }
+
+        // Load dietary options
+        const dietaryResponse = await fetch(`${API_BASE}/api/dietary-options`);
+        if (dietaryResponse.ok) {
+          const dietaryData = await dietaryResponse.json();
+          setDietaryOptionsData(dietaryData.options);
+
+          // Initialize dietary preferences state with all options set to false
+          const initialDietaryState = {};
+          dietaryData.options.forEach(option => {
+            initialDietaryState[option.key] = false;
+          });
+          setDietaryPreferences(initialDietaryState);
+        }
+      } catch (error) {
+        console.error('Error loading options:', error);
+        // Fail silently - will use empty arrays
+      }
+    };
+
+    loadOptions();
+  }, []);
+
+  // Load user preferences on mount
+  useEffect(() => {
+    const loadPreferences = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch(`${API_BASE}/api/user/preferences`, {
+          headers: {
+            'Authorization': token ? `Bearer ${token}` : ''
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const prefs = data.preferences;
+
+          if (prefs) {
+            // Pre-fill cuisines
+            if (prefs.default_cuisines && prefs.default_cuisines.length > 0) {
+              setCuisines(prefs.default_cuisines);
+            }
+
+            // Pre-fill number of people
+            if (prefs.default_people) {
+              setNumberOfPeople(prefs.default_people);
+            }
+
+            // Pre-fill meals (convert array to object)
+            if (prefs.default_meals && prefs.default_meals.length > 0) {
+              const mealsObj = {
+                breakfast: prefs.default_meals.includes('breakfast'),
+                lunch: prefs.default_meals.includes('lunch'),
+                dinner: prefs.default_meals.includes('dinner')
+              };
+              setMeals(mealsObj);
+            }
+
+            // Pre-fill days (convert array to object)
+            if (prefs.default_days && prefs.default_days.length > 0) {
+              const daysObj = {
+                Monday: prefs.default_days.includes('Monday'),
+                Tuesday: prefs.default_days.includes('Tuesday'),
+                Wednesday: prefs.default_days.includes('Wednesday'),
+                Thursday: prefs.default_days.includes('Thursday'),
+                Friday: prefs.default_days.includes('Friday'),
+                Saturday: prefs.default_days.includes('Saturday'),
+                Sunday: prefs.default_days.includes('Sunday')
+              };
+              setSelectedDays(daysObj);
+            }
+
+            // Pre-fill dietary preferences (convert array to object)
+            if (prefs.default_dietary && prefs.default_dietary.length > 0) {
+              setDietaryPreferences(prev => {
+                const updated = {...prev};
+                prefs.default_dietary.forEach(key => {
+                  if (key in updated) {
+                    updated[key] = true;
+                  }
+                });
+                return updated;
+              });
+            }
+
+            console.log('✅ Preferences loaded and applied');
+          }
+        }
+      } catch (error) {
+        console.error('Error loading preferences:', error);
+        // Fail silently - user can still fill out the form manually
+      } finally {
+        setLoadingPreferences(false);
+      }
+    };
+
+    loadPreferences();
+  }, []);
 
   const toggleCuisine = (cuisine) => {
     setCuisines(prev => {
@@ -147,7 +266,7 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
           <h3>What cuisines do you enjoy?</h3>
           <p className="hint">Select all that apply</p>
           <div className="cuisine-grid">
-            {CUISINE_OPTIONS.map(cuisine => (
+            {cuisineOptions.map(cuisine => (
               <button
                 key={cuisine}
                 className={`cuisine-chip ${cuisines.includes(cuisine) ? 'selected' : ''}`}
@@ -213,65 +332,17 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
           <h3>Any dietary restrictions?</h3>
           <p className="hint">Select all that apply (optional)</p>
           <div className="meal-checkboxes">
-            <label className={`meal-checkbox ${dietaryPreferences.diabetic ? 'checked' : ''}`}>
-              <input
-                type="checkbox"
-                checked={dietaryPreferences.diabetic}
-                onChange={() => toggleDietaryPreference('diabetic')}
-              />
-              <span className="meal-icon">🩺</span>
-              <span className="meal-name">Diabetic</span>
-            </label>
-
-            <label className={`meal-checkbox ${dietaryPreferences.dairyFree ? 'checked' : ''}`}>
-              <input
-                type="checkbox"
-                checked={dietaryPreferences.dairyFree}
-                onChange={() => toggleDietaryPreference('dairyFree')}
-              />
-              <span className="meal-icon">🥛</span>
-              <span className="meal-name">Dairy Free</span>
-            </label>
-
-            <label className={`meal-checkbox ${dietaryPreferences.glutenFree ? 'checked' : ''}`}>
-              <input
-                type="checkbox"
-                checked={dietaryPreferences.glutenFree}
-                onChange={() => toggleDietaryPreference('glutenFree')}
-              />
-              <span className="meal-icon">🌾</span>
-              <span className="meal-name">Gluten Free</span>
-            </label>
-
-            <label className={`meal-checkbox ${dietaryPreferences.peanutFree ? 'checked' : ''}`}>
-              <input
-                type="checkbox"
-                checked={dietaryPreferences.peanutFree}
-                onChange={() => toggleDietaryPreference('peanutFree')}
-              />
-              <span className="meal-icon">🥜</span>
-              <span className="meal-name">Peanut Free</span>
-            </label>
-
-            <label className={`meal-checkbox ${dietaryPreferences.vegetarian ? 'checked' : ''}`}>
-              <input
-                type="checkbox"
-                checked={dietaryPreferences.vegetarian}
-                onChange={() => toggleDietaryPreference('vegetarian')}
-              />
-              <span className="meal-icon">🥗</span>
-              <span className="meal-name">Vegetarian</span>
-            </label>
-
-            <label className={`meal-checkbox ${dietaryPreferences.kosher ? 'checked' : ''}`}>
-              <input
-                type="checkbox"
-                checked={dietaryPreferences.kosher}
-                onChange={() => toggleDietaryPreference('kosher')}
-              />
-              <span className="meal-icon">✡️</span>
-              <span className="meal-name">Kosher</span>
-            </label>
+            {dietaryOptionsData.map(option => (
+              <label key={option.key} className={`meal-checkbox ${dietaryPreferences[option.key] ? 'checked' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={dietaryPreferences[option.key] || false}
+                  onChange={() => toggleDietaryPreference(option.key)}
+                />
+                <span className="meal-icon">{DIETARY_ICONS[option.key] || '🍽️'}</span>
+                <span className="meal-name">{option.label}</span>
+              </label>
+            ))}
           </div>
         </div>
 

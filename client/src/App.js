@@ -6,10 +6,18 @@ import StoreSelection from './components/StoreSelection';
 import Questionnaire from './components/Questionnaire';
 import PaymentPage from './components/PaymentPage';
 import MealPlanView from './components/MealPlanView';
+import Profile from './components/Profile';
+import Admin from './components/Admin';
+import MealOfTheDay from './components/MealOfTheDay';
 
 // Use relative paths in production (proxied by Vercel) or localhost in development
 const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
 console.log('API_BASE in browser:', API_BASE);
+
+// Token management helpers
+const getToken = () => localStorage.getItem('auth_token');
+const setToken = (token) => localStorage.setItem('auth_token', token);
+const removeToken = () => localStorage.removeItem('auth_token');
 
 function App() {
   const [user, setUser] = useState(null);
@@ -20,19 +28,68 @@ function App() {
   const [preferences, setPreferences] = useState(null);
   const [mealPlan, setMealPlan] = useState(null);
 
-  // Check if user is already authenticated
+  // Helper for authenticated API calls
+  const fetchWithAuth = (url, options = {}) => {
+    const token = getToken();
+    return fetch(url, {
+      ...options,
+      headers: {
+        ...options.headers,
+        'Authorization': token ? `Bearer ${token}` : '',
+        'Content-Type': 'application/json'
+      }
+    });
+  };
+
+  // Check for token in URL hash (from OAuth redirect) and authenticate
   useEffect(() => {
-    fetch(`${API_BASE}/auth/user`, {
-      credentials: 'include'
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.user) {
-          setUser(data.user);
-          setCurrentView('zip');
+    // Check if accessing admin panel
+    if (window.location.pathname === '/admin') {
+      setCurrentView('admin');
+      return;
+    }
+
+    // Check if accessing meal of the day
+    if (window.location.pathname === '/meal-of-the-day') {
+      setCurrentView('meal-of-the-day');
+      return;
+    }
+
+    // Check if there's a token in the URL hash (from OAuth redirect)
+    const hash = window.location.hash;
+    if (hash && hash.includes('token=')) {
+      const token = hash.split('token=')[1].split('&')[0];
+      console.log('Token received from OAuth redirect');
+      setToken(token);
+      // Clean up the URL
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+
+    // Check if user is already authenticated with existing token
+    const token = getToken();
+    if (token) {
+      console.log('Token found in localStorage, verifying...');
+      fetch(`${API_BASE}/auth/user`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
         }
       })
-      .catch(err => console.error('Error checking auth:', err));
+        .then(res => res.json())
+        .then(data => {
+          if (data.user) {
+            console.log('User authenticated:', data.user.email);
+            setUser(data.user);
+            setCurrentView('zip');
+          } else {
+            console.log('Token invalid, removing');
+            removeToken();
+          }
+        })
+        .catch(err => {
+          console.error('Error checking auth:', err);
+          removeToken();
+        });
+    }
   }, []);
 
   // Handler: Login
@@ -72,9 +129,7 @@ function App() {
 
     // Check if user already has paid access
     try {
-      const response = await fetch(`${API_BASE}/api/payment-status`, {
-        credentials: 'include'
-      });
+      const response = await fetchWithAuth(`${API_BASE}/api/payment-status`);
       const data = await response.json();
 
       if (data.hasPaidAccess) {
@@ -103,12 +158,8 @@ function App() {
     try {
       const startTime = Date.now();
 
-      const response = await fetch(`${API_BASE}/api/generate-meals`, {
+      const response = await fetchWithAuth(`${API_BASE}/api/generate-meals`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
         body: JSON.stringify({
           ...prefs,
           zipCode,
@@ -153,7 +204,30 @@ function App() {
 
   // Handler: Logout
   const handleLogout = () => {
-    window.location.href = `${API_BASE}/auth/logout`;
+    removeToken();
+    setUser(null);
+    setCurrentView('login');
+    setZipCode('');
+    setStores([]);
+    setSelectedStores({ primaryStore: null, comparisonStore: null });
+    setPreferences(null);
+    setMealPlan(null);
+    console.log('User logged out');
+  };
+
+  // Handler: View Profile
+  const handleViewProfile = () => {
+    setCurrentView('profile');
+  };
+
+  // Handler: Back from Profile
+  const handleBackFromProfile = () => {
+    // Return to previous view (usually mealplan or zip)
+    if (mealPlan) {
+      setCurrentView('mealplan');
+    } else {
+      setCurrentView('zip');
+    }
   };
 
   return (
@@ -166,6 +240,8 @@ function App() {
         <ZIPCodeInput
           onSubmit={handleZIPSubmit}
           user={user}
+          onViewProfile={handleViewProfile}
+          onLogout={handleLogout}
         />
       )}
 
@@ -219,7 +295,23 @@ function App() {
           selectedStores={selectedStores}
           onStartOver={handleStartOver}
           onLogout={handleLogout}
+          onViewProfile={handleViewProfile}
         />
+      )}
+
+      {currentView === 'profile' && (
+        <Profile
+          user={user}
+          onBack={handleBackFromProfile}
+        />
+      )}
+
+      {currentView === 'admin' && (
+        <Admin />
+      )}
+
+      {currentView === 'meal-of-the-day' && (
+        <MealOfTheDay />
       )}
     </div>
   );

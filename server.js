@@ -8,6 +8,7 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const OpenAI = require('openai');
 const rateLimit = require('express-rate-limit');
 const db = require('./db');
+const jwt = require('jsonwebtoken');
 const pgSession = require('connect-pg-simple')(session);
 
 const {
@@ -20,8 +21,13 @@ const {
   FRONTEND_BASE,
   OPENAI_API_KEY,
   STRIPE_SECRET_KEY,
-  STRIPE_PUBLISHABLE_KEY
+  STRIPE_PUBLISHABLE_KEY,
+  ADMIN_PASSWORD
 } = process.env;
+
+// Use SESSION_SECRET for JWT as well
+const JWT_SECRET = SESSION_SECRET;
+const ADMIN_SECRET = ADMIN_PASSWORD || 'change-this-in-production';
 
 // basic env checks
 console.log('GOOGLE_CLIENT_ID present:', !!GOOGLE_CLIENT_ID);
@@ -160,10 +166,11 @@ app.use(
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
+    proxy: true, // Trust the proxy for secure cookie handling
     cookie: {
       secure: NODE_ENV === 'production',
       httpOnly: true,
-      sameSite: 'lax', // lax works with Vercel proxy (same-origin from browser perspective)
+      sameSite: NODE_ENV === 'production' ? 'none' : 'lax', // 'none' required for cross-domain OAuth
       maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     }
   })
@@ -192,12 +199,16 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
+        console.log('🔐 OAuth callback received for:', profile.id);
         const email =
           profile.emails && profile.emails[0] && profile.emails[0].value;
 
         if (!email) {
+          console.error('❌ No email in Google profile');
           return done(new Error('email not in Google profile'));
         }
+
+        console.log('📧 Email from profile:', email);
 
         // Check if user exists in database
         const userResult = await db.query(
@@ -208,22 +219,31 @@ passport.use(
         let user;
 
         if (userResult.rows.length === 0) {
+          console.log('👤 New user detected, creating account...');
           // Create new user
-          const insertResult = await db.query(`
-            INSERT INTO users (google_id, email, display_name, picture_url, last_login)
-            VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
-            RETURNING *
-          `, [profile.id, email, profile.displayName, profile.photos?.[0]?.value]);
+          try {
+            const insertResult = await db.query(`
+              INSERT INTO users (google_id, email, display_name, picture_url, last_login)
+              VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+              RETURNING *
+            `, [profile.id, email, profile.displayName, profile.photos?.[0]?.value]);
 
-          user = insertResult.rows[0];
+            user = insertResult.rows[0];
+            console.log('✅ User record created with ID:', user.id);
 
-          // Create free subscription for new user
-          await db.query(`
-            INSERT INTO subscriptions (user_id, plan_type, status)
-            VALUES ($1, 'free', 'active')
-          `, [user.id]);
+            // Create free subscription for new user
+            await db.query(`
+              INSERT INTO subscriptions (user_id, plan_type, status)
+              VALUES ($1, 'free', 'active')
+            `, [user.id]);
 
-          console.log('✅ New user created:', user.email);
+            console.log('✅ Free subscription created for new user');
+            console.log('✅ New user created:', user.email);
+          } catch (createError) {
+            console.error('❌ Error creating new user:', createError.message);
+            console.error('❌ Full error:', createError);
+            throw createError;
+          }
         } else {
           user = userResult.rows[0];
 
@@ -237,25 +257,65 @@ passport.use(
         }
 
         // Return user object for session
-        done(null, {
+        const userObj = {
           id: user.id,
           googleId: user.google_id,
           email: user.email,
           displayName: user.display_name,
           picture: user.picture_url
-        });
+        };
+        console.log('✅ Returning user object to passport:', userObj.email);
+        done(null, userObj);
       } catch (err) {
-        console.error('❌ OAuth error:', err);
+        console.error('❌ OAuth error:', err.message);
+        console.error('❌ Full OAuth error:', err);
         done(err);
       }
     }
   )
 );
 
-function requireAuth(req, res, next) {
-  if (!req.user) {
-    return res.status(401).json({ error: 'not_authenticated' });
+// JWT Helper Functions
+function generateToken(user) {
+  return jwt.sign(
+    {
+      id: user.id,
+      email: user.email,
+      googleId: user.googleId,
+      displayName: user.displayName,
+      picture: user.picture
+    },
+    JWT_SECRET,
+    { expiresIn: '30d' }
+  );
+}
+
+function verifyToken(token) {
+  try {
+    return jwt.verify(token, JWT_SECRET);
+  } catch (err) {
+    return null;
   }
+}
+
+// JWT Authentication Middleware
+function requireAuth(req, res, next) {
+  // Check for token in Authorization header or query parameter
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ')
+    ? authHeader.substring(7)
+    : req.query.token;
+
+  if (!token) {
+    return res.status(401).json({ error: 'not_authenticated', message: 'No token provided' });
+  }
+
+  const decoded = verifyToken(token);
+  if (!decoded) {
+    return res.status(401).json({ error: 'invalid_token', message: 'Invalid or expired token' });
+  }
+
+  req.user = decoded;
   next();
 }
 
@@ -278,61 +338,62 @@ app.get(
   passport.authenticate('google', {
     failureRedirect:
       (FRONTEND_BASE || 'http://localhost:3000') + '/login?error=1',
-    session: true
+    session: false // No longer using sessions, using JWT tokens instead
   }),
   (req, res) => {
-    // Log successful authentication
+    // Generate JWT token for the authenticated user
     console.log('OAuth callback successful for user:', req.user?.email);
-    console.log('Session ID after auth:', req.sessionID);
-    console.log('Session data after auth:', JSON.stringify(req.session));
-    console.log('req.user after auth:', JSON.stringify(req.user));
 
-    // Save session before redirecting to avoid race condition
-    req.session.save((err) => {
-      if (err) {
-        console.error('Session save error:', err);
-        return res.redirect((FRONTEND_BASE || 'http://localhost:3000') + '/login?error=1');
-      }
-      console.log('Session saved successfully to PostgreSQL');
-      console.log('Session ID after save:', req.sessionID);
-      console.log('Set-Cookie header will be:', res.getHeader('Set-Cookie'));
+    try {
+      const token = generateToken(req.user);
+      console.log('✅ JWT token generated for:', req.user.email);
+
+      // Redirect to frontend with token in URL hash (more secure than query param)
       const frontend = FRONTEND_BASE || 'http://localhost:3000';
-      res.redirect(frontend);
-    });
+      res.redirect(`${frontend}#token=${token}`);
+    } catch (err) {
+      console.error('❌ Error generating token:', err);
+      res.redirect((FRONTEND_BASE || 'http://localhost:3000') + '/login?error=1');
+    }
   }
 );
 
-// current user
+// current user (JWT-based)
 app.get('/auth/user', (req, res) => {
-  console.log('GET /auth/user - Session ID:', req.sessionID, 'User:', req.user?.email || 'none');
-  console.log('Session data on /auth/user:', JSON.stringify(req.session));
-  console.log('req.user on /auth/user:', JSON.stringify(req.user));
-  console.log('Cookie header:', req.headers.cookie);
+  // Extract token from Authorization header
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
 
-  if (!req.user) {
+  console.log('GET /auth/user - Token present:', !!token);
+
+  if (!token) {
+    console.log('No token provided');
     return res.status(401).json({ user: null });
   }
 
+  const decoded = verifyToken(token);
+  if (!decoded) {
+    console.log('Invalid or expired token');
+    return res.status(401).json({ user: null, error: 'invalid_token' });
+  }
+
+  console.log('✅ Token verified for user:', decoded.email);
+
   res.json({
     user: {
-      id: req.user.id,
-      email: req.user.email,
-      full_name: req.user.full_name,
-      role: req.user.role || null,
-      picture: req.user.picture || null
+      id: decoded.id,
+      email: decoded.email,
+      displayName: decoded.displayName,
+      picture: decoded.picture
     }
   });
 });
 
-// logout
-app.post('/auth/logout', (req, res, next) => {
-  req.logout(err => {
-    if (err) return next(err);
-    req.session.destroy(() => {
-      res.clearCookie('connect.sid');
-      res.json({ success: true });
-    });
-  });
+// logout (JWT - handled client-side by deleting token)
+app.post('/auth/logout', (req, res) => {
+  // With JWT, logout is handled by the client deleting the token from localStorage
+  console.log('Logout request received');
+  res.json({ success: true, message: 'Logged out successfully' });
 });
 
 // simple profile endpoint
@@ -1239,7 +1300,7 @@ app.get('/api/discount-usage-stats', (req, res) => {
 // Add meal to favorites
 app.post('/api/favorites/add', requireAuth, async (req, res) => {
   try {
-    const { meal, mealType } = req.body;
+    const { meal, mealType, servings_adjustment, user_notes } = req.body;
 
     if (!meal || !meal.name) {
       return res.status(400).json({ error: 'Invalid meal data' });
@@ -1250,19 +1311,33 @@ app.post('/api/favorites/add', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Invalid meal type' });
     }
 
-    // Insert favorite
+    // Insert favorite with customization data
     const result = await db.query(`
-      INSERT INTO favorites (user_id, meal_type, meal_data, meal_name)
-      VALUES ($1, $2, $3, $4)
-      ON CONFLICT (user_id, meal_name, meal_type) DO NOTHING
+      INSERT INTO favorites (
+        user_id, meal_type, meal_data, meal_name,
+        servings_adjustment, user_notes
+      )
+      VALUES ($1, $2, $3, $4, $5, $6)
+      ON CONFLICT (user_id, meal_name, meal_type)
+      DO UPDATE SET
+        servings_adjustment = EXCLUDED.servings_adjustment,
+        user_notes = EXCLUDED.user_notes
       RETURNING *
-    `, [req.user.id, mealType, JSON.stringify(meal), meal.name]);
+    `, [
+      req.user.id,
+      mealType,
+      JSON.stringify(meal),
+      meal.name,
+      servings_adjustment || null,
+      user_notes || null
+    ]);
 
     if (result.rows.length > 0) {
-      console.log(`❤️  ${req.user.email} saved favorite: ${meal.name}`);
+      const customInfo = servings_adjustment || user_notes ? ' (customized)' : '';
+      console.log(`❤️  ${req.user.email} saved favorite: ${meal.name}${customInfo}`);
       res.json({ success: true, favorite: result.rows[0] });
     } else {
-      res.json({ success: true, message: 'Favorite already exists' });
+      res.json({ success: true, message: 'Favorite updated' });
     }
 
   } catch (error) {
@@ -1393,6 +1468,1186 @@ app.get('/api/meal-plan-history', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Error reading meal plan history:', error);
     res.status(500).json({ error: 'Failed to read history' });
+  }
+});
+
+// ============================================================================
+// PROFILE MANAGEMENT ENDPOINTS
+// ============================================================================
+
+// Get full user profile with preferences and stats
+app.get('/api/user/profile', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Get user data
+    const userResult = await db.query(
+      `SELECT
+        id, email, display_name, picture_url, phone_number, timezone,
+        meal_plans_generated, bio, created_at, last_login
+      FROM users
+      WHERE id = $1`,
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = userResult.rows[0];
+
+    // Get user preferences
+    const prefsResult = await db.query(
+      `SELECT
+        default_cuisines, default_people, default_meals, default_days,
+        default_dietary, email_notifications, theme, units, language,
+        share_favorites, public_profile
+      FROM user_preferences
+      WHERE user_id = $1`,
+      [userId]
+    );
+
+    const preferences = prefsResult.rows.length > 0 ? prefsResult.rows[0] : null;
+
+    // Get user stats
+    const statsResult = await db.query(
+      `SELECT
+        (SELECT COUNT(*) FROM favorites WHERE user_id = $1) as favorites_count,
+        (SELECT COUNT(*) FROM meal_plan_history WHERE user_id = $1) as meal_plans_count,
+        (SELECT MAX(created_at) FROM meal_plan_history WHERE user_id = $1) as last_meal_plan
+      `,
+      [userId]
+    );
+
+    const stats = statsResult.rows[0];
+
+    res.json({
+      user,
+      preferences,
+      stats
+    });
+
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    res.status(500).json({ error: 'Failed to fetch profile' });
+  }
+});
+
+// Update user profile
+app.put('/api/user/profile', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { display_name, phone_number, timezone, bio } = req.body;
+
+    const result = await db.query(
+      `UPDATE users
+       SET display_name = COALESCE($1, display_name),
+           phone_number = COALESCE($2, phone_number),
+           timezone = COALESCE($3, timezone),
+           bio = COALESCE($4, bio),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $5
+       RETURNING id, email, display_name, picture_url, phone_number, timezone, bio`,
+      [display_name, phone_number, timezone, bio, userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Log activity (non-blocking - don't fail if logging fails)
+    try {
+      await db.query(
+        `SELECT log_user_activity($1, 'profile_updated', $2)`,
+        [userId, JSON.stringify({ fields_updated: Object.keys(req.body) })]
+      );
+    } catch (logError) {
+      console.warn('Failed to log profile update activity:', logError.message);
+    }
+
+    res.json({ user: result.rows[0] });
+
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+// Get user preferences
+app.get('/api/user/preferences', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const result = await db.query(
+      `SELECT
+        default_cuisines, default_people, default_meals, default_days,
+        default_dietary, email_notifications, theme, units, language,
+        share_favorites, public_profile
+      FROM user_preferences
+      WHERE user_id = $1`,
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      // Create default preferences if they don't exist
+      const createResult = await db.query(
+        `INSERT INTO user_preferences (user_id)
+         VALUES ($1)
+         RETURNING *`,
+        [userId]
+      );
+      return res.json({ preferences: createResult.rows[0] });
+    }
+
+    res.json({ preferences: result.rows[0] });
+
+  } catch (error) {
+    console.error('Error fetching preferences:', error);
+    res.status(500).json({ error: 'Failed to fetch preferences' });
+  }
+});
+
+// Update user preferences
+app.put('/api/user/preferences', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const {
+      default_cuisines,
+      default_people,
+      default_meals,
+      default_days,
+      default_dietary,
+      email_notifications,
+      theme,
+      units,
+      language,
+      share_favorites,
+      public_profile
+    } = req.body;
+
+    // Build dynamic update query
+    const updates = [];
+    const values = [];
+    let paramIndex = 1;
+
+    if (default_cuisines !== undefined) {
+      updates.push(`default_cuisines = $${paramIndex++}`);
+      values.push(JSON.stringify(default_cuisines));
+    }
+    if (default_people !== undefined) {
+      updates.push(`default_people = $${paramIndex++}`);
+      values.push(default_people);
+    }
+    if (default_meals !== undefined) {
+      updates.push(`default_meals = $${paramIndex++}`);
+      values.push(JSON.stringify(default_meals));
+    }
+    if (default_days !== undefined) {
+      updates.push(`default_days = $${paramIndex++}`);
+      values.push(JSON.stringify(default_days));
+    }
+    if (default_dietary !== undefined) {
+      updates.push(`default_dietary = $${paramIndex++}`);
+      values.push(JSON.stringify(default_dietary));
+    }
+    if (email_notifications !== undefined) {
+      updates.push(`email_notifications = $${paramIndex++}`);
+      values.push(JSON.stringify(email_notifications));
+    }
+    if (theme !== undefined) {
+      updates.push(`theme = $${paramIndex++}`);
+      values.push(theme);
+    }
+    if (units !== undefined) {
+      updates.push(`units = $${paramIndex++}`);
+      values.push(units);
+    }
+    if (language !== undefined) {
+      updates.push(`language = $${paramIndex++}`);
+      values.push(language);
+    }
+    if (share_favorites !== undefined) {
+      updates.push(`share_favorites = $${paramIndex++}`);
+      values.push(share_favorites);
+    }
+    if (public_profile !== undefined) {
+      updates.push(`public_profile = $${paramIndex++}`);
+      values.push(public_profile);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    updates.push(`updated_at = CURRENT_TIMESTAMP`);
+    values.push(userId);
+
+    const query = `
+      UPDATE user_preferences
+      SET ${updates.join(', ')}
+      WHERE user_id = $${paramIndex}
+      RETURNING *
+    `;
+
+    const result = await db.query(query, values);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Preferences not found' });
+    }
+
+    // Log activity (non-blocking - don't fail if logging fails)
+    try {
+      await db.query(
+        `SELECT log_user_activity($1, 'preferences_updated', $2)`,
+        [userId, JSON.stringify({ fields_updated: Object.keys(req.body) })]
+      );
+    } catch (logError) {
+      console.warn('Failed to log preferences update activity:', logError.message);
+    }
+
+    res.json({ preferences: result.rows[0] });
+
+  } catch (error) {
+    console.error('Error updating preferences:', error);
+    res.status(500).json({ error: 'Failed to update preferences' });
+  }
+});
+
+// Get user statistics
+app.get('/api/user/stats', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const result = await db.query(
+      `SELECT
+        (SELECT COUNT(*) FROM favorites WHERE user_id = $1) as favorites_count,
+        (SELECT COUNT(*) FROM meal_plan_history WHERE user_id = $1) as total_meal_plans,
+        (SELECT MAX(created_at) FROM meal_plan_history WHERE user_id = $1) as last_meal_plan,
+        (SELECT COUNT(*) FROM meal_plan_history
+         WHERE user_id = $1 AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30 days') as meal_plans_this_month,
+        (SELECT created_at FROM users WHERE id = $1) as member_since,
+        (SELECT COUNT(DISTINCT activity_type) FROM user_activity WHERE user_id = $1) as activity_types,
+        (SELECT COUNT(*) FROM user_activity
+         WHERE user_id = $1 AND activity_type = 'login'
+         AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30 days') as logins_this_month
+      `,
+      [userId]
+    );
+
+    res.json({ stats: result.rows[0] });
+
+  } catch (error) {
+    console.error('Error fetching stats:', error);
+    res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+});
+
+// Get user activity log
+app.get('/api/user/activity', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { limit = 50, offset = 0 } = req.query;
+
+    const result = await db.query(
+      `SELECT id, activity_type, activity_data, created_at
+       FROM user_activity
+       WHERE user_id = $1
+       ORDER BY created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [userId, parseInt(limit), parseInt(offset)]
+    );
+
+    res.json({ activities: result.rows });
+
+  } catch (error) {
+    console.error('Error fetching activity:', error);
+    res.status(500).json({ error: 'Failed to fetch activity' });
+  }
+});
+
+// ============================================================================
+// ADMIN PANEL ENDPOINTS
+// ============================================================================
+
+// Admin authentication middleware
+function requireAdmin(req, res, next) {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Admin authentication required' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    req.admin = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Invalid admin token' });
+  }
+}
+
+// Admin login
+app.post('/api/admin/login', (req, res) => {
+  const { password } = req.body;
+
+  if (password === ADMIN_SECRET) {
+    const token = jwt.sign(
+      { role: 'admin', timestamp: Date.now() },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+    console.log('✅ Admin logged in');
+    res.json({ success: true, token });
+  } else {
+    console.log('❌ Failed admin login attempt');
+    res.status(401).json({ error: 'Invalid admin password' });
+  }
+});
+
+// Get all discount codes
+app.get('/api/admin/discount-codes', requireAdmin, async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT
+        id, code, description, discount_type, discount_value,
+        active, max_uses, uses_count, valid_from, valid_until,
+        created_at, updated_at
+      FROM discount_codes
+      ORDER BY created_at DESC
+    `);
+
+    res.json({ codes: result.rows });
+  } catch (error) {
+    console.error('Error fetching discount codes:', error);
+    res.status(500).json({ error: 'Failed to fetch discount codes' });
+  }
+});
+
+// Create discount code
+app.post('/api/admin/discount-codes', requireAdmin, async (req, res) => {
+  try {
+    const {
+      code,
+      description,
+      discount_type,
+      discount_value,
+      max_uses,
+      valid_until
+    } = req.body;
+
+    // Validation
+    if (!code || !discount_type || !discount_value) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    if (!['percentage', 'fixed_amount'].includes(discount_type)) {
+      return res.status(400).json({ error: 'Invalid discount type' });
+    }
+
+    const result = await db.query(`
+      INSERT INTO discount_codes (
+        code, description, discount_type, discount_value,
+        max_uses, valid_until
+      )
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+    `, [
+      code.toUpperCase(),
+      description || null,
+      discount_type,
+      discount_value,
+      max_uses || null,
+      valid_until || null
+    ]);
+
+    console.log(`✅ Admin created discount code: ${code}`);
+    res.json({ success: true, code: result.rows[0] });
+  } catch (error) {
+    if (error.code === '23505') { // Unique constraint violation
+      return res.status(400).json({ error: 'Discount code already exists' });
+    }
+    console.error('Error creating discount code:', error);
+    res.status(500).json({ error: 'Failed to create discount code' });
+  }
+});
+
+// Update discount code
+app.put('/api/admin/discount-codes/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { description, active, max_uses, valid_until } = req.body;
+
+    const result = await db.query(`
+      UPDATE discount_codes
+      SET
+        description = COALESCE($1, description),
+        active = COALESCE($2, active),
+        max_uses = COALESCE($3, max_uses),
+        valid_until = COALESCE($4, valid_until),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $5
+      RETURNING *
+    `, [description, active, max_uses, valid_until, id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Discount code not found' });
+    }
+
+    console.log(`✅ Admin updated discount code: ${result.rows[0].code}`);
+    res.json({ success: true, code: result.rows[0] });
+  } catch (error) {
+    console.error('Error updating discount code:', error);
+    res.status(500).json({ error: 'Failed to update discount code' });
+  }
+});
+
+// Delete discount code
+app.delete('/api/admin/discount-codes/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await db.query(`
+      DELETE FROM discount_codes
+      WHERE id = $1
+      RETURNING code
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Discount code not found' });
+    }
+
+    console.log(`✅ Admin deleted discount code: ${result.rows[0].code}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting discount code:', error);
+    res.status(500).json({ error: 'Failed to delete discount code' });
+  }
+});
+
+// Get app settings
+app.get('/api/admin/settings', requireAdmin, async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT key, value, updated_at
+      FROM app_settings
+      WHERE key = 'free_meal_plans_limit'
+    `);
+
+    const freeMealPlansLimit = result.rows.length > 0
+      ? parseInt(result.rows[0].value)
+      : 10; // Default
+
+    res.json({
+      settings: {
+        free_meal_plans_limit: freeMealPlansLimit
+      }
+    });
+  } catch (error) {
+    // Table might not exist yet, return defaults
+    res.json({
+      settings: {
+        free_meal_plans_limit: 10
+      }
+    });
+  }
+});
+
+// Update app settings
+app.put('/api/admin/settings', requireAdmin, async (req, res) => {
+  try {
+    const { free_meal_plans_limit } = req.body;
+
+    if (free_meal_plans_limit !== undefined) {
+      await db.query(`
+        INSERT INTO app_settings (key, value)
+        VALUES ('free_meal_plans_limit', $1)
+        ON CONFLICT (key)
+        DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP
+      `, [free_meal_plans_limit.toString()]);
+
+      console.log(`✅ Admin updated free meal plans limit: ${free_meal_plans_limit}`);
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating settings:', error);
+    res.status(500).json({ error: 'Failed to update settings' });
+  }
+});
+
+// Get admin dashboard stats
+app.get('/api/admin/stats', requireAdmin, async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT
+        (SELECT COUNT(*) FROM users) as total_users,
+        (SELECT COUNT(*) FROM users WHERE created_at >= CURRENT_DATE - INTERVAL '7 days') as users_this_week,
+        (SELECT COUNT(*) FROM meal_plan_history) as total_meal_plans,
+        (SELECT COUNT(*) FROM meal_plan_history WHERE created_at >= CURRENT_DATE - INTERVAL '7 days') as meal_plans_this_week,
+        (SELECT COUNT(*) FROM discount_codes WHERE active = TRUE) as active_discount_codes,
+        (SELECT COUNT(*) FROM discount_usage) as total_discount_uses,
+        (SELECT COUNT(*) FROM subscriptions WHERE status = 'active' AND plan_type = 'premium') as premium_subscribers
+    `);
+
+    res.json({ stats: result.rows[0] });
+  } catch (error) {
+    console.error('Error fetching admin stats:', error);
+    res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+});
+
+// ============================================================================
+// CUISINE AND DIETARY OPTIONS MANAGEMENT
+// ============================================================================
+
+// Public endpoint - Get active cuisines (no auth required)
+app.get('/api/cuisines', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT id, name, display_order
+      FROM cuisine_options
+      WHERE active = TRUE
+      ORDER BY display_order ASC, name ASC
+    `);
+
+    res.json({ cuisines: result.rows });
+  } catch (error) {
+    console.error('Error fetching cuisines:', error);
+    // Return empty array if table doesn't exist yet
+    res.json({ cuisines: [] });
+  }
+});
+
+// Public endpoint - Get active dietary options (no auth required)
+app.get('/api/dietary-options', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT id, key, label, display_order
+      FROM dietary_options
+      WHERE active = TRUE
+      ORDER BY display_order ASC, label ASC
+    `);
+
+    res.json({ options: result.rows });
+  } catch (error) {
+    console.error('Error fetching dietary options:', error);
+    // Return empty array if table doesn't exist yet
+    res.json({ options: [] });
+  }
+});
+
+// Admin - Get all cuisines (including inactive)
+app.get('/api/admin/cuisines', requireAdmin, async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT id, name, display_order, active, created_at, updated_at
+      FROM cuisine_options
+      ORDER BY display_order ASC, name ASC
+    `);
+
+    res.json({ cuisines: result.rows });
+  } catch (error) {
+    console.error('Error fetching cuisines:', error);
+    res.status(500).json({ error: 'Failed to fetch cuisines' });
+  }
+});
+
+// Admin - Create cuisine
+app.post('/api/admin/cuisines', requireAdmin, async (req, res) => {
+  try {
+    const { name, display_order } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Cuisine name is required' });
+    }
+
+    const result = await db.query(`
+      INSERT INTO cuisine_options (name, display_order)
+      VALUES ($1, $2)
+      RETURNING *
+    `, [name.trim(), display_order || 0]);
+
+    console.log(`✅ Admin created cuisine: ${name}`);
+    res.json({ success: true, cuisine: result.rows[0] });
+  } catch (error) {
+    if (error.code === '23505') { // Unique constraint violation
+      return res.status(400).json({ error: 'Cuisine already exists' });
+    }
+    console.error('Error creating cuisine:', error);
+    res.status(500).json({ error: 'Failed to create cuisine' });
+  }
+});
+
+// Admin - Update cuisine
+app.put('/api/admin/cuisines/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, display_order, active } = req.body;
+
+    const result = await db.query(`
+      UPDATE cuisine_options
+      SET
+        name = COALESCE($1, name),
+        display_order = COALESCE($2, display_order),
+        active = COALESCE($3, active),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $4
+      RETURNING *
+    `, [name, display_order, active, id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Cuisine not found' });
+    }
+
+    console.log(`✅ Admin updated cuisine: ${result.rows[0].name}`);
+    res.json({ success: true, cuisine: result.rows[0] });
+  } catch (error) {
+    if (error.code === '23505') {
+      return res.status(400).json({ error: 'Cuisine name already exists' });
+    }
+    console.error('Error updating cuisine:', error);
+    res.status(500).json({ error: 'Failed to update cuisine' });
+  }
+});
+
+// Admin - Delete cuisine
+app.delete('/api/admin/cuisines/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await db.query(`
+      DELETE FROM cuisine_options
+      WHERE id = $1
+      RETURNING name
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Cuisine not found' });
+    }
+
+    console.log(`✅ Admin deleted cuisine: ${result.rows[0].name}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting cuisine:', error);
+    res.status(500).json({ error: 'Failed to delete cuisine' });
+  }
+});
+
+// Admin - Get all dietary options (including inactive)
+app.get('/api/admin/dietary-options', requireAdmin, async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT id, key, label, display_order, active, created_at, updated_at
+      FROM dietary_options
+      ORDER BY display_order ASC, label ASC
+    `);
+
+    res.json({ options: result.rows });
+  } catch (error) {
+    console.error('Error fetching dietary options:', error);
+    res.status(500).json({ error: 'Failed to fetch dietary options' });
+  }
+});
+
+// Admin - Create dietary option
+app.post('/api/admin/dietary-options', requireAdmin, async (req, res) => {
+  try {
+    const { key, label, display_order } = req.body;
+
+    if (!key || !key.trim() || !label || !label.trim()) {
+      return res.status(400).json({ error: 'Key and label are required' });
+    }
+
+    // Validate key format (lowercase camelCase)
+    if (!/^[a-z][a-zA-Z0-9]*$/.test(key)) {
+      return res.status(400).json({ error: 'Key must be in camelCase format (e.g., glutenFree)' });
+    }
+
+    const result = await db.query(`
+      INSERT INTO dietary_options (key, label, display_order)
+      VALUES ($1, $2, $3)
+      RETURNING *
+    `, [key.trim(), label.trim(), display_order || 0]);
+
+    console.log(`✅ Admin created dietary option: ${label} (${key})`);
+    res.json({ success: true, option: result.rows[0] });
+  } catch (error) {
+    if (error.code === '23505') { // Unique constraint violation
+      return res.status(400).json({ error: 'Dietary option key already exists' });
+    }
+    console.error('Error creating dietary option:', error);
+    res.status(500).json({ error: 'Failed to create dietary option' });
+  }
+});
+
+// Admin - Update dietary option
+app.put('/api/admin/dietary-options/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { label, display_order, active } = req.body;
+
+    const result = await db.query(`
+      UPDATE dietary_options
+      SET
+        label = COALESCE($1, label),
+        display_order = COALESCE($2, display_order),
+        active = COALESCE($3, active),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $4
+      RETURNING *
+    `, [label, display_order, active, id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Dietary option not found' });
+    }
+
+    console.log(`✅ Admin updated dietary option: ${result.rows[0].label}`);
+    res.json({ success: true, option: result.rows[0] });
+  } catch (error) {
+    console.error('Error updating dietary option:', error);
+    res.status(500).json({ error: 'Failed to update dietary option' });
+  }
+});
+
+// Admin - Delete dietary option
+app.delete('/api/admin/dietary-options/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await db.query(`
+      DELETE FROM dietary_options
+      WHERE id = $1
+      RETURNING label
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Dietary option not found' });
+    }
+
+    console.log(`✅ Admin deleted dietary option: ${result.rows[0].label}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting dietary option:', error);
+    res.status(500).json({ error: 'Failed to delete dietary option' });
+  }
+});
+
+// ============================================================================
+// MEAL OF THE DAY ENDPOINTS
+// ============================================================================
+
+// Public endpoint - Get current/latest meal of the day
+app.get('/api/meal-of-the-day', async (req, res) => {
+  try {
+    const { date } = req.query;
+
+    let query = `
+      SELECT
+        id, title, description, meal_type, cuisine, prep_time, cook_time,
+        servings, ingredients, instructions, image_url, nutrition_info, tags,
+        featured_date, view_count, share_count, published_at
+      FROM meal_of_the_day
+      WHERE active = TRUE
+    `;
+
+    const params = [];
+
+    if (date) {
+      query += ` AND featured_date = $1`;
+      params.push(date);
+    } else {
+      query += ` AND featured_date <= CURRENT_DATE`;
+    }
+
+    query += ` ORDER BY featured_date DESC LIMIT 1`;
+
+    const result = await db.query(query, params);
+
+    if (result.rows.length === 0) {
+      return res.json({ meal: null });
+    }
+
+    // Increment view count
+    await db.query(
+      `UPDATE meal_of_the_day SET view_count = view_count + 1 WHERE id = $1`,
+      [result.rows[0].id]
+    );
+
+    res.json({ meal: result.rows[0] });
+  } catch (error) {
+    console.error('Error fetching meal of the day:', error);
+    res.json({ meal: null });
+  }
+});
+
+// Public endpoint - Track social media share
+app.post('/api/meal-of-the-day/:id/share', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { platform } = req.body;
+
+    if (!platform) {
+      return res.status(400).json({ error: 'Platform is required' });
+    }
+
+    // Get user ID if authenticated
+    let userId = null;
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+
+    if (token) {
+      const decoded = verifyToken(token);
+      if (decoded) {
+        userId = decoded.id;
+      }
+    }
+
+    // Track the share
+    await db.query(`
+      INSERT INTO meal_of_day_shares (meal_id, platform, user_id)
+      VALUES ($1, $2, $3)
+    `, [id, platform, userId]);
+
+    // Increment share count
+    await db.query(
+      `UPDATE meal_of_the_day SET share_count = share_count + 1 WHERE id = $1`,
+      [id]
+    );
+
+    console.log(`📤 Meal ${id} shared on ${platform}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error tracking share:', error);
+    res.status(500).json({ error: 'Failed to track share' });
+  }
+});
+
+// Admin - Get all meals of the day
+app.get('/api/admin/meal-of-the-day', requireAdmin, async (req, res) => {
+  try {
+    const { limit = 50, offset = 0 } = req.query;
+
+    const result = await db.query(`
+      SELECT
+        id, title, description, meal_type, cuisine, prep_time, cook_time,
+        servings, ingredients, instructions, image_url, nutrition_info, tags,
+        featured_date, active, view_count, share_count, created_by,
+        created_at, updated_at, published_at
+      FROM meal_of_the_day
+      ORDER BY featured_date DESC
+      LIMIT $1 OFFSET $2
+    `, [parseInt(limit), parseInt(offset)]);
+
+    res.json({ meals: result.rows });
+  } catch (error) {
+    console.error('Error fetching meals:', error);
+    res.status(500).json({ error: 'Failed to fetch meals' });
+  }
+});
+
+// Admin - Create meal of the day
+app.post('/api/admin/meal-of-the-day', requireAdmin, async (req, res) => {
+  try {
+    const {
+      title,
+      description,
+      meal_type,
+      cuisine,
+      prep_time,
+      cook_time,
+      servings,
+      ingredients,
+      instructions,
+      image_url,
+      nutrition_info,
+      tags,
+      featured_date,
+      active = true
+    } = req.body;
+
+    // Validation
+    if (!title || !ingredients || !instructions) {
+      return res.status(400).json({ error: 'Title, ingredients, and instructions are required' });
+    }
+
+    // If active and featured_date is set, deactivate any other meal for that date
+    if (active && featured_date) {
+      await db.query(`
+        UPDATE meal_of_the_day
+        SET active = FALSE
+        WHERE featured_date = $1 AND active = TRUE
+      `, [featured_date]);
+    }
+
+    const result = await db.query(`
+      INSERT INTO meal_of_the_day (
+        title, description, meal_type, cuisine, prep_time, cook_time,
+        servings, ingredients, instructions, image_url, nutrition_info,
+        tags, featured_date, active, created_by, published_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+      RETURNING *
+    `, [
+      title,
+      description || null,
+      meal_type || null,
+      cuisine || null,
+      prep_time || null,
+      cook_time || null,
+      servings || 2,
+      JSON.stringify(ingredients),
+      JSON.stringify(instructions),
+      image_url || null,
+      nutrition_info ? JSON.stringify(nutrition_info) : null,
+      tags ? JSON.stringify(tags) : '[]',
+      featured_date || new Date().toISOString().split('T')[0],
+      active,
+      req.admin.role, // 'admin' from JWT
+      active ? new Date() : null
+    ]);
+
+    console.log(`✅ Admin created meal of the day: ${title}`);
+    res.json({ success: true, meal: result.rows[0] });
+  } catch (error) {
+    if (error.code === '23505') { // Unique constraint violation
+      return res.status(400).json({ error: 'A meal is already active for this date' });
+    }
+    console.error('Error creating meal:', error);
+    res.status(500).json({ error: 'Failed to create meal' });
+  }
+});
+
+// Admin - Update meal of the day
+app.put('/api/admin/meal-of-the-day/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      title,
+      description,
+      meal_type,
+      cuisine,
+      prep_time,
+      cook_time,
+      servings,
+      ingredients,
+      instructions,
+      image_url,
+      nutrition_info,
+      tags,
+      featured_date,
+      active
+    } = req.body;
+
+    // If activating and featured_date is changing, deactivate others for that date
+    if (active && featured_date) {
+      await db.query(`
+        UPDATE meal_of_the_day
+        SET active = FALSE
+        WHERE featured_date = $1 AND active = TRUE AND id != $2
+      `, [featured_date, id]);
+    }
+
+    const result = await db.query(`
+      UPDATE meal_of_the_day
+      SET
+        title = COALESCE($1, title),
+        description = COALESCE($2, description),
+        meal_type = COALESCE($3, meal_type),
+        cuisine = COALESCE($4, cuisine),
+        prep_time = COALESCE($5, prep_time),
+        cook_time = COALESCE($6, cook_time),
+        servings = COALESCE($7, servings),
+        ingredients = COALESCE($8, ingredients),
+        instructions = COALESCE($9, instructions),
+        image_url = COALESCE($10, image_url),
+        nutrition_info = COALESCE($11, nutrition_info),
+        tags = COALESCE($12, tags),
+        featured_date = COALESCE($13, featured_date),
+        active = COALESCE($14, active),
+        published_at = CASE WHEN $14 = TRUE AND published_at IS NULL THEN CURRENT_TIMESTAMP ELSE published_at END,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $15
+      RETURNING *
+    `, [
+      title,
+      description,
+      meal_type,
+      cuisine,
+      prep_time,
+      cook_time,
+      servings,
+      ingredients ? JSON.stringify(ingredients) : null,
+      instructions ? JSON.stringify(instructions) : null,
+      image_url,
+      nutrition_info ? JSON.stringify(nutrition_info) : null,
+      tags ? JSON.stringify(tags) : null,
+      featured_date,
+      active,
+      id
+    ]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Meal not found' });
+    }
+
+    console.log(`✅ Admin updated meal: ${result.rows[0].title}`);
+    res.json({ success: true, meal: result.rows[0] });
+  } catch (error) {
+    if (error.code === '23505') {
+      return res.status(400).json({ error: 'A meal is already active for this date' });
+    }
+    console.error('Error updating meal:', error);
+    res.status(500).json({ error: 'Failed to update meal' });
+  }
+});
+
+// Admin - Delete meal of the day
+app.delete('/api/admin/meal-of-the-day/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await db.query(`
+      DELETE FROM meal_of_the_day
+      WHERE id = $1
+      RETURNING title
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Meal not found' });
+    }
+
+    console.log(`✅ Admin deleted meal: ${result.rows[0].title}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting meal:', error);
+    res.status(500).json({ error: 'Failed to delete meal' });
+  }
+});
+
+// Admin - Get meal of the day statistics
+app.get('/api/admin/meal-of-the-day/stats', requireAdmin, async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT
+        COUNT(*) as total_meals,
+        SUM(view_count) as total_views,
+        SUM(share_count) as total_shares,
+        COUNT(CASE WHEN active = TRUE THEN 1 END) as active_meals,
+        (SELECT COUNT(DISTINCT platform) FROM meal_of_day_shares) as platforms_used,
+        (SELECT platform FROM meal_of_day_shares GROUP BY platform ORDER BY COUNT(*) DESC LIMIT 1) as most_used_platform
+      FROM meal_of_the_day
+    `);
+
+    res.json({ stats: result.rows[0] });
+  } catch (error) {
+    console.error('Error fetching meal stats:', error);
+    res.status(500).json({ error: 'Failed to fetch statistics' });
+  }
+});
+
+// Admin - Generate meal of the day with AI
+app.post('/api/admin/meal-of-the-day/generate-ai', requireAdmin, async (req, res) => {
+  try {
+    const { preferences } = req.body;
+    console.log('🤖 Generating meal with AI...');
+
+    // Generate meal details with GPT
+    const mealPrompt = `Create a unique, delicious, and persuasive meal recipe. Make it sound irresistible!
+
+${preferences?.cuisine ? `Cuisine: ${preferences.cuisine}` : 'Choose any popular cuisine'}
+${preferences?.mealType ? `Meal type: ${preferences.mealType}` : 'Meal type: dinner'}
+
+Return a JSON object with:
+- title: A compelling, mouthwatering meal name (make it sound amazing!)
+- description: A persuasive 2-3 sentence description that makes people want to try this meal
+- cuisine: The cuisine type
+- meal_type: breakfast, lunch, dinner, or snack
+- prep_time: Realistic prep time (e.g., "15 mins")
+- cook_time: Realistic cook time (e.g., "30 mins")
+- servings: Number of servings (2-6)
+- ingredients: Array of ingredient strings with measurements (e.g., ["2 cups flour", "1 tsp salt"])
+- instructions: Array of step-by-step cooking instructions (at least 5 steps)
+- tags: Array of 3-5 descriptive tags (e.g., ["quick", "healthy", "family-friendly"])
+
+Make the meal sound amazing and ensure the recipe is complete and realistic!`;
+
+    const mealCompletion = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a professional chef and food writer who creates irresistible recipes. Always return valid JSON only, no markdown formatting.'
+        },
+        { role: 'user', content: mealPrompt }
+      ],
+      temperature: 0.8,
+      max_tokens: 2000
+    });
+
+    let mealData;
+    try {
+      const content = mealCompletion.choices[0].message.content.trim();
+      // Remove markdown code blocks if present
+      const jsonContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+      mealData = JSON.parse(jsonContent);
+    } catch (parseError) {
+      console.error('Error parsing GPT response:', parseError);
+      console.log('Raw response:', mealCompletion.choices[0].message.content);
+      return res.status(500).json({ error: 'Failed to parse AI response' });
+    }
+
+    console.log(`📝 Generated meal: ${mealData.title}`);
+
+    // Generate image with DALL-E
+    console.log('🎨 Generating meal image with DALL-E...');
+
+    const imagePrompt = `Professional food photography of ${mealData.title}.
+${mealData.description}
+The dish should look appetizing, well-plated, and restaurant-quality.
+Natural lighting, beautiful presentation, high-quality photo.`;
+
+    const imageResponse = await openai.images.generate({
+      model: 'dall-e-3',
+      prompt: imagePrompt,
+      n: 1,
+      size: '1024x1024',
+      quality: 'standard'
+    });
+
+    const imageUrl = imageResponse.data[0].url;
+    console.log('✅ Image generated successfully');
+
+    // Get app URL for the call-to-action link
+    const appUrl = process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : (process.env.NODE_ENV === 'production'
+        ? 'https://your-app.vercel.app'
+        : 'http://localhost:3000');
+
+    // Return generated meal data
+    res.json({
+      meal: {
+        ...mealData,
+        image_url: imageUrl,
+        app_link: `${appUrl}/meal-of-the-day`,
+        featured_date: new Date().toISOString().split('T')[0],
+        active: false // Don't auto-publish, let admin review first
+      }
+    });
+
+    console.log('✅ AI meal generation complete');
+  } catch (error) {
+    console.error('Error generating meal with AI:', error);
+    if (error.response) {
+      console.error('OpenAI API error:', error.response.data);
+    }
+    res.status(500).json({
+      error: 'Failed to generate meal with AI',
+      details: error.message
+    });
   }
 });
 
