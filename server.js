@@ -346,7 +346,7 @@ app.post('/api/generate-meals', requireAuth, async (req, res) => {
 
     // Create example meal structure for the prompt
     const mealStructureExample = mealTypes.map(mealType =>
-      `      "${mealType}": { "name": "...", "prepTime": "...", "cookTime": "...", "servings": ${preferences.people || 2}, "estimatedCost": "$X-Y", "ingredients": [...], "instructions": [...] }`
+      `      "${mealType}": { "name": "...", "prepTime": "...", "cookTime": "...", "servings": ${preferences.people || 2}, "estimatedCost": "$X-Y", "imageUrl": "https://images.unsplash.com/photo-...", "ingredients": [...], "instructions": [...] }`
     ).join(',\n');
 
     // Build shopping list format based on whether we have comparison store
@@ -435,7 +435,8 @@ ${dietaryPreferences && dietaryPreferences.length > 0 ? `4. **CRITICAL**: ALL re
 5. Create a consolidated shopping list organized by category` : '4. Create a consolidated shopping list organized by category'}
 ${dietaryPreferences && dietaryPreferences.length > 0 ? '6' : '5'}. All items should be commonly available at the selected store(s)
 ${dietaryPreferences && dietaryPreferences.length > 0 ? '7' : '6'}. Include prep time, cooking time, servings, and estimated cost for each meal
-${dietaryPreferences && dietaryPreferences.length > 0 ? '8' : '7'}. Provide simple, clear cooking instructions
+${dietaryPreferences && dietaryPreferences.length > 0 ? '8' : '7'}. **CRITICAL**: For EVERY meal, include an "imageUrl" field with a high-quality Unsplash food image URL that matches the dish. Use URLs in format: https://images.unsplash.com/photo-[id]?w=800&q=80
+${dietaryPreferences && dietaryPreferences.length > 0 ? '9' : '8'}. Provide simple, clear cooking instructions
 ${comparisonStore ? `8. **CRITICAL**: For EVERY item in the shopping list, provide estimated prices at BOTH stores (primaryStorePrice and comparisonStorePrice)
 9. Calculate total estimated costs for both stores and show potential savings` : ''}
 
@@ -548,10 +549,11 @@ ${dietaryRestrictionsText}
 ${dietaryPreferences && dietaryPreferences.length > 0 ? `3. **CRITICAL**: This recipe MUST comply with these dietary restrictions: ${dietaryPreferences.map(formatDietaryPreference).join('; ')}. Do not use any ingredients that violate these restrictions.
 4. Include prep time and cooking time` : '3. Include prep time and cooking time'}
 ${dietaryPreferences && dietaryPreferences.length > 0 ? '5' : '4'}. Include servings count (for ${people || 2} people)
-${dietaryPreferences && dietaryPreferences.length > 0 ? '6' : '5'}. List all ingredients with quantities
-${dietaryPreferences && dietaryPreferences.length > 0 ? '7' : '6'}. Provide clear, step-by-step cooking instructions
-${dietaryPreferences && dietaryPreferences.length > 0 ? '8' : '7'}. Estimate the cost
-${dietaryPreferences && dietaryPreferences.length > 0 ? '9' : '8'}. All ingredients should be commonly available at ${groceryStore?.name || 'the selected store'}
+${dietaryPreferences && dietaryPreferences.length > 0 ? '6' : '5'}. **CRITICAL**: Include an "imageUrl" field with a high-quality Unsplash food image URL that matches the dish. Use URLs in format: https://images.unsplash.com/photo-[id]?w=800&q=80
+${dietaryPreferences && dietaryPreferences.length > 0 ? '7' : '6'}. List all ingredients with quantities
+${dietaryPreferences && dietaryPreferences.length > 0 ? '8' : '7'}. Provide clear, step-by-step cooking instructions
+${dietaryPreferences && dietaryPreferences.length > 0 ? '9' : '8'}. Estimate the cost
+${dietaryPreferences && dietaryPreferences.length > 0 ? '10' : '9'}. All ingredients should be commonly available at ${groceryStore?.name || 'the selected store'}
 
 **Response Format:**
 Return ONLY valid JSON in this exact format:
@@ -561,6 +563,7 @@ Return ONLY valid JSON in this exact format:
   "cookTime": "20 mins",
   "servings": ${people || 2},
   "estimatedCost": "$8-12",
+  "imageUrl": "https://images.unsplash.com/photo-[id]?w=800&q=80",
   "ingredients": [
     "1 cup of ingredient",
     "2 tablespoons of ingredient"
