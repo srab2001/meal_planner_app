@@ -55,6 +55,7 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
   });
   const [dietaryPreferences, setDietaryPreferences] = useState({});
   const [leftovers, setLeftovers] = useState(['']);
+  const [specialOccasion, setSpecialOccasion] = useState(false);
   const [errors, setErrors] = useState({});
   const [loadingPreferences, setLoadingPreferences] = useState(true);
 
@@ -265,7 +266,8 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
         selectedMeals: selectedMeals,  // Send array of meal types: ['breakfast', 'lunch', 'dinner']
         selectedDays: daysArray,  // Send array of days: ['Monday', 'Tuesday', etc.]
         dietaryPreferences: selectedDietaryPreferences,  // Send array: ['diabetic', 'dairyFree', etc.]
-        leftovers: leftoverIngredients  // Send array of leftover ingredients
+        leftovers: leftoverIngredients,  // Send array of leftover ingredients
+        specialOccasion: specialOccasion  // Include special occasion flag
       });
     }
   };
@@ -415,6 +417,27 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
                 <span className="meal-name">Dinner</span>
               </label>
             </div>
+
+            {/* Special Occasion Meal Toggle */}
+            <div className="special-occasion-section">
+              <label className={`special-occasion-toggle ${specialOccasion ? 'active' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={specialOccasion}
+                  onChange={() => setSpecialOccasion(!specialOccasion)}
+                />
+                <div className="special-occasion-content">
+                  <span className="special-occasion-icon">✨</span>
+                  <div className="special-occasion-text">
+                    <h4>Add a Special Occasion Meal</h4>
+                    <p className="special-occasion-desc">
+                      Elevate your week with a premium restaurant-quality meal featuring gourmet ingredients from Whole Foods and elevated serving suggestions.
+                    </p>
+                  </div>
+                </div>
+              </label>
+            </div>
+
             {errors.meals && <p className="error">{errors.meals}</p>}
           </>
         );
