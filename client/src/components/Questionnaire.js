@@ -255,6 +255,10 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
       const selectedDietaryPreferences = Object.keys(dietaryPreferences).filter(pref => dietaryPreferences[pref]);
       const daysArray = Object.keys(selectedDays).filter(day => selectedDays[day]);
       const leftoverIngredients = leftovers.filter(item => item.trim() !== '');
+
+      console.log('📅 Selected days being submitted:', daysArray);
+      console.log('🍽️ Selected meals being submitted:', selectedMeals);
+
       onSubmit({
         cuisines,
         people: numberOfPeople,

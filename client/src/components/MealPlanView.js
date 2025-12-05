@@ -92,6 +92,9 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   }
 
   const days = Object.keys(localMealPlan.mealPlan || {});
+  console.log('📅 Days available in meal plan:', days);
+  console.log('📦 Full meal plan structure:', localMealPlan.mealPlan);
+
   const currentDayMeals = localMealPlan.mealPlan[selectedDay] || {};
   const mealTypes = Object.keys(currentDayMeals);
 

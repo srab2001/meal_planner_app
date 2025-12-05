@@ -173,8 +173,8 @@
 .day-button {
   padding: 12px 24px;
   border: 2px solid white;
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
+  background: rgba(255, 255, 255, 0.9);
+  color: #667eea;
   border-radius: 25px;
   cursor: pointer;
   font-weight: 500;
@@ -184,7 +184,8 @@
 }
 
 .day-button:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: white;
+  color: #764ba2;
   transform: translateY(-2px);
 }
 
@@ -192,6 +193,7 @@
   background: white;
   color: #667eea;
   font-weight: 600;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
 }
 
 /* Meals Grid */
