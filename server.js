@@ -1023,6 +1023,7 @@ const DISCOUNT_CODES = {
   'TESTFREE': { percentOff: 100, description: 'Free access for testers' },
   'BETA50': { percentOff: 50, description: '50% off for beta testers' },
   'WELCOME25': { percentOff: 25, description: '25% off welcome discount' },
+  'REDTEST': { percentOff: 100, description: 'Red test code - free access' },
   // Add your custom codes below:
   // 'FRIEND100': { percentOff: 100, description: 'Free for friends' },
   // 'LAUNCH20': { percentOff: 20, description: 'Launch discount' },
