@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './MealPlanView.css';
 import ShoppingList from './ShoppingList';
+import ProductRecommendations from './ProductRecommendations';
 
 const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
 
@@ -502,7 +503,12 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                     )}
                     <div className="meal-card-content">
                       <div className="meal-type">{mealType}</div>
-                      <h3 className="meal-name">{meal.name}</h3>
+                      <h3 className="meal-name">
+                        {meal.name}
+                        {meal.isSpecialOccasion && (
+                          <span className="special-occasion-badge">✨ Special Occasion</span>
+                        )}
+                      </h3>
                       {meal.prepTime && (
                         <p className="meal-time">⏱️ Prep: {meal.prepTime}</p>
                       )}
@@ -710,6 +716,22 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                 ))}
               </ol>
             </div>
+
+            {/* Special Occasion Product Recommendations */}
+            {selectedMeal.isSpecialOccasion && selectedMeal.productRecommendations && (
+              <ProductRecommendations
+                products={selectedMeal.productRecommendations}
+                mealName={selectedMeal.name}
+              />
+            )}
+
+            {/* Wine Pairing for Special Occasions */}
+            {selectedMeal.isSpecialOccasion && selectedMeal.winePairing && (
+              <div className="wine-pairing-section">
+                <h4>🍷 Recommended Pairing</h4>
+                <p className="wine-pairing">{selectedMeal.winePairing}</p>
+              </div>
+            )}
 
             {/* Personal Notes */}
             <div className="recipe-section">

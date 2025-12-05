@@ -510,9 +510,12 @@ Return ONLY valid JSON in this exact format:
 // Meal plan generation endpoint (with AI rate limiter to prevent cost overruns)
 app.post('/api/generate-meals', aiLimiter, requireAuth, async (req, res) => {
   try {
-    const { zipCode, primaryStore, comparisonStore, selectedMeals, selectedDays, dietaryPreferences, leftovers, ...preferences } = req.body;
+    const { zipCode, primaryStore, comparisonStore, selectedMeals, selectedDays, dietaryPreferences, leftovers, specialOccasion, ...preferences } = req.body;
 
     console.log(`Generating meal plan for user: ${req.user.email}`);
+    if (specialOccasion) {
+      console.log('✨ Special occasion meal requested - will generate premium restaurant-quality meal');
+    }
 
     // Check if this is the test user (bypass all limits)
     let isTestUser = false;
@@ -715,6 +718,19 @@ ${storeInfo}
 - Meals needed: ${mealTypes.join(', ')}
 ${dietaryRestrictionsText}
 ${leftoversText}
+${specialOccasion ? `
+**✨ SPECIAL OCCASION MEAL:**
+- The user requested ONE special occasion meal this week
+- This should be a premium, restaurant-quality dish
+- Inspire this meal from renowned chefs like Gordon Ramsay, Jamie Oliver, or publications like Bon Appétit, Saveur, or Food & Wine
+- Use elevated cooking techniques (sous vide, braising, reduction sauces, etc.)
+- Include gourmet ingredients from premium stores like Whole Foods, specialty butchers, or farmers markets
+- Add elegant presentation suggestions
+- Include wine or beverage pairing recommendations
+- Estimated cost for this meal: $40-80 (higher than regular meals)
+- Mark this meal with "isSpecialOccasion": true in the JSON
+- Add a "productRecommendations" array with 3-5 premium products (fine cookware, elegant serving pieces, specialty ingredients, linens, wine)
+` : ''}
 
 **CRITICAL Requirements:**
 1. **YOU MUST create meals for ALL ${daysOfWeek.length} days**: ${daysOfWeek.join(', ')}
