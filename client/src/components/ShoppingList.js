@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './ShoppingList.css';
 
 const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
@@ -8,6 +8,68 @@ function ShoppingList({ shoppingList, totalCost, priceComparison, selectedStores
   const [customItems, setCustomItems] = useState(['']);
   const [addingCustomItems, setAddingCustomItems] = useState(false);
   const [customItemsWithPrices, setCustomItemsWithPrices] = useState([]);
+  const [stateLoaded, setStateLoaded] = useState(false);
+
+  // Load saved shopping list state on mount
+  useEffect(() => {
+    const loadShoppingListState = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) return;
+
+        const response = await fetch(`${API_BASE}/api/shopping-list-state`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.checkedItems && Object.keys(data.checkedItems).length > 0) {
+            setCheckedItems(data.checkedItems);
+            console.log('📋 Loaded saved shopping list state:', Object.keys(data.checkedItems).length, 'items');
+          }
+        }
+      } catch (error) {
+        console.error('Error loading shopping list state:', error);
+      } finally {
+        setStateLoaded(true);
+      }
+    };
+
+    loadShoppingListState();
+  }, []);
+
+  // Save shopping list state whenever it changes
+  useEffect(() => {
+    if (!stateLoaded) return; // Don't save until we've loaded the initial state
+
+    const saveShoppingListState = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) return;
+
+        await fetch(`${API_BASE}/api/shopping-list-state`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            checkedItems
+          })
+        });
+
+        console.log('💾 Saved shopping list state:', Object.keys(checkedItems).length, 'items checked');
+      } catch (error) {
+        console.error('Error saving shopping list state:', error);
+      }
+    };
+
+    // Debounce saves to avoid too many requests
+    const timeoutId = setTimeout(saveShoppingListState, 500);
+    return () => clearTimeout(timeoutId);
+  }, [checkedItems, stateLoaded]);
 
   const handleCheck = (category, index) => {
     const key = `${category}-${index}`;

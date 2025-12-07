@@ -931,6 +931,13 @@ app.post('/api/regenerate-meal', aiLimiter, requireAuth, async (req, res) => {
     console.log(`Store: ${groceryStore?.name}`);
     console.log(`Dietary preferences: ${dietaryPreferences?.join(', ') || 'None'}`);
 
+    // Randomly select ONE cuisine from the user's preferences for variety
+    let selectedCuisine = 'Any';
+    if (cuisines && cuisines.length > 0) {
+      selectedCuisine = cuisines[Math.floor(Math.random() * cuisines.length)];
+      console.log(`🎲 Randomly selected cuisine: ${selectedCuisine} (from ${cuisines.join(', ')})`);
+    }
+
     // Build dietary restrictions text
     const formatDietaryPreference = (pref) => {
       const mapping = {
@@ -956,7 +963,7 @@ app.post('/api/regenerate-meal', aiLimiter, requireAuth, async (req, res) => {
 - Cooking for: ${people || 2} people
 
 **Preferences:**
-- Cuisine preferences: ${cuisines?.join(', ') || 'Any'}
+- Cuisine focus: ${selectedCuisine}
 - Grocery Store: ${groceryStore?.name || 'Local grocery store'}
 - Store Type: ${groceryStore?.type || 'Conventional'}
 ${dietaryRestrictionsText}
@@ -964,14 +971,15 @@ ${dietaryRestrictionsText}
 **Requirements:**
 1. Create a DIFFERENT meal than: "${currentMeal}"
 2. Make it appropriate for ${mealType}
-${dietaryPreferences && dietaryPreferences.length > 0 ? `3. **CRITICAL**: This recipe MUST comply with these dietary restrictions: ${dietaryPreferences.map(formatDietaryPreference).join('; ')}. Do not use any ingredients that violate these restrictions.
-4. Include prep time and cooking time` : '3. Include prep time and cooking time'}
-${dietaryPreferences && dietaryPreferences.length > 0 ? '5' : '4'}. Include servings count (for ${people || 2} people)
-${dietaryPreferences && dietaryPreferences.length > 0 ? '6' : '5'}. **CRITICAL**: Include an "imageUrl" field with a high-quality Unsplash food image URL that matches the dish. Use URLs in format: https://images.unsplash.com/photo-[id]?w=800&q=80
-${dietaryPreferences && dietaryPreferences.length > 0 ? '7' : '6'}. List all ingredients with quantities
-${dietaryPreferences && dietaryPreferences.length > 0 ? '8' : '7'}. Provide clear, step-by-step cooking instructions
-${dietaryPreferences && dietaryPreferences.length > 0 ? '9' : '8'}. Estimate the cost
-${dietaryPreferences && dietaryPreferences.length > 0 ? '10' : '9'}. All ingredients should be commonly available at ${groceryStore?.name || 'the selected store'}
+3. Focus on ${selectedCuisine} cuisine style
+${dietaryPreferences && dietaryPreferences.length > 0 ? `4. **CRITICAL**: This recipe MUST comply with these dietary restrictions: ${dietaryPreferences.map(formatDietaryPreference).join('; ')}. Do not use any ingredients that violate these restrictions.
+5. Include prep time and cooking time` : '4. Include prep time and cooking time'}
+${dietaryPreferences && dietaryPreferences.length > 0 ? '6' : '5'}. Include servings count (for ${people || 2} people)
+${dietaryPreferences && dietaryPreferences.length > 0 ? '7' : '6'}. **CRITICAL**: Include an "imageUrl" field with a high-quality Unsplash food image URL that matches the dish. Use URLs in format: https://images.unsplash.com/photo-[id]?w=800&q=80
+${dietaryPreferences && dietaryPreferences.length > 0 ? '8' : '7'}. List all ingredients with quantities
+${dietaryPreferences && dietaryPreferences.length > 0 ? '9' : '8'}. Provide clear, step-by-step cooking instructions
+${dietaryPreferences && dietaryPreferences.length > 0 ? '10' : '9'}. Estimate the cost
+${dietaryPreferences && dietaryPreferences.length > 0 ? '11' : '10'}. All ingredients should be commonly available at ${groceryStore?.name || 'the selected store'}
 
 **Response Format:**
 Return ONLY valid JSON in this exact format:
@@ -1542,6 +1550,64 @@ app.delete('/api/favorites/:id', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Error removing favorite:', error);
     res.status(500).json({ error: 'Failed to remove favorite' });
+  }
+});
+
+// Save shopping list state (checked items)
+app.post('/api/shopping-list-state', requireAuth, async (req, res) => {
+  try {
+    const { checkedItems, mealPlanDate } = req.body;
+
+    if (!checkedItems) {
+      return res.status(400).json({ error: 'No checked items provided' });
+    }
+
+    const planDate = mealPlanDate || new Date().toISOString().split('T')[0];
+
+    // Upsert shopping list state
+    await db.query(`
+      INSERT INTO shopping_list_states (user_id, meal_plan_date, checked_items, updated_at)
+      VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+      ON CONFLICT (user_id, meal_plan_date)
+      DO UPDATE SET
+        checked_items = EXCLUDED.checked_items,
+        updated_at = CURRENT_TIMESTAMP
+    `, [req.user.id, planDate, JSON.stringify(checkedItems)]);
+
+    console.log(`💾 ${req.user.email} saved shopping list state (${Object.keys(checkedItems).length} items checked)`);
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error('Error saving shopping list state:', error);
+    res.status(500).json({ error: 'Failed to save shopping list state' });
+  }
+});
+
+// Get shopping list state (checked items)
+app.get('/api/shopping-list-state', requireAuth, async (req, res) => {
+  try {
+    const { mealPlanDate } = req.query;
+    const planDate = mealPlanDate || new Date().toISOString().split('T')[0];
+
+    const result = await db.query(`
+      SELECT checked_items, updated_at
+      FROM shopping_list_states
+      WHERE user_id = $1 AND meal_plan_date = $2
+    `, [req.user.id, planDate]);
+
+    if (result.rows.length > 0) {
+      res.json({
+        checkedItems: result.rows[0].checked_items,
+        lastUpdated: result.rows[0].updated_at
+      });
+    } else {
+      // No saved state for this date
+      res.json({ checkedItems: {} });
+    }
+
+  } catch (error) {
+    console.error('Error getting shopping list state:', error);
+    res.status(500).json({ error: 'Failed to get shopping list state' });
   }
 });
 
@@ -2897,6 +2963,38 @@ async function initializeDatabase() {
       console.log('✅ Favorites table created successfully');
     } else {
       console.log('✅ Favorites table already exists');
+    }
+
+    // Check if shopping_list_states table exists
+    const shoppingListTableCheck = await db.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name = 'shopping_list_states'
+      );
+    `);
+
+    if (!shoppingListTableCheck.rows[0].exists) {
+      console.log('📋 Creating shopping_list_states table...');
+
+      await db.query(`
+        CREATE TABLE shopping_list_states (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          meal_plan_date DATE NOT NULL DEFAULT CURRENT_DATE,
+          checked_items JSONB NOT NULL DEFAULT '{}',
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(user_id, meal_plan_date)
+        );
+
+        CREATE INDEX idx_shopping_list_states_user_id ON shopping_list_states(user_id);
+        CREATE INDEX idx_shopping_list_states_date ON shopping_list_states(meal_plan_date);
+      `);
+
+      console.log('✅ Shopping list states table created successfully');
+    } else {
+      console.log('✅ Shopping list states table already exists');
     }
 
   } catch (error) {
