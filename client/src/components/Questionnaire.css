@@ -514,3 +514,71 @@
     font-size: 13px;
   }
 }
+
+/* Per-meal servings control */
+.meal-checkbox {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+}
+
+.meal-checkbox-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.servings-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f0f4ff;
+  padding: 8px 15px;
+  border-radius: 20px;
+  border: 2px solid #667eea;
+}
+
+.serving-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid #667eea;
+  background: white;
+  color: #667eea;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  padding: 0;
+}
+
+.serving-btn:hover {
+  background: #667eea;
+  color: white;
+  transform: scale(1.1);
+}
+
+.servings-display {
+  min-width: 30px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 16px;
+  color: #667eea;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .meal-checkbox {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .servings-control {
+    align-self: flex-end;
+  }
+}
