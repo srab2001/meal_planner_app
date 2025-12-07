@@ -303,7 +303,7 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
       case 2: return 'We\'ll adjust portions accordingly';
       case 3: return 'Add ingredients you\'d like to incorporate into your meals (optional)';
       case 4: return 'Select all that apply (optional)';
-      case 5: return 'Select all that apply';
+      case 5: return 'Select meals and set number of servings for each';
       case 6: return 'Select the days you need meal plans for';
       default: return '';
     }
