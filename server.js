@@ -507,6 +507,79 @@ Return ONLY valid JSON in this exact format:
   }
 });
 
+// Helper function to validate that all recipe ingredients are in the shopping list
+function validateShoppingListCompleteness(mealPlanData, daysOfWeek) {
+  const missingIngredients = [];
+  const shoppingListItems = new Set();
+
+  // Collect all items from shopping list (normalize for comparison)
+  if (mealPlanData.shoppingList) {
+    Object.values(mealPlanData.shoppingList).forEach(category => {
+      if (Array.isArray(category)) {
+        category.forEach(item => {
+          if (item.item) {
+            // Normalize: lowercase, remove articles, trim
+            const normalized = item.item.toLowerCase()
+              .replace(/^(a|an|the)\s+/i, '')
+              .replace(/\s+/g, ' ')
+              .trim();
+            shoppingListItems.add(normalized);
+          }
+        });
+      }
+    });
+  }
+
+  // Check each recipe's ingredients
+  if (mealPlanData.mealPlan) {
+    daysOfWeek.forEach(day => {
+      const dayMeals = mealPlanData.mealPlan[day];
+      if (dayMeals) {
+        Object.entries(dayMeals).forEach(([mealType, meal]) => {
+          if (meal && meal.ingredients && Array.isArray(meal.ingredients)) {
+            meal.ingredients.forEach(ingredient => {
+              // Normalize ingredient for comparison
+              const normalized = ingredient.toLowerCase()
+                .replace(/^(a|an|the)\s+/i, '')
+                .replace(/\d+\s*(cups?|tbsps?|tsps?|ozs?|lbs?|grams?|mls?|liters?|pieces?|cloves?|stalks?|bunches?)/gi, '')
+                .replace(/\s+/g, ' ')
+                .trim()
+                // Extract main ingredient (before comma or parenthesis)
+                .split(/[,(]/)[0]
+                .trim();
+
+              // Check if this ingredient (or close match) exists in shopping list
+              let found = false;
+              for (const listItem of shoppingListItems) {
+                // Check if either contains the other (handles variations like "chicken breast" vs "chicken")
+                if (listItem.includes(normalized) || normalized.includes(listItem)) {
+                  found = true;
+                  break;
+                }
+              }
+
+              if (!found && normalized.length > 2) { // Ignore very short ingredients
+                missingIngredients.push({
+                  ingredient: ingredient,
+                  normalizedIngredient: normalized,
+                  day: day,
+                  meal: `${meal.name} (${mealType})`
+                });
+              }
+            });
+          }
+        });
+      }
+    });
+  }
+
+  return {
+    isComplete: missingIngredients.length === 0,
+    missingIngredients: missingIngredients,
+    totalShoppingListItems: shoppingListItems.size
+  };
+}
+
 // Meal plan generation endpoint (with AI rate limiter to prevent cost overruns)
 app.post('/api/generate-meals', aiLimiter, requireAuth, async (req, res) => {
   try {
@@ -625,7 +698,7 @@ app.post('/api/generate-meals', aiLimiter, requireAuth, async (req, res) => {
       ? `${requirementNumber++}. **CRITICAL**: ALL recipes MUST comply with these dietary restrictions: ${dietaryPreferences.map(formatDietaryPreference).join('; ')}. Do not use any ingredients that violate these restrictions.\n`
       : '';
 
-    const shoppingListRequirement = `${requirementNumber++}. Create a consolidated shopping list organized by category\n`;
+    const shoppingListRequirement = `${requirementNumber++}. **CRITICAL**: Create a consolidated shopping list that includes EVERY SINGLE ingredient from ALL recipes across ALL ${daysOfWeek.length} days. Do not omit any ingredients - every ingredient listed in the recipes must appear in the shopping list, organized by category (Produce, Meat & Seafood, Dairy & Eggs, Pantry Staples). Combine duplicate ingredients with appropriate quantities.\n`;
     const storeRequirement = `${requirementNumber++}. All items should be commonly available at the selected store(s)\n`;
     const timeRequirement = `${requirementNumber++}. Include prep time, cooking time, servings, and estimated cost for each meal\n`;
     const imageRequirement = `${requirementNumber++}. **CRITICAL**: For EVERY meal, include an "imageUrl" field with a high-quality Unsplash food image URL that matches the dish. Use URLs in format: https://images.unsplash.com/photo-[id]?w=800&q=80\n`;
@@ -818,6 +891,19 @@ ${shoppingListFormat}
     })]);
 
     console.log(`📊 Usage tracked for ${req.user.email}`);
+
+    // Validate that all recipe ingredients are in the shopping list
+    console.log('🔍 Validating shopping list completeness...');
+    const validationResult = validateShoppingListCompleteness(mealPlanData, daysOfWeek);
+    if (!validationResult.isComplete) {
+      console.warn('⚠️  Shopping list validation found missing ingredients:');
+      validationResult.missingIngredients.forEach(missing => {
+        console.warn(`   - ${missing.ingredient} (from ${missing.meal} on ${missing.day})`);
+      });
+      console.warn(`   Total missing: ${validationResult.missingIngredients.length} ingredients`);
+    } else {
+      console.log('✅ Shopping list validation passed - all ingredients accounted for');
+    }
 
     res.json(mealPlanData);
 
