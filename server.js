@@ -417,22 +417,25 @@ app.post('/api/find-stores', aiLimiter, requireAuth, async (req, res) => {
     // Build prompt based on whether a specific store was requested
     let prompt;
     if (storeName && storeName.trim()) {
-      prompt = `Given the ZIP code ${zipCode}, list grocery stores in this area with a focus on "${storeName}".
+      prompt = `Given the ZIP code ${zipCode}, list grocery stores within a 10-mile radius with a focus on "${storeName}".
 
-IMPORTANT: If "${storeName}" exists in this area, it MUST be the FIRST store in the list.
+CRITICAL REQUIREMENTS:
+1. ONLY include stores within 10 miles of the ZIP code ${zipCode}
+2. If "${storeName}" exists within 10 miles, it MUST be the FIRST store in the list
+3. Do NOT include stores beyond 10 miles
 
 For each store, provide:
 - name: The official store name
 - type: Category like "Organic", "Discount", "Conventional", "Specialty"
-- typical_distance: Range like "1-3 miles", "2-5 miles", etc.
+- distance: Estimated distance from ${zipCode} (e.g., "3 miles", "7 miles", "10 miles")
 
-List 6-8 stores total:
-1. "${storeName}" (if it exists in this area) - MUST BE FIRST
+List 6-8 stores within 10 miles:
+1. "${storeName}" (if it exists within 10 miles) - MUST BE FIRST
 2. Other nearby stores similar to "${storeName}"
-3. Other major chains in the area
+3. Other major chains within the 10-mile radius
 
 Include a mix of:
-- The requested store if available
+- The requested store if available within 10 miles
 - National chains (Walmart, Kroger, Target)
 - Regional chains appropriate for this area
 - Specialty stores (Whole Foods, Trader Joe's)
@@ -442,21 +445,23 @@ Return ONLY valid JSON in this exact format:
   "stores": [
     {
       "name": "Store Name",
-      "address": "Typical location within 5 miles",
-      "distance": "2-4 miles",
+      "address": "Typical location description",
+      "distance": "5 miles",
       "type": "Conventional"
     }
   ]
 }`;
     } else {
-      prompt = `Given the ZIP code ${zipCode}, list major grocery stores commonly found in this area of the United States.
+      prompt = `Given the ZIP code ${zipCode}, list major grocery stores within a 10-mile radius.
+
+CRITICAL REQUIREMENT: ONLY include stores within 10 miles of ZIP code ${zipCode}. Do NOT include stores beyond 10 miles.
 
 For each store, provide:
 - name: The official store name
 - type: Category like "Organic", "Discount", "Conventional", "Specialty"
-- typical_distance: Range like "1-3 miles", "2-5 miles", etc.
+- distance: Estimated distance from ${zipCode} (e.g., "3 miles", "7 miles", "10 miles")
 
-List 6-8 major chains that would realistically be in this area. Include a mix of:
+List 6-8 major chains within the 10-mile radius. Include a mix of:
 - National chains (Walmart, Kroger, Target)
 - Regional chains appropriate for this area
 - Specialty stores (Whole Foods, Trader Joe's)
@@ -466,22 +471,22 @@ Return ONLY valid JSON in this exact format:
   "stores": [
     {
       "name": "Store Name",
-      "address": "Typical location within 5 miles",
-      "distance": "2-4 miles",
+      "address": "Typical location description",
+      "distance": "5 miles",
       "type": "Conventional"
     }
   ]
 }`;
     }
 
-    console.log(`Finding stores for ZIP: ${zipCode}${storeName ? `, prioritizing: ${storeName}` : ''}`);
+    console.log(`Finding stores within 10 miles of ZIP: ${zipCode}${storeName ? `, prioritizing: ${storeName}` : ''}`);
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         {
           role: 'system',
-          content: 'You are a helpful assistant that provides grocery store information. Always respond with valid JSON only.'
+          content: 'You are a helpful assistant that provides grocery store information for a specific ZIP code. CRITICAL: Only include stores within a 10-mile radius of the given ZIP code. Always respond with valid JSON only.'
         },
         {
           role: 'user',
