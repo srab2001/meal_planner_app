@@ -5,7 +5,21 @@ import ProductRecommendations from './ProductRecommendations';
 
 const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
 
-function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver, onLogout, onViewProfile }) {
+// Helper function to shorten day names for mobile
+const shortenDayName = (day) => {
+  const dayMap = {
+    'Monday': 'Mon',
+    'Tuesday': 'Tue',
+    'Wednesday': 'Wed',
+    'Thursday': 'Thu',
+    'Friday': 'Fri',
+    'Saturday': 'Sat',
+    'Sunday': 'Sun'
+  };
+  return dayMap[day] || day;
+};
+
+function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver, onLogout, onViewProfile}) {
   const [selectedDay, setSelectedDay] = useState('Monday');
   const [selectedMeal, setSelectedMeal] = useState(null);
   const [activeTab, setActiveTab] = useState('meals');
@@ -473,7 +487,7 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                   className={`day-button ${selectedDay === day ? 'active' : ''}`}
                   onClick={() => setSelectedDay(day)}
                 >
-                  {day}
+                  {shortenDayName(day)}
                 </button>
               ))}
             </div>

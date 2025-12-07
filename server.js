@@ -510,7 +510,7 @@ Return ONLY valid JSON in this exact format:
 // Meal plan generation endpoint (with AI rate limiter to prevent cost overruns)
 app.post('/api/generate-meals', aiLimiter, requireAuth, async (req, res) => {
   try {
-    const { zipCode, primaryStore, comparisonStore, selectedMeals, selectedDays, dietaryPreferences, leftovers, specialOccasion, ...preferences } = req.body;
+    const { zipCode, primaryStore, comparisonStore, selectedMeals, servingsByMeal, selectedDays, dietaryPreferences, leftovers, specialOccasion, ...preferences } = req.body;
 
     console.log(`Generating meal plan for user: ${req.user.email}`);
     if (specialOccasion) {
@@ -636,9 +636,10 @@ app.post('/api/generate-meals', aiLimiter, requireAuth, async (req, res) => {
       : '';
 
     // Create example meal structure for the prompt
-    const mealStructureExample = mealTypes.map(mealType =>
-      `      "${mealType}": { "name": "...", "prepTime": "...", "cookTime": "...", "servings": ${preferences.people || 2}, "estimatedCost": "$X-Y", "imageUrl": "https://images.unsplash.com/photo-...", "ingredients": [...], "instructions": [...] }`
-    ).join(',\n');
+    const mealStructureExample = mealTypes.map(mealType => {
+      const servings = servingsByMeal?.[mealType] || preferences.people || 2;
+      return `      "${mealType}": { "name": "...", "prepTime": "...", "cookTime": "...", "servings": ${servings}, "estimatedCost": "$X-Y", "imageUrl": "https://images.unsplash.com/photo-...", "ingredients": [...], "instructions": [...] }`;
+    }).join(',\n');
 
     // Build shopping list format based on whether we have comparison store
     const shoppingListFormat = comparisonStore ? `

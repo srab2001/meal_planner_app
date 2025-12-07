@@ -18,7 +18,198 @@ function ShoppingList({ shoppingList, totalCost, priceComparison, selectedStores
   };
 
   const handlePrint = () => {
-    window.print();
+    // Create a print-specific view with only the shopping list
+    const printWindow = window.open('', '_blank');
+    const printContent = generatePrintContent();
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+
+    // Small delay to ensure content is loaded before printing
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  };
+
+  const generatePrintContent = () => {
+    const categories = Object.keys(shoppingList || {});
+    const isComparisonMode = priceComparison && selectedStores?.comparisonStore;
+
+    // Helper to compare prices
+    const getCheaperStore = (primaryPrice, comparisonPrice) => {
+      if (!primaryPrice || !comparisonPrice) return null;
+      const primary = parseFloat(primaryPrice.replace(/[^0-9.]/g, ''));
+      const comparison = parseFloat(comparisonPrice.replace(/[^0-9.]/g, ''));
+      if (isNaN(primary) || isNaN(comparison)) return null;
+      if (primary < comparison) return 'primary';
+      if (comparison < primary) return 'comparison';
+      return 'equal';
+    };
+
+    const storeName = isComparisonMode
+      ? `${selectedStores.primaryStore.name} vs ${selectedStores.comparisonStore.name}`
+      : selectedStores?.primaryStore?.name || 'Shopping List';
+
+    let html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Shopping List - ${storeName}</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #667eea;
+      border-bottom: 3px solid #667eea;
+      padding-bottom: 10px;
+    }
+    .store-info {
+      color: #666;
+      margin-bottom: 20px;
+    }
+    .category {
+      margin-bottom: 30px;
+      page-break-inside: avoid;
+    }
+    .category-title {
+      background: #f0f0f0;
+      padding: 10px;
+      margin-bottom: 10px;
+      font-weight: bold;
+      border-left: 4px solid #667eea;
+    }
+    .item {
+      padding: 8px 0;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      align-items: center;
+    }
+    .checkbox {
+      width: 20px;
+      height: 20px;
+      border: 2px solid #667eea;
+      margin-right: 15px;
+      flex-shrink: 0;
+    }
+    .item-details {
+      flex: 1;
+    }
+    .item-name {
+      font-weight: 500;
+    }
+    .item-quantity {
+      color: #666;
+      font-size: 14px;
+    }
+    .item-price {
+      text-align: right;
+      color: #667eea;
+      font-weight: bold;
+    }
+    .total-cost {
+      margin-top: 30px;
+      padding: 20px;
+      background: #f5f5f5;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 24px;
+      font-weight: bold;
+      color: #667eea;
+    }
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .comparison-table th, .comparison-table td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .comparison-table th {
+      background: #f0f0f0;
+      font-weight: bold;
+    }
+    .cheaper-price {
+      color: #4caf50;
+      font-weight: bold;
+    }
+    @media print {
+      body { padding: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <h1>🛒 Shopping List</h1>
+  <div class="store-info">${storeName}</div>
+`;
+
+    // Add each category
+    categories.forEach(category => {
+      html += `<div class="category"><h2 class="category-title">${category}</h2>`;
+
+      if (isComparisonMode) {
+        html += `<table class="comparison-table">
+          <thead>
+            <tr>
+              <th>☐</th>
+              <th>Item</th>
+              <th>Quantity</th>
+              <th>${selectedStores.primaryStore.name}</th>
+              <th>${selectedStores.comparisonStore.name}</th>
+            </tr>
+          </thead>
+          <tbody>`;
+
+        shoppingList[category].forEach(item => {
+          const primaryPrice = item.primaryStorePrice || '-';
+          const comparisonPrice = item.comparisonStorePrice || '-';
+          const cheaperStore = getCheaperStore(item.primaryStorePrice, item.comparisonStorePrice);
+
+          html += `<tr>
+            <td><div class="checkbox"></div></td>
+            <td>${item.item}</td>
+            <td>${item.quantity}</td>
+            <td class="${cheaperStore === 'primary' ? 'cheaper-price' : ''}">${primaryPrice}</td>
+            <td class="${cheaperStore === 'comparison' ? 'cheaper-price' : ''}">${comparisonPrice}</td>
+          </tr>`;
+        });
+
+        html += `</tbody></table>`;
+      } else {
+        shoppingList[category].forEach(item => {
+          html += `<div class="item">
+            <div class="checkbox"></div>
+            <div class="item-details">
+              <div class="item-name">${item.item}</div>
+              <div class="item-quantity">${item.quantity}</div>
+            </div>
+            ${item.estimatedPrice ? `<div class="item-price">${item.estimatedPrice}</div>` : ''}
+          </div>`;
+        });
+      }
+
+      html += `</div>`;
+    });
+
+    // Add total cost
+    if (isComparisonMode && priceComparison) {
+      html += `<div class="total-cost">
+        ${selectedStores.primaryStore.name}: ${priceComparison.primaryStoreTotal}<br>
+        ${selectedStores.comparisonStore.name}: ${priceComparison.comparisonStoreTotal}<br>
+        <span style="color: #4caf50; font-size: 18px; margin-top: 10px; display: block;">${priceComparison.savings || ''}</span>
+      </div>`;
+    } else if (totalCost) {
+      html += `<div class="total-cost">Total: ${totalCost}</div>`;
+    }
+
+    html += `</body></html>`;
+    return html;
   };
 
   const handleAddItemField = () => {
