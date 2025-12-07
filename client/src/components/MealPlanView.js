@@ -192,6 +192,64 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
     }
   };
 
+  const handleSaveRecipe = (meal, day, mealType) => {
+    let content = `${meal.name}\n`;
+    content += `${'='.repeat(meal.name.length)}\n\n`;
+
+    if (day && mealType) {
+      content += `Day: ${day}\n`;
+      content += `Meal Type: ${mealType}\n`;
+    }
+
+    if (meal.servings) {
+      content += `Servings: ${meal.servings}\n`;
+    }
+
+    if (meal.prepTime) {
+      content += `Prep Time: ${meal.prepTime}\n`;
+    }
+
+    if (meal.cookTime) {
+      content += `Cook Time: ${meal.cookTime}\n`;
+    }
+
+    if (meal.estimatedCost) {
+      content += `Estimated Cost: ${meal.estimatedCost}\n`;
+    }
+
+    content += `\n${'='.repeat(50)}\n\n`;
+
+    // Ingredients
+    content += `INGREDIENTS\n${'-'.repeat(11)}\n`;
+    if (meal.ingredients && meal.ingredients.length > 0) {
+      meal.ingredients.forEach(ingredient => {
+        content += `• ${ingredient}\n`;
+      });
+    }
+
+    content += `\n`;
+
+    // Instructions
+    content += `INSTRUCTIONS\n${'-'.repeat(12)}\n`;
+    if (meal.instructions && meal.instructions.length > 0) {
+      meal.instructions.forEach((instruction, index) => {
+        content += `${index + 1}. ${instruction}\n`;
+      });
+    }
+
+    // Create and download file
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const fileName = meal.name.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+    link.download = `recipe-${fileName}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const handleRegenerateMeal = async (day, mealType) => {
     const mealKey = `${day}-${mealType}`;
     setRegeneratingMeal(mealKey);
@@ -542,6 +600,14 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                         onClick={() => handleMealClick(meal)}
                       >
                         👁️ View Recipe
+                      </button>
+
+                      <button
+                        className="save-recipe-btn"
+                        onClick={() => handleSaveRecipe(meal, selectedDay, mealType)}
+                        title="Download recipe as text file"
+                      >
+                        💾 Save
                       </button>
 
                       <button

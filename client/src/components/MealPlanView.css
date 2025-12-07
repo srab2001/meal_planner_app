@@ -281,6 +281,7 @@
 }
 
 .view-recipe-btn,
+.save-recipe-btn,
 .regenerate-meal-btn {
   flex: 1;
   padding: 12px;
@@ -304,6 +305,17 @@
 .view-recipe-btn:hover {
   transform: scale(1.02);
   box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+}
+
+.save-recipe-btn {
+  background: #4caf50;
+  color: white;
+}
+
+.save-recipe-btn:hover {
+  background: #45a049;
+  transform: scale(1.02);
+  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.4);
 }
 
 .regenerate-meal-btn {

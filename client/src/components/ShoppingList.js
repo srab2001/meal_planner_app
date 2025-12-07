@@ -33,6 +33,165 @@ function ShoppingList({ shoppingList, totalCost, priceComparison, selectedStores
     }, 250);
   };
 
+  const handleDownloadList = () => {
+    const categories = Object.keys(shoppingList || {});
+    const isComparisonMode = priceComparison && selectedStores?.comparisonStore;
+
+    let content = `Shopping List\n`;
+    content += `Generated: ${new Date().toLocaleDateString()}\n`;
+    if (isComparisonMode) {
+      content += `Stores: ${selectedStores.primaryStore.name} vs ${selectedStores.comparisonStore.name}\n`;
+    } else if (selectedStores?.primaryStore) {
+      content += `Store: ${selectedStores.primaryStore.name}\n`;
+    }
+    content += `\n${'='.repeat(50)}\n\n`;
+
+    categories.forEach(category => {
+      content += `${category}\n${'-'.repeat(category.length)}\n`;
+      shoppingList[category].forEach(item => {
+        const key = `${category}-${shoppingList[category].indexOf(item)}`;
+        const checked = checkedItems[key] ? '✓ ' : '☐ ';
+        content += `${checked}${item.item} - ${item.quantity}`;
+        if (isComparisonMode && item.primaryStorePrice && item.comparisonStorePrice) {
+          content += ` (${selectedStores.primaryStore.name}: ${item.primaryStorePrice}, ${selectedStores.comparisonStore.name}: ${item.comparisonStorePrice})`;
+        } else if (item.estimatedPrice) {
+          content += ` - ${item.estimatedPrice}`;
+        }
+        content += '\n';
+      });
+      content += '\n';
+    });
+
+    // Add custom items
+    if (customItemsWithPrices.length > 0) {
+      content += `Custom Items\n${'-'.repeat(12)}\n`;
+      customItemsWithPrices.forEach((item, index) => {
+        const key = `custom-${index}`;
+        const checked = checkedItems[key] ? '✓ ' : '☐ ';
+        content += `${checked}${item.item} - ${item.quantity}`;
+        if (item.estimatedPrice) {
+          content += ` - ${item.estimatedPrice}`;
+        }
+        content += '\n';
+      });
+      content += '\n';
+    }
+
+    // Add totals
+    const adjusted = calculateAdjustedTotal();
+    if (isComparisonMode && priceComparison) {
+      content += `\n${'='.repeat(50)}\n`;
+      content += `Original Totals:\n`;
+      content += `${selectedStores.primaryStore.name}: ${priceComparison.primaryStoreTotal}\n`;
+      content += `${selectedStores.comparisonStore.name}: ${priceComparison.comparisonStoreTotal}\n`;
+      if (adjusted.hasAdjustment) {
+        content += `\nAdjusted Total (excluding owned items):\n`;
+        content += `${selectedStores.primaryStore.name}: ${adjusted.adjustedPrimaryTotal}\n`;
+        content += `${selectedStores.comparisonStore.name}: ${adjusted.adjustedComparisonTotal}\n`;
+      }
+    } else if (totalCost) {
+      content += `\n${'='.repeat(50)}\n`;
+      content += `Total: ${totalCost}\n`;
+      if (adjusted.hasAdjustment) {
+        content += `Adjusted Total (excluding owned items): ${adjusted.adjustedTotal}\n`;
+      }
+    }
+
+    // Create and download file
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `shopping-list-${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Calculate adjusted total excluding checked items
+  const calculateAdjustedTotal = () => {
+    const categories = Object.keys(shoppingList || {});
+    let hasAdjustment = false;
+
+    if (priceComparison && selectedStores?.comparisonStore) {
+      // Comparison mode
+      let adjustedPrimary = 0;
+      let adjustedComparison = 0;
+
+      categories.forEach(category => {
+        shoppingList[category].forEach((item, index) => {
+          const key = `${category}-${index}`;
+          if (!checkedItems[key]) {
+            const primaryPrice = parseFloat((item.primaryStorePrice || '$0').replace(/[^0-9.]/g, ''));
+            const comparisonPrice = parseFloat((item.comparisonStorePrice || '$0').replace(/[^0-9.]/g, ''));
+            adjustedPrimary += isNaN(primaryPrice) ? 0 : primaryPrice;
+            adjustedComparison += isNaN(comparisonPrice) ? 0 : comparisonPrice;
+          } else {
+            hasAdjustment = true;
+          }
+        });
+      });
+
+      // Add custom items
+      customItemsWithPrices.forEach((item, index) => {
+        const key = `custom-${index}`;
+        if (!checkedItems[key]) {
+          const primaryPrice = parseFloat((item.primaryStorePrice || '$0').replace(/[^0-9.]/g, ''));
+          const comparisonPrice = parseFloat((item.comparisonStorePrice || '$0').replace(/[^0-9.]/g, ''));
+          adjustedPrimary += isNaN(primaryPrice) ? 0 : primaryPrice;
+          adjustedComparison += isNaN(comparisonPrice) ? 0 : comparisonPrice;
+        } else {
+          hasAdjustment = true;
+        }
+      });
+
+      return {
+        hasAdjustment,
+        adjustedPrimaryTotal: `$${adjustedPrimary.toFixed(2)}`,
+        adjustedComparisonTotal: `$${adjustedComparison.toFixed(2)}`,
+        savings: adjustedPrimary > adjustedComparison
+          ? `Save $${(adjustedPrimary - adjustedComparison).toFixed(2)} at ${selectedStores.comparisonStore.name}`
+          : adjustedComparison > adjustedPrimary
+          ? `Save $${(adjustedComparison - adjustedPrimary).toFixed(2)} at ${selectedStores.primaryStore.name}`
+          : null
+      };
+    } else if (totalCost) {
+      // Single store mode
+      let adjustedTotal = 0;
+
+      categories.forEach(category => {
+        shoppingList[category].forEach((item, index) => {
+          const key = `${category}-${index}`;
+          if (!checkedItems[key]) {
+            const price = parseFloat((item.estimatedPrice || '$0').replace(/[^0-9.]/g, ''));
+            adjustedTotal += isNaN(price) ? 0 : price;
+          } else {
+            hasAdjustment = true;
+          }
+        });
+      });
+
+      // Add custom items
+      customItemsWithPrices.forEach((item, index) => {
+        const key = `custom-${index}`;
+        if (!checkedItems[key]) {
+          const price = parseFloat((item.estimatedPrice || '$0').replace(/[^0-9.]/g, ''));
+          adjustedTotal += isNaN(price) ? 0 : price;
+        } else {
+          hasAdjustment = true;
+        }
+      });
+
+      return {
+        hasAdjustment,
+        adjustedTotal: `$${adjustedTotal.toFixed(2)}`
+      };
+    }
+
+    return { hasAdjustment: false };
+  };
+
   const generatePrintContent = () => {
     const categories = Object.keys(shoppingList || {});
     const isComparisonMode = priceComparison && selectedStores?.comparisonStore;
@@ -314,9 +473,15 @@ function ShoppingList({ shoppingList, totalCost, priceComparison, selectedStores
         ) : selectedStores?.primaryStore ? (
           <p className="store-name">For: {selectedStores.primaryStore.name}</p>
         ) : null}
-        <button onClick={handlePrint} className="print-button">
-          🖨️ Print List
-        </button>
+        <p className="checkbox-hint">💡 Check items you already have to exclude them from the total</p>
+        <div className="action-buttons">
+          <button onClick={handlePrint} className="print-button">
+            🖨️ Print
+          </button>
+          <button onClick={handleDownloadList} className="download-button">
+            💾 Download
+          </button>
+        </div>
       </div>
 
       {/* Add Custom Items Section */}
@@ -553,29 +718,59 @@ function ShoppingList({ shoppingList, totalCost, priceComparison, selectedStores
       </div>
 
       {/* Total Cost or Price Comparison Summary */}
-      {isComparisonMode && priceComparison ? (
-        <div className="price-comparison-summary">
-          <div className="comparison-totals">
-            <div className="total-item">
-              <span className="total-label">{selectedStores.primaryStore.name} Total:</span>
-              <span className="total-value">{priceComparison.primaryStoreTotal}</span>
+      {(() => {
+        const adjusted = calculateAdjustedTotal();
+
+        if (isComparisonMode && priceComparison) {
+          return (
+            <div className="price-comparison-summary">
+              <div className="comparison-totals">
+                <div className="total-item">
+                  <span className="total-label">{selectedStores.primaryStore.name} Total:</span>
+                  <span className="total-value">{priceComparison.primaryStoreTotal}</span>
+                </div>
+                <div className="total-item">
+                  <span className="total-label">{selectedStores.comparisonStore.name} Total:</span>
+                  <span className="total-value">{priceComparison.comparisonStoreTotal}</span>
+                </div>
+              </div>
+              {adjusted.hasAdjustment && (
+                <div className="adjusted-totals">
+                  <p className="adjusted-label">After excluding owned items:</p>
+                  <div className="comparison-totals">
+                    <div className="total-item adjusted">
+                      <span className="total-label">{selectedStores.primaryStore.name}:</span>
+                      <span className="total-value">{adjusted.adjustedPrimaryTotal}</span>
+                    </div>
+                    <div className="total-item adjusted">
+                      <span className="total-label">{selectedStores.comparisonStore.name}:</span>
+                      <span className="total-value">{adjusted.adjustedComparisonTotal}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {(adjusted.savings || priceComparison.savings) && (
+                <div className="savings-banner">
+                  💰 {adjusted.savings || priceComparison.savings}
+                </div>
+              )}
             </div>
-            <div className="total-item">
-              <span className="total-label">{selectedStores.comparisonStore.name} Total:</span>
-              <span className="total-value">{priceComparison.comparisonStoreTotal}</span>
+          );
+        } else if (totalCost) {
+          return (
+            <div className="shopping-list-total">
+              <h3>Estimated Total: {totalCost}</h3>
+              {adjusted.hasAdjustment && (
+                <div className="adjusted-total">
+                  <p className="adjusted-label">After excluding owned items:</p>
+                  <h3 className="adjusted-value">{adjusted.adjustedTotal}</h3>
+                </div>
+              )}
             </div>
-          </div>
-          {priceComparison.savings && (
-            <div className="savings-banner">
-              💰 {priceComparison.savings}
-            </div>
-          )}
-        </div>
-      ) : totalCost ? (
-        <div className="shopping-list-total">
-          <h3>Estimated Total: {totalCost}</h3>
-        </div>
-      ) : null}
+          );
+        }
+        return null;
+      })()}
     </div>
   );
 }
