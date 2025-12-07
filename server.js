@@ -2997,6 +2997,39 @@ async function initializeDatabase() {
       console.log('✅ Shopping list states table already exists');
     }
 
+    // Check if meal_plan_history table exists
+    const historyTableCheck = await db.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name = 'meal_plan_history'
+      );
+    `);
+
+    if (!historyTableCheck.rows[0].exists) {
+      console.log('📋 Creating meal_plan_history table...');
+
+      await db.query(`
+        CREATE TABLE meal_plan_history (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          preferences JSONB,
+          meal_plan JSONB NOT NULL,
+          stores JSONB,
+          shopping_list JSONB,
+          total_cost VARCHAR(50),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE INDEX idx_meal_plan_history_user_id ON meal_plan_history(user_id);
+        CREATE INDEX idx_meal_plan_history_created_at ON meal_plan_history(created_at);
+      `);
+
+      console.log('✅ Meal plan history table created successfully');
+    } else {
+      console.log('✅ Meal plan history table already exists');
+    }
+
   } catch (error) {
     console.error('❌ Database initialization error:', error.message);
     // Don't crash the server - continue even if this fails

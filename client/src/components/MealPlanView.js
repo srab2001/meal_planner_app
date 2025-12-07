@@ -30,6 +30,8 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [historicalStores, setHistoricalStores] = useState(null);
+  const [isViewingHistory, setIsViewingHistory] = useState(false);
 
   // Recipe customization state
   const [customServings, setCustomServings] = useState(null);
@@ -105,6 +107,9 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
       </div>
     );
   }
+
+  // Use historical stores if viewing history, otherwise use current stores
+  const currentStores = isViewingHistory ? historicalStores : selectedStores;
 
   const days = Object.keys(localMealPlan.mealPlan || {});
   console.log('📅 Days available in meal plan:', days);
@@ -407,6 +412,21 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
     }
   };
 
+  const handleLoadHistoricalPlan = (entry) => {
+    // Load the historical meal plan, shopping list, and stores
+    setLocalMealPlan(entry.meal_plan);
+    setHistoricalStores(entry.selectedStores || null);
+    setIsViewingHistory(true);
+    setShowHistory(false);
+    setActiveTab('meals');
+    console.log('📖 Loaded historical meal plan from', new Date(entry.createdAt).toLocaleDateString());
+    console.log('📦 Historical data includes:', {
+      mealPlan: !!entry.meal_plan,
+      shoppingList: !!entry.meal_plan?.shoppingList,
+      stores: !!entry.selectedStores
+    });
+  };
+
   const isFavorited = (mealName) => {
     return favorites.some(fav => fav.meal.name === mealName);
   };
@@ -471,16 +491,28 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
         <div className="header-content">
           <h1>Your 7-Day Meal Plan</h1>
           {user && <p className="welcome-text">Welcome, {user.displayName}!</p>}
-          {selectedStores?.primaryStore && (
+          {isViewingHistory && (
+            <p className="history-badge">📖 Viewing Historical Meal Plan</p>
+          )}
+          {currentStores?.primaryStore && (
             <p className="store-info">
-              Shopping at: <strong>{selectedStores.primaryStore.name}</strong>
-              {selectedStores.comparisonStore && (
-                <> vs <strong>{selectedStores.comparisonStore.name}</strong></>
+              Shopping at: <strong>{currentStores.primaryStore.name}</strong>
+              {currentStores.comparisonStore && (
+                <> vs <strong>{currentStores.comparisonStore.name}</strong></>
               )}
             </p>
           )}
         </div>
         <div className="header-actions">
+          {isViewingHistory && (
+            <button onClick={() => {
+              setLocalMealPlan(mealPlan);
+              setHistoricalStores(null);
+              setIsViewingHistory(false);
+            }} className="btn-back-to-current">
+              ⬅️ Back to Current Plan
+            </button>
+          )}
           <button onClick={handleFeedback} className="btn-feedback">
             💬 Send Feedback
           </button>
@@ -737,7 +769,7 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
             shoppingList={localMealPlan.shoppingList}
             totalCost={localMealPlan.totalEstimatedCost}
             priceComparison={localMealPlan.priceComparison}
-            selectedStores={selectedStores}
+            selectedStores={currentStores}
           />
         )}
       </div>
@@ -845,10 +877,10 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
       <div className="print-only-content">
         <div className="print-header">
           <h1>7-Day Meal Plan</h1>
-          {selectedStores?.primaryStore && (
+          {currentStores?.primaryStore && (
             <p>
-              Shopping at: {selectedStores.primaryStore.name}
-              {selectedStores.comparisonStore && ` vs ${selectedStores.comparisonStore.name}`}
+              Shopping at: {currentStores.primaryStore.name}
+              {currentStores.comparisonStore && ` vs ${currentStores.comparisonStore.name}`}
             </p>
           )}
           {preferences && (
@@ -975,7 +1007,9 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                           weekday: 'short',
                           year: 'numeric',
                           month: 'short',
-                          day: 'numeric'
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
                         })}
                       </span>
                       <span className="history-details">
@@ -989,7 +1023,16 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                       {entry.selectedStores?.primaryStore && (
                         <span>🛒 {entry.selectedStores.primaryStore.name}</span>
                       )}
+                      {entry.total_cost && (
+                        <span>💰 {entry.total_cost}</span>
+                      )}
                     </div>
+                    <button
+                      className="btn-load-history"
+                      onClick={() => handleLoadHistoricalPlan(entry)}
+                    >
+                      📖 View Meal Plan
+                    </button>
                   </div>
                 ))
               )}
