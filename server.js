@@ -2853,7 +2853,55 @@ Natural lighting, beautiful presentation, high-quality photo.`;
   }
 });
 
+// Initialize database tables on startup
+async function initializeDatabase() {
+  try {
+    console.log('🔍 Checking database schema...');
+
+    // Check if favorites table exists
+    const tableCheck = await db.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name = 'favorites'
+      );
+    `);
+
+    if (!tableCheck.rows[0].exists) {
+      console.log('📋 Creating favorites table...');
+
+      await db.query(`
+        CREATE TABLE favorites (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          meal_type VARCHAR(20) NOT NULL CHECK (meal_type IN ('breakfast', 'lunch', 'dinner')),
+          meal_data JSONB NOT NULL,
+          meal_name VARCHAR(255) NOT NULL,
+          servings_adjustment INTEGER,
+          user_notes TEXT,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(user_id, meal_name, meal_type)
+        );
+
+        CREATE INDEX idx_favorites_user_id ON favorites(user_id);
+        CREATE INDEX idx_favorites_meal_type ON favorites(meal_type);
+        CREATE INDEX idx_favorites_meal_name ON favorites(meal_name);
+      `);
+
+      console.log('✅ Favorites table created successfully');
+    } else {
+      console.log('✅ Favorites table already exists');
+    }
+
+  } catch (error) {
+    console.error('❌ Database initialization error:', error.message);
+    // Don't crash the server - continue even if this fails
+  }
+}
+
 const port = PORT || 5000;
-app.listen(port, () => {
+app.listen(port, async () => {
   console.log(`server listening on port ${port}`);
+  await initializeDatabase();
 });
