@@ -1,10 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './MealPlanView.css';
 import ShoppingList from './ShoppingList';
+import ProductRecommendations from './ProductRecommendations';
 
 const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
 
-function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver, onLogout, onViewProfile }) {
+// Helper function to shorten day names for mobile
+const shortenDayName = (day) => {
+  const dayMap = {
+    'Monday': 'Mon',
+    'Tuesday': 'Tue',
+    'Wednesday': 'Wed',
+    'Thursday': 'Thu',
+    'Friday': 'Fri',
+    'Saturday': 'Sat',
+    'Sunday': 'Sun'
+  };
+  return dayMap[day] || day;
+};
+
+function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver, onLogout, onViewProfile}) {
   const [selectedDay, setSelectedDay] = useState('Monday');
   const [selectedMeal, setSelectedMeal] = useState(null);
   const [activeTab, setActiveTab] = useState('meals');
@@ -15,6 +30,8 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [historicalStores, setHistoricalStores] = useState(null);
+  const [isViewingHistory, setIsViewingHistory] = useState(false);
 
   // Recipe customization state
   const [customServings, setCustomServings] = useState(null);
@@ -90,6 +107,9 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
       </div>
     );
   }
+
+  // Use historical stores if viewing history, otherwise use current stores
+  const currentStores = isViewingHistory ? historicalStores : selectedStores;
 
   const days = Object.keys(localMealPlan.mealPlan || {});
   console.log('📅 Days available in meal plan:', days);
@@ -175,6 +195,64 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
     } finally {
       setSavingCustomization(false);
     }
+  };
+
+  const handleSaveRecipe = (meal, day, mealType) => {
+    let content = `${meal.name}\n`;
+    content += `${'='.repeat(meal.name.length)}\n\n`;
+
+    if (day && mealType) {
+      content += `Day: ${day}\n`;
+      content += `Meal Type: ${mealType}\n`;
+    }
+
+    if (meal.servings) {
+      content += `Servings: ${meal.servings}\n`;
+    }
+
+    if (meal.prepTime) {
+      content += `Prep Time: ${meal.prepTime}\n`;
+    }
+
+    if (meal.cookTime) {
+      content += `Cook Time: ${meal.cookTime}\n`;
+    }
+
+    if (meal.estimatedCost) {
+      content += `Estimated Cost: ${meal.estimatedCost}\n`;
+    }
+
+    content += `\n${'='.repeat(50)}\n\n`;
+
+    // Ingredients
+    content += `INGREDIENTS\n${'-'.repeat(11)}\n`;
+    if (meal.ingredients && meal.ingredients.length > 0) {
+      meal.ingredients.forEach(ingredient => {
+        content += `• ${ingredient}\n`;
+      });
+    }
+
+    content += `\n`;
+
+    // Instructions
+    content += `INSTRUCTIONS\n${'-'.repeat(12)}\n`;
+    if (meal.instructions && meal.instructions.length > 0) {
+      meal.instructions.forEach((instruction, index) => {
+        content += `${index + 1}. ${instruction}\n`;
+      });
+    }
+
+    // Create and download file
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const fileName = meal.name.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+    link.download = `recipe-${fileName}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleRegenerateMeal = async (day, mealType) => {
@@ -334,6 +412,21 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
     }
   };
 
+  const handleLoadHistoricalPlan = (entry) => {
+    // Load the historical meal plan, shopping list, and stores
+    setLocalMealPlan(entry.meal_plan);
+    setHistoricalStores(entry.selectedStores || null);
+    setIsViewingHistory(true);
+    setShowHistory(false);
+    setActiveTab('meals');
+    console.log('📖 Loaded historical meal plan from', new Date(entry.createdAt).toLocaleDateString());
+    console.log('📦 Historical data includes:', {
+      mealPlan: !!entry.meal_plan,
+      shoppingList: !!entry.meal_plan?.shoppingList,
+      stores: !!entry.selectedStores
+    });
+  };
+
   const isFavorited = (mealName) => {
     return favorites.some(fav => fav.meal.name === mealName);
   };
@@ -398,16 +491,28 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
         <div className="header-content">
           <h1>Your 7-Day Meal Plan</h1>
           {user && <p className="welcome-text">Welcome, {user.displayName}!</p>}
-          {selectedStores?.primaryStore && (
+          {isViewingHistory && (
+            <p className="history-badge">📖 Viewing Historical Meal Plan</p>
+          )}
+          {currentStores?.primaryStore && (
             <p className="store-info">
-              Shopping at: <strong>{selectedStores.primaryStore.name}</strong>
-              {selectedStores.comparisonStore && (
-                <> vs <strong>{selectedStores.comparisonStore.name}</strong></>
+              Shopping at: <strong>{currentStores.primaryStore.name}</strong>
+              {currentStores.comparisonStore && (
+                <> vs <strong>{currentStores.comparisonStore.name}</strong></>
               )}
             </p>
           )}
         </div>
         <div className="header-actions">
+          {isViewingHistory && (
+            <button onClick={() => {
+              setLocalMealPlan(mealPlan);
+              setHistoricalStores(null);
+              setIsViewingHistory(false);
+            }} className="btn-back-to-current">
+              ⬅️ Back to Current Plan
+            </button>
+          )}
           <button onClick={handleFeedback} className="btn-feedback">
             💬 Send Feedback
           </button>
@@ -472,7 +577,7 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                   className={`day-button ${selectedDay === day ? 'active' : ''}`}
                   onClick={() => setSelectedDay(day)}
                 >
-                  {day}
+                  {shortenDayName(day)}
                 </button>
               ))}
             </div>
@@ -502,7 +607,12 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                     )}
                     <div className="meal-card-content">
                       <div className="meal-type">{mealType}</div>
-                      <h3 className="meal-name">{meal.name}</h3>
+                      <h3 className="meal-name">
+                        {meal.name}
+                        {meal.isSpecialOccasion && (
+                          <span className="special-occasion-badge">✨ Special Occasion</span>
+                        )}
+                      </h3>
                       {meal.prepTime && (
                         <p className="meal-time">⏱️ Prep: {meal.prepTime}</p>
                       )}
@@ -522,6 +632,14 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                         onClick={() => handleMealClick(meal)}
                       >
                         👁️ View Recipe
+                      </button>
+
+                      <button
+                        className="save-recipe-btn"
+                        onClick={() => handleSaveRecipe(meal, selectedDay, mealType)}
+                        title="Download recipe as text file"
+                      >
+                        💾 Save
                       </button>
 
                       <button
@@ -651,7 +769,7 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
             shoppingList={localMealPlan.shoppingList}
             totalCost={localMealPlan.totalEstimatedCost}
             priceComparison={localMealPlan.priceComparison}
-            selectedStores={selectedStores}
+            selectedStores={currentStores}
           />
         )}
       </div>
@@ -711,6 +829,22 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
               </ol>
             </div>
 
+            {/* Special Occasion Product Recommendations */}
+            {selectedMeal.isSpecialOccasion && selectedMeal.productRecommendations && (
+              <ProductRecommendations
+                products={selectedMeal.productRecommendations}
+                mealName={selectedMeal.name}
+              />
+            )}
+
+            {/* Wine Pairing for Special Occasions */}
+            {selectedMeal.isSpecialOccasion && selectedMeal.winePairing && (
+              <div className="wine-pairing-section">
+                <h4>🍷 Recommended Pairing</h4>
+                <p className="wine-pairing">{selectedMeal.winePairing}</p>
+              </div>
+            )}
+
             {/* Personal Notes */}
             <div className="recipe-section">
               <h3>📝 Personal Notes</h3>
@@ -743,10 +877,10 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
       <div className="print-only-content">
         <div className="print-header">
           <h1>7-Day Meal Plan</h1>
-          {selectedStores?.primaryStore && (
+          {currentStores?.primaryStore && (
             <p>
-              Shopping at: {selectedStores.primaryStore.name}
-              {selectedStores.comparisonStore && ` vs ${selectedStores.comparisonStore.name}`}
+              Shopping at: {currentStores.primaryStore.name}
+              {currentStores.comparisonStore && ` vs ${currentStores.comparisonStore.name}`}
             </p>
           )}
           {preferences && (
@@ -873,7 +1007,9 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                           weekday: 'short',
                           year: 'numeric',
                           month: 'short',
-                          day: 'numeric'
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
                         })}
                       </span>
                       <span className="history-details">
@@ -887,7 +1023,16 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                       {entry.selectedStores?.primaryStore && (
                         <span>🛒 {entry.selectedStores.primaryStore.name}</span>
                       )}
+                      {entry.total_cost && (
+                        <span>💰 {entry.total_cost}</span>
+                      )}
                     </div>
+                    <button
+                      className="btn-load-history"
+                      onClick={() => handleLoadHistoricalPlan(entry)}
+                    >
+                      📖 View Meal Plan
+                    </button>
                   </div>
                 ))
               )}

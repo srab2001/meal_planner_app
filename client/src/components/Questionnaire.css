@@ -399,3 +399,186 @@
     font-size: 32px;
   }
 }
+
+/* Special Occasion Section */
+.special-occasion-section {
+  margin-top: 30px;
+  padding-top: 30px;
+  border-top: 2px dashed #e0e0e0;
+}
+
+.special-occasion-toggle {
+  display: flex;
+  align-items: flex-start;
+  background: linear-gradient(135deg, #fff5e6 0%, #ffe6f0 100%);
+  border: 3px solid #ffd700;
+  border-radius: 15px;
+  padding: 25px;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+
+.special-occasion-toggle::before {
+  content: '✨';
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  font-size: 60px;
+  opacity: 0.15;
+  transform: rotate(15deg);
+}
+
+.special-occasion-toggle:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(255, 215, 0, 0.3);
+  border-color: #ffaa00;
+}
+
+.special-occasion-toggle.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: #667eea;
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+}
+
+.special-occasion-toggle.active::before {
+  color: white;
+  opacity: 0.1;
+}
+
+.special-occasion-toggle input[type="checkbox"] {
+  width: 24px;
+  height: 24px;
+  margin-right: 15px;
+  cursor: pointer;
+  flex-shrink: 0;
+  accent-color: #667eea;
+  margin-top: 3px;
+}
+
+.special-occasion-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  flex: 1;
+}
+
+.special-occasion-icon {
+  font-size: 40px;
+  flex-shrink: 0;
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+@keyframes sparkle {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.8; }
+}
+
+.special-occasion-text h4 {
+  margin: 0 0 8px 0;
+  color: #333;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.special-occasion-toggle.active .special-occasion-text h4 {
+  color: white;
+}
+
+.special-occasion-desc {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.special-occasion-toggle.active .special-occasion-desc {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+@media (max-width: 768px) {
+  .special-occasion-toggle {
+    padding: 20px;
+  }
+
+  .special-occasion-icon {
+    font-size: 30px;
+  }
+
+  .special-occasion-text h4 {
+    font-size: 18px;
+  }
+
+  .special-occasion-desc {
+    font-size: 13px;
+  }
+}
+
+/* Per-meal servings control */
+.meal-checkbox {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+}
+
+.meal-checkbox-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.servings-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f0f4ff;
+  padding: 8px 15px;
+  border-radius: 20px;
+  border: 2px solid #667eea;
+}
+
+.serving-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid #667eea;
+  background: white;
+  color: #667eea;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  padding: 0;
+}
+
+.serving-btn:hover {
+  background: #667eea;
+  color: white;
+  transform: scale(1.1);
+}
+
+.servings-display {
+  min-width: 30px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 16px;
+  color: #667eea;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .meal-checkbox {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .servings-control {
+    align-self: flex-end;
+  }
+}
