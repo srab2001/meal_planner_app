@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './ShoppingList.css';
 
 const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
@@ -8,6 +8,68 @@ function ShoppingList({ shoppingList, totalCost, priceComparison, selectedStores
   const [customItems, setCustomItems] = useState(['']);
   const [addingCustomItems, setAddingCustomItems] = useState(false);
   const [customItemsWithPrices, setCustomItemsWithPrices] = useState([]);
+  const [stateLoaded, setStateLoaded] = useState(false);
+
+  // Load saved shopping list state on mount
+  useEffect(() => {
+    const loadShoppingListState = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) return;
+
+        const response = await fetch(`${API_BASE}/api/shopping-list-state`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.checkedItems && Object.keys(data.checkedItems).length > 0) {
+            setCheckedItems(data.checkedItems);
+            console.log('📋 Loaded saved shopping list state:', Object.keys(data.checkedItems).length, 'items');
+          }
+        }
+      } catch (error) {
+        console.error('Error loading shopping list state:', error);
+      } finally {
+        setStateLoaded(true);
+      }
+    };
+
+    loadShoppingListState();
+  }, []);
+
+  // Save shopping list state whenever it changes
+  useEffect(() => {
+    if (!stateLoaded) return; // Don't save until we've loaded the initial state
+
+    const saveShoppingListState = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) return;
+
+        await fetch(`${API_BASE}/api/shopping-list-state`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            checkedItems
+          })
+        });
+
+        console.log('💾 Saved shopping list state:', Object.keys(checkedItems).length, 'items checked');
+      } catch (error) {
+        console.error('Error saving shopping list state:', error);
+      }
+    };
+
+    // Debounce saves to avoid too many requests
+    const timeoutId = setTimeout(saveShoppingListState, 500);
+    return () => clearTimeout(timeoutId);
+  }, [checkedItems, stateLoaded]);
 
   const handleCheck = (category, index) => {
     const key = `${category}-${index}`;
@@ -18,7 +80,357 @@ function ShoppingList({ shoppingList, totalCost, priceComparison, selectedStores
   };
 
   const handlePrint = () => {
-    window.print();
+    // Create a print-specific view with only the shopping list
+    const printWindow = window.open('', '_blank');
+    const printContent = generatePrintContent();
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+
+    // Small delay to ensure content is loaded before printing
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  };
+
+  const handleDownloadList = () => {
+    const categories = Object.keys(shoppingList || {});
+    const isComparisonMode = priceComparison && selectedStores?.comparisonStore;
+
+    let content = `Shopping List\n`;
+    content += `Generated: ${new Date().toLocaleDateString()}\n`;
+    if (isComparisonMode) {
+      content += `Stores: ${selectedStores.primaryStore.name} vs ${selectedStores.comparisonStore.name}\n`;
+    } else if (selectedStores?.primaryStore) {
+      content += `Store: ${selectedStores.primaryStore.name}\n`;
+    }
+    content += `\n${'='.repeat(50)}\n\n`;
+
+    categories.forEach(category => {
+      content += `${category}\n${'-'.repeat(category.length)}\n`;
+      shoppingList[category].forEach(item => {
+        const key = `${category}-${shoppingList[category].indexOf(item)}`;
+        const checked = checkedItems[key] ? '✓ ' : '☐ ';
+        content += `${checked}${item.item} - ${item.quantity}`;
+        if (isComparisonMode && item.primaryStorePrice && item.comparisonStorePrice) {
+          content += ` (${selectedStores.primaryStore.name}: ${item.primaryStorePrice}, ${selectedStores.comparisonStore.name}: ${item.comparisonStorePrice})`;
+        } else if (item.estimatedPrice) {
+          content += ` - ${item.estimatedPrice}`;
+        }
+        content += '\n';
+      });
+      content += '\n';
+    });
+
+    // Add custom items
+    if (customItemsWithPrices.length > 0) {
+      content += `Custom Items\n${'-'.repeat(12)}\n`;
+      customItemsWithPrices.forEach((item, index) => {
+        const key = `custom-${index}`;
+        const checked = checkedItems[key] ? '✓ ' : '☐ ';
+        content += `${checked}${item.item} - ${item.quantity}`;
+        if (item.estimatedPrice) {
+          content += ` - ${item.estimatedPrice}`;
+        }
+        content += '\n';
+      });
+      content += '\n';
+    }
+
+    // Add totals
+    const adjusted = calculateAdjustedTotal();
+    if (isComparisonMode && priceComparison) {
+      content += `\n${'='.repeat(50)}\n`;
+      content += `Original Totals:\n`;
+      content += `${selectedStores.primaryStore.name}: ${priceComparison.primaryStoreTotal}\n`;
+      content += `${selectedStores.comparisonStore.name}: ${priceComparison.comparisonStoreTotal}\n`;
+      if (adjusted.hasAdjustment) {
+        content += `\nAdjusted Total (excluding owned items):\n`;
+        content += `${selectedStores.primaryStore.name}: ${adjusted.adjustedPrimaryTotal}\n`;
+        content += `${selectedStores.comparisonStore.name}: ${adjusted.adjustedComparisonTotal}\n`;
+      }
+    } else if (totalCost) {
+      content += `\n${'='.repeat(50)}\n`;
+      content += `Total: ${totalCost}\n`;
+      if (adjusted.hasAdjustment) {
+        content += `Adjusted Total (excluding owned items): ${adjusted.adjustedTotal}\n`;
+      }
+    }
+
+    // Create and download file
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `shopping-list-${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Calculate adjusted total excluding checked items
+  const calculateAdjustedTotal = () => {
+    const categories = Object.keys(shoppingList || {});
+    let hasAdjustment = false;
+
+    if (priceComparison && selectedStores?.comparisonStore) {
+      // Comparison mode
+      let adjustedPrimary = 0;
+      let adjustedComparison = 0;
+
+      categories.forEach(category => {
+        shoppingList[category].forEach((item, index) => {
+          const key = `${category}-${index}`;
+          if (!checkedItems[key]) {
+            const primaryPrice = parseFloat((item.primaryStorePrice || '$0').replace(/[^0-9.]/g, ''));
+            const comparisonPrice = parseFloat((item.comparisonStorePrice || '$0').replace(/[^0-9.]/g, ''));
+            adjustedPrimary += isNaN(primaryPrice) ? 0 : primaryPrice;
+            adjustedComparison += isNaN(comparisonPrice) ? 0 : comparisonPrice;
+          } else {
+            hasAdjustment = true;
+          }
+        });
+      });
+
+      // Add custom items
+      customItemsWithPrices.forEach((item, index) => {
+        const key = `custom-${index}`;
+        if (!checkedItems[key]) {
+          const primaryPrice = parseFloat((item.primaryStorePrice || '$0').replace(/[^0-9.]/g, ''));
+          const comparisonPrice = parseFloat((item.comparisonStorePrice || '$0').replace(/[^0-9.]/g, ''));
+          adjustedPrimary += isNaN(primaryPrice) ? 0 : primaryPrice;
+          adjustedComparison += isNaN(comparisonPrice) ? 0 : comparisonPrice;
+        } else {
+          hasAdjustment = true;
+        }
+      });
+
+      return {
+        hasAdjustment,
+        adjustedPrimaryTotal: `$${adjustedPrimary.toFixed(2)}`,
+        adjustedComparisonTotal: `$${adjustedComparison.toFixed(2)}`,
+        savings: adjustedPrimary > adjustedComparison
+          ? `Save $${(adjustedPrimary - adjustedComparison).toFixed(2)} at ${selectedStores.comparisonStore.name}`
+          : adjustedComparison > adjustedPrimary
+          ? `Save $${(adjustedComparison - adjustedPrimary).toFixed(2)} at ${selectedStores.primaryStore.name}`
+          : null
+      };
+    } else if (totalCost) {
+      // Single store mode
+      let adjustedTotal = 0;
+
+      categories.forEach(category => {
+        shoppingList[category].forEach((item, index) => {
+          const key = `${category}-${index}`;
+          if (!checkedItems[key]) {
+            const price = parseFloat((item.estimatedPrice || '$0').replace(/[^0-9.]/g, ''));
+            adjustedTotal += isNaN(price) ? 0 : price;
+          } else {
+            hasAdjustment = true;
+          }
+        });
+      });
+
+      // Add custom items
+      customItemsWithPrices.forEach((item, index) => {
+        const key = `custom-${index}`;
+        if (!checkedItems[key]) {
+          const price = parseFloat((item.estimatedPrice || '$0').replace(/[^0-9.]/g, ''));
+          adjustedTotal += isNaN(price) ? 0 : price;
+        } else {
+          hasAdjustment = true;
+        }
+      });
+
+      return {
+        hasAdjustment,
+        adjustedTotal: `$${adjustedTotal.toFixed(2)}`
+      };
+    }
+
+    return { hasAdjustment: false };
+  };
+
+  const generatePrintContent = () => {
+    const categories = Object.keys(shoppingList || {});
+    const isComparisonMode = priceComparison && selectedStores?.comparisonStore;
+
+    // Helper to compare prices
+    const getCheaperStore = (primaryPrice, comparisonPrice) => {
+      if (!primaryPrice || !comparisonPrice) return null;
+      const primary = parseFloat(primaryPrice.replace(/[^0-9.]/g, ''));
+      const comparison = parseFloat(comparisonPrice.replace(/[^0-9.]/g, ''));
+      if (isNaN(primary) || isNaN(comparison)) return null;
+      if (primary < comparison) return 'primary';
+      if (comparison < primary) return 'comparison';
+      return 'equal';
+    };
+
+    const storeName = isComparisonMode
+      ? `${selectedStores.primaryStore.name} vs ${selectedStores.comparisonStore.name}`
+      : selectedStores?.primaryStore?.name || 'Shopping List';
+
+    let html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Shopping List - ${storeName}</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #667eea;
+      border-bottom: 3px solid #667eea;
+      padding-bottom: 10px;
+    }
+    .store-info {
+      color: #666;
+      margin-bottom: 20px;
+    }
+    .category {
+      margin-bottom: 30px;
+      page-break-inside: avoid;
+    }
+    .category-title {
+      background: #f0f0f0;
+      padding: 10px;
+      margin-bottom: 10px;
+      font-weight: bold;
+      border-left: 4px solid #667eea;
+    }
+    .item {
+      padding: 8px 0;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      align-items: center;
+    }
+    .checkbox {
+      width: 20px;
+      height: 20px;
+      border: 2px solid #667eea;
+      margin-right: 15px;
+      flex-shrink: 0;
+    }
+    .item-details {
+      flex: 1;
+    }
+    .item-name {
+      font-weight: 500;
+    }
+    .item-quantity {
+      color: #666;
+      font-size: 14px;
+    }
+    .item-price {
+      text-align: right;
+      color: #667eea;
+      font-weight: bold;
+    }
+    .total-cost {
+      margin-top: 30px;
+      padding: 20px;
+      background: #f5f5f5;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 24px;
+      font-weight: bold;
+      color: #667eea;
+    }
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .comparison-table th, .comparison-table td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .comparison-table th {
+      background: #f0f0f0;
+      font-weight: bold;
+    }
+    .cheaper-price {
+      color: #4caf50;
+      font-weight: bold;
+    }
+    @media print {
+      body { padding: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <h1>🛒 Shopping List</h1>
+  <div class="store-info">${storeName}</div>
+`;
+
+    // Add each category
+    categories.forEach(category => {
+      html += `<div class="category"><h2 class="category-title">${category}</h2>`;
+
+      if (isComparisonMode) {
+        html += `<table class="comparison-table">
+          <thead>
+            <tr>
+              <th>☐</th>
+              <th>Item</th>
+              <th>Quantity</th>
+              <th>${selectedStores.primaryStore.name}</th>
+              <th>${selectedStores.comparisonStore.name}</th>
+            </tr>
+          </thead>
+          <tbody>`;
+
+        shoppingList[category].forEach(item => {
+          const primaryPrice = item.primaryStorePrice || '-';
+          const comparisonPrice = item.comparisonStorePrice || '-';
+          const cheaperStore = getCheaperStore(item.primaryStorePrice, item.comparisonStorePrice);
+
+          html += `<tr>
+            <td><div class="checkbox"></div></td>
+            <td>${item.item}</td>
+            <td>${item.quantity}</td>
+            <td class="${cheaperStore === 'primary' ? 'cheaper-price' : ''}">${primaryPrice}</td>
+            <td class="${cheaperStore === 'comparison' ? 'cheaper-price' : ''}">${comparisonPrice}</td>
+          </tr>`;
+        });
+
+        html += `</tbody></table>`;
+      } else {
+        shoppingList[category].forEach(item => {
+          html += `<div class="item">
+            <div class="checkbox"></div>
+            <div class="item-details">
+              <div class="item-name">${item.item}</div>
+              <div class="item-quantity">${item.quantity}</div>
+            </div>
+            ${item.estimatedPrice ? `<div class="item-price">${item.estimatedPrice}</div>` : ''}
+          </div>`;
+        });
+      }
+
+      html += `</div>`;
+    });
+
+    // Add total cost
+    if (isComparisonMode && priceComparison) {
+      html += `<div class="total-cost">
+        ${selectedStores.primaryStore.name}: ${priceComparison.primaryStoreTotal}<br>
+        ${selectedStores.comparisonStore.name}: ${priceComparison.comparisonStoreTotal}<br>
+        <span style="color: #4caf50; font-size: 18px; margin-top: 10px; display: block;">${priceComparison.savings || ''}</span>
+      </div>`;
+    } else if (totalCost) {
+      html += `<div class="total-cost">Total: ${totalCost}</div>`;
+    }
+
+    html += `</body></html>`;
+    return html;
   };
 
   const handleAddItemField = () => {
@@ -123,9 +535,15 @@ function ShoppingList({ shoppingList, totalCost, priceComparison, selectedStores
         ) : selectedStores?.primaryStore ? (
           <p className="store-name">For: {selectedStores.primaryStore.name}</p>
         ) : null}
-        <button onClick={handlePrint} className="print-button">
-          🖨️ Print List
-        </button>
+        <p className="checkbox-hint">💡 Check items you already have to exclude them from the total</p>
+        <div className="action-buttons">
+          <button onClick={handlePrint} className="print-button">
+            🖨️ Print
+          </button>
+          <button onClick={handleDownloadList} className="download-button">
+            💾 Download
+          </button>
+        </div>
       </div>
 
       {/* Add Custom Items Section */}
@@ -362,29 +780,59 @@ function ShoppingList({ shoppingList, totalCost, priceComparison, selectedStores
       </div>
 
       {/* Total Cost or Price Comparison Summary */}
-      {isComparisonMode && priceComparison ? (
-        <div className="price-comparison-summary">
-          <div className="comparison-totals">
-            <div className="total-item">
-              <span className="total-label">{selectedStores.primaryStore.name} Total:</span>
-              <span className="total-value">{priceComparison.primaryStoreTotal}</span>
+      {(() => {
+        const adjusted = calculateAdjustedTotal();
+
+        if (isComparisonMode && priceComparison) {
+          return (
+            <div className="price-comparison-summary">
+              <div className="comparison-totals">
+                <div className="total-item">
+                  <span className="total-label">{selectedStores.primaryStore.name} Total:</span>
+                  <span className="total-value">{priceComparison.primaryStoreTotal}</span>
+                </div>
+                <div className="total-item">
+                  <span className="total-label">{selectedStores.comparisonStore.name} Total:</span>
+                  <span className="total-value">{priceComparison.comparisonStoreTotal}</span>
+                </div>
+              </div>
+              {adjusted.hasAdjustment && (
+                <div className="adjusted-totals">
+                  <p className="adjusted-label">After excluding owned items:</p>
+                  <div className="comparison-totals">
+                    <div className="total-item adjusted">
+                      <span className="total-label">{selectedStores.primaryStore.name}:</span>
+                      <span className="total-value">{adjusted.adjustedPrimaryTotal}</span>
+                    </div>
+                    <div className="total-item adjusted">
+                      <span className="total-label">{selectedStores.comparisonStore.name}:</span>
+                      <span className="total-value">{adjusted.adjustedComparisonTotal}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {(adjusted.savings || priceComparison.savings) && (
+                <div className="savings-banner">
+                  💰 {adjusted.savings || priceComparison.savings}
+                </div>
+              )}
             </div>
-            <div className="total-item">
-              <span className="total-label">{selectedStores.comparisonStore.name} Total:</span>
-              <span className="total-value">{priceComparison.comparisonStoreTotal}</span>
+          );
+        } else if (totalCost) {
+          return (
+            <div className="shopping-list-total">
+              <h3>Estimated Total: {totalCost}</h3>
+              {adjusted.hasAdjustment && (
+                <div className="adjusted-total">
+                  <p className="adjusted-label">After excluding owned items:</p>
+                  <h3 className="adjusted-value">{adjusted.adjustedTotal}</h3>
+                </div>
+              )}
             </div>
-          </div>
-          {priceComparison.savings && (
-            <div className="savings-banner">
-              💰 {priceComparison.savings}
-            </div>
-          )}
-        </div>
-      ) : totalCost ? (
-        <div className="shopping-list-total">
-          <h3>Estimated Total: {totalCost}</h3>
-        </div>
-      ) : null}
+          );
+        }
+        return null;
+      })()}
     </div>
   );
 }

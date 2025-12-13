@@ -281,6 +281,7 @@
 }
 
 .view-recipe-btn,
+.save-recipe-btn,
 .regenerate-meal-btn {
   flex: 1;
   padding: 12px;
@@ -304,6 +305,17 @@
 .view-recipe-btn:hover {
   transform: scale(1.02);
   box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+}
+
+.save-recipe-btn {
+  background: #4caf50;
+  color: white;
+}
+
+.save-recipe-btn:hover {
+  background: #45a049;
+  transform: scale(1.02);
+  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.4);
 }
 
 .regenerate-meal-btn {
@@ -1144,12 +1156,60 @@
   border-radius: 12px;
   padding: 20px;
   transition: all 0.3s;
-  cursor: pointer;
 }
 
 .history-entry:hover {
   border-color: #667eea;
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.btn-load-history {
+  width: 100%;
+  margin-top: 15px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-load-history:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(102, 126, 234, 0.4);
+}
+
+.history-badge {
+  background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: inline-block;
+  margin: 5px 0;
+  box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
+}
+
+.btn-back-to-current {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.btn-back-to-current:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(102, 126, 234, 0.4);
 }
 
 .history-header {
@@ -1590,5 +1650,119 @@
   .tab-button {
     font-size: 0.8rem;
     padding: 10px 12px;
+  }
+}
+/* Special Occasion Badge */
+.special-occasion-badge {
+  display: inline-block;
+  margin-left: 12px;
+  padding: 6px 14px;
+  background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%);
+  color: #333;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
+  animation: pulse-gold 2s ease-in-out infinite;
+}
+
+@keyframes pulse-gold {
+  0%, 100% { box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4); }
+  50% { box-shadow: 0 4px 12px rgba(255, 215, 0, 0.6); }
+}
+
+/* Wine Pairing Section */
+.wine-pairing-section {
+  margin: 30px 0;
+  padding: 25px;
+  background: linear-gradient(135deg, #f5e6ff 0%, #ffe6f5 100%);
+  border: 2px solid #9c27b0;
+  border-radius: 15px;
+}
+
+.wine-pairing-section h4 {
+  margin: 0 0 12px 0;
+  color: #7b1fa2;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.wine-pairing {
+  margin: 0;
+  color: #333;
+  font-size: 16px;
+  line-height: 1.6;
+  font-style: italic;
+}
+
+/* Special Occasion Meal Card */
+.meal-card:has(.special-occasion-badge) {
+  border: 3px solid #ffd700;
+  box-shadow: 0 6px 20px rgba(255, 215, 0, 0.3);
+  position: relative;
+  overflow: visible;
+}
+
+.meal-card:has(.special-occasion-badge)::before {
+  content: '✨';
+  position: absolute;
+  top: -15px;
+  right: -15px;
+  font-size: 40px;
+  z-index: 10;
+  animation: rotate-sparkle 3s ease-in-out infinite;
+}
+
+@keyframes rotate-sparkle {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.2); }
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .special-occasion-badge {
+    display: block;
+    margin-left: 0;
+    margin-top: 8px;
+    font-size: 11px;
+    padding: 5px 12px;
+    width: fit-content;
+  }
+
+  .meal-card:has(.special-occasion-badge)::before {
+    font-size: 30px;
+    top: -10px;
+    right: -10px;
+  }
+
+  .wine-pairing-section {
+    padding: 20px;
+  }
+
+  .wine-pairing-section h4 {
+    font-size: 18px;
+  }
+
+  .wine-pairing {
+    font-size: 14px;
+  }
+}
+
+/* Print styles */
+@media print {
+  .special-occasion-badge {
+    background: #ffd700;
+    color: #000;
+    box-shadow: none;
+  }
+
+  .meal-card:has(.special-occasion-badge)::before {
+    display: none;
+  }
+
+  .wine-pairing-section {
+    page-break-inside: avoid;
   }
 }

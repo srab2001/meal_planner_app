@@ -417,22 +417,25 @@ app.post('/api/find-stores', aiLimiter, requireAuth, async (req, res) => {
     // Build prompt based on whether a specific store was requested
     let prompt;
     if (storeName && storeName.trim()) {
-      prompt = `Given the ZIP code ${zipCode}, list grocery stores in this area with a focus on "${storeName}".
+      prompt = `Given the ZIP code ${zipCode}, list grocery stores within a 10-mile radius with a focus on "${storeName}".
 
-IMPORTANT: If "${storeName}" exists in this area, it MUST be the FIRST store in the list.
+CRITICAL REQUIREMENTS:
+1. ONLY include stores within 10 miles of the ZIP code ${zipCode}
+2. If "${storeName}" exists within 10 miles, it MUST be the FIRST store in the list
+3. Do NOT include stores beyond 10 miles
 
 For each store, provide:
 - name: The official store name
 - type: Category like "Organic", "Discount", "Conventional", "Specialty"
-- typical_distance: Range like "1-3 miles", "2-5 miles", etc.
+- distance: Estimated distance from ${zipCode} (e.g., "3 miles", "7 miles", "10 miles")
 
-List 6-8 stores total:
-1. "${storeName}" (if it exists in this area) - MUST BE FIRST
+List 6-8 stores within 10 miles:
+1. "${storeName}" (if it exists within 10 miles) - MUST BE FIRST
 2. Other nearby stores similar to "${storeName}"
-3. Other major chains in the area
+3. Other major chains within the 10-mile radius
 
 Include a mix of:
-- The requested store if available
+- The requested store if available within 10 miles
 - National chains (Walmart, Kroger, Target)
 - Regional chains appropriate for this area
 - Specialty stores (Whole Foods, Trader Joe's)
@@ -442,21 +445,23 @@ Return ONLY valid JSON in this exact format:
   "stores": [
     {
       "name": "Store Name",
-      "address": "Typical location within 5 miles",
-      "distance": "2-4 miles",
+      "address": "Typical location description",
+      "distance": "5 miles",
       "type": "Conventional"
     }
   ]
 }`;
     } else {
-      prompt = `Given the ZIP code ${zipCode}, list major grocery stores commonly found in this area of the United States.
+      prompt = `Given the ZIP code ${zipCode}, list major grocery stores within a 10-mile radius.
+
+CRITICAL REQUIREMENT: ONLY include stores within 10 miles of ZIP code ${zipCode}. Do NOT include stores beyond 10 miles.
 
 For each store, provide:
 - name: The official store name
 - type: Category like "Organic", "Discount", "Conventional", "Specialty"
-- typical_distance: Range like "1-3 miles", "2-5 miles", etc.
+- distance: Estimated distance from ${zipCode} (e.g., "3 miles", "7 miles", "10 miles")
 
-List 6-8 major chains that would realistically be in this area. Include a mix of:
+List 6-8 major chains within the 10-mile radius. Include a mix of:
 - National chains (Walmart, Kroger, Target)
 - Regional chains appropriate for this area
 - Specialty stores (Whole Foods, Trader Joe's)
@@ -466,22 +471,22 @@ Return ONLY valid JSON in this exact format:
   "stores": [
     {
       "name": "Store Name",
-      "address": "Typical location within 5 miles",
-      "distance": "2-4 miles",
+      "address": "Typical location description",
+      "distance": "5 miles",
       "type": "Conventional"
     }
   ]
 }`;
     }
 
-    console.log(`Finding stores for ZIP: ${zipCode}${storeName ? `, prioritizing: ${storeName}` : ''}`);
+    console.log(`Finding stores within 10 miles of ZIP: ${zipCode}${storeName ? `, prioritizing: ${storeName}` : ''}`);
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         {
           role: 'system',
-          content: 'You are a helpful assistant that provides grocery store information. Always respond with valid JSON only.'
+          content: 'You are a helpful assistant that provides grocery store information for a specific ZIP code. CRITICAL: Only include stores within a 10-mile radius of the given ZIP code. Always respond with valid JSON only.'
         },
         {
           role: 'user',
@@ -507,12 +512,88 @@ Return ONLY valid JSON in this exact format:
   }
 });
 
+// Helper function to validate that all recipe ingredients are in the shopping list
+function validateShoppingListCompleteness(mealPlanData, daysOfWeek) {
+  const missingIngredients = [];
+  const shoppingListItems = new Set();
+
+  // Collect all items from shopping list (normalize for comparison)
+  if (mealPlanData.shoppingList) {
+    Object.values(mealPlanData.shoppingList).forEach(category => {
+      if (Array.isArray(category)) {
+        category.forEach(item => {
+          if (item.item) {
+            // Normalize: lowercase, remove articles, trim
+            const normalized = item.item.toLowerCase()
+              .replace(/^(a|an|the)\s+/i, '')
+              .replace(/\s+/g, ' ')
+              .trim();
+            shoppingListItems.add(normalized);
+          }
+        });
+      }
+    });
+  }
+
+  // Check each recipe's ingredients
+  if (mealPlanData.mealPlan) {
+    daysOfWeek.forEach(day => {
+      const dayMeals = mealPlanData.mealPlan[day];
+      if (dayMeals) {
+        Object.entries(dayMeals).forEach(([mealType, meal]) => {
+          if (meal && meal.ingredients && Array.isArray(meal.ingredients)) {
+            meal.ingredients.forEach(ingredient => {
+              // Normalize ingredient for comparison
+              const normalized = ingredient.toLowerCase()
+                .replace(/^(a|an|the)\s+/i, '')
+                .replace(/\d+\s*(cups?|tbsps?|tsps?|ozs?|lbs?|grams?|mls?|liters?|pieces?|cloves?|stalks?|bunches?)/gi, '')
+                .replace(/\s+/g, ' ')
+                .trim()
+                // Extract main ingredient (before comma or parenthesis)
+                .split(/[,(]/)[0]
+                .trim();
+
+              // Check if this ingredient (or close match) exists in shopping list
+              let found = false;
+              for (const listItem of shoppingListItems) {
+                // Check if either contains the other (handles variations like "chicken breast" vs "chicken")
+                if (listItem.includes(normalized) || normalized.includes(listItem)) {
+                  found = true;
+                  break;
+                }
+              }
+
+              if (!found && normalized.length > 2) { // Ignore very short ingredients
+                missingIngredients.push({
+                  ingredient: ingredient,
+                  normalizedIngredient: normalized,
+                  day: day,
+                  meal: `${meal.name} (${mealType})`
+                });
+              }
+            });
+          }
+        });
+      }
+    });
+  }
+
+  return {
+    isComplete: missingIngredients.length === 0,
+    missingIngredients: missingIngredients,
+    totalShoppingListItems: shoppingListItems.size
+  };
+}
+
 // Meal plan generation endpoint (with AI rate limiter to prevent cost overruns)
 app.post('/api/generate-meals', aiLimiter, requireAuth, async (req, res) => {
   try {
-    const { zipCode, primaryStore, comparisonStore, selectedMeals, selectedDays, dietaryPreferences, leftovers, ...preferences } = req.body;
+    const { zipCode, primaryStore, comparisonStore, selectedMeals, servingsByMeal, selectedDays, dietaryPreferences, leftovers, specialOccasion, ...preferences } = req.body;
 
     console.log(`Generating meal plan for user: ${req.user.email}`);
+    if (specialOccasion) {
+      console.log('✨ Special occasion meal requested - will generate premium restaurant-quality meal');
+    }
 
     // Check if this is the test user (bypass all limits)
     let isTestUser = false;
@@ -622,7 +703,7 @@ app.post('/api/generate-meals', aiLimiter, requireAuth, async (req, res) => {
       ? `${requirementNumber++}. **CRITICAL**: ALL recipes MUST comply with these dietary restrictions: ${dietaryPreferences.map(formatDietaryPreference).join('; ')}. Do not use any ingredients that violate these restrictions.\n`
       : '';
 
-    const shoppingListRequirement = `${requirementNumber++}. Create a consolidated shopping list organized by category\n`;
+    const shoppingListRequirement = `${requirementNumber++}. **CRITICAL**: Create a consolidated shopping list that includes EVERY SINGLE ingredient from ALL recipes across ALL ${daysOfWeek.length} days. Do not omit any ingredients - every ingredient listed in the recipes must appear in the shopping list, organized by category (Produce, Meat & Seafood, Dairy & Eggs, Pantry Staples). Combine duplicate ingredients with appropriate quantities.\n`;
     const storeRequirement = `${requirementNumber++}. All items should be commonly available at the selected store(s)\n`;
     const timeRequirement = `${requirementNumber++}. Include prep time, cooking time, servings, and estimated cost for each meal\n`;
     const imageRequirement = `${requirementNumber++}. **CRITICAL**: For EVERY meal, include an "imageUrl" field with a high-quality Unsplash food image URL that matches the dish. Use URLs in format: https://images.unsplash.com/photo-[id]?w=800&q=80\n`;
@@ -633,9 +714,10 @@ app.post('/api/generate-meals', aiLimiter, requireAuth, async (req, res) => {
       : '';
 
     // Create example meal structure for the prompt
-    const mealStructureExample = mealTypes.map(mealType =>
-      `      "${mealType}": { "name": "...", "prepTime": "...", "cookTime": "...", "servings": ${preferences.people || 2}, "estimatedCost": "$X-Y", "imageUrl": "https://images.unsplash.com/photo-...", "ingredients": [...], "instructions": [...] }`
-    ).join(',\n');
+    const mealStructureExample = mealTypes.map(mealType => {
+      const servings = servingsByMeal?.[mealType] || preferences.people || 2;
+      return `      "${mealType}": { "name": "...", "prepTime": "...", "cookTime": "...", "servings": ${servings}, "estimatedCost": "$X-Y", "imageUrl": "https://images.unsplash.com/photo-...", "ingredients": [...], "instructions": [...] }`;
+    }).join(',\n');
 
     // Build shopping list format based on whether we have comparison store
     const shoppingListFormat = comparisonStore ? `
@@ -715,6 +797,19 @@ ${storeInfo}
 - Meals needed: ${mealTypes.join(', ')}
 ${dietaryRestrictionsText}
 ${leftoversText}
+${specialOccasion ? `
+**✨ SPECIAL OCCASION MEAL:**
+- The user requested ONE special occasion meal this week
+- This should be a premium, restaurant-quality dish
+- Inspire this meal from renowned chefs like Gordon Ramsay, Jamie Oliver, or publications like Bon Appétit, Saveur, or Food & Wine
+- Use elevated cooking techniques (sous vide, braising, reduction sauces, etc.)
+- Include gourmet ingredients from premium stores like Whole Foods, specialty butchers, or farmers markets
+- Add elegant presentation suggestions
+- Include wine or beverage pairing recommendations
+- Estimated cost for this meal: $40-80 (higher than regular meals)
+- Mark this meal with "isSpecialOccasion": true in the JSON
+- Add a "productRecommendations" array with 3-5 premium products (fine cookware, elegant serving pieces, specialty ingredients, linens, wine)
+` : ''}
 
 **CRITICAL Requirements:**
 1. **YOU MUST create meals for ALL ${daysOfWeek.length} days**: ${daysOfWeek.join(', ')}
@@ -802,6 +897,19 @@ ${shoppingListFormat}
 
     console.log(`📊 Usage tracked for ${req.user.email}`);
 
+    // Validate that all recipe ingredients are in the shopping list
+    console.log('🔍 Validating shopping list completeness...');
+    const validationResult = validateShoppingListCompleteness(mealPlanData, daysOfWeek);
+    if (!validationResult.isComplete) {
+      console.warn('⚠️  Shopping list validation found missing ingredients:');
+      validationResult.missingIngredients.forEach(missing => {
+        console.warn(`   - ${missing.ingredient} (from ${missing.meal} on ${missing.day})`);
+      });
+      console.warn(`   Total missing: ${validationResult.missingIngredients.length} ingredients`);
+    } else {
+      console.log('✅ Shopping list validation passed - all ingredients accounted for');
+    }
+
     res.json(mealPlanData);
 
   } catch (error) {
@@ -822,6 +930,13 @@ app.post('/api/regenerate-meal', aiLimiter, requireAuth, async (req, res) => {
     console.log(`Current meal: ${currentMeal}`);
     console.log(`Store: ${groceryStore?.name}`);
     console.log(`Dietary preferences: ${dietaryPreferences?.join(', ') || 'None'}`);
+
+    // Randomly select ONE cuisine from the user's preferences for variety
+    let selectedCuisine = 'Any';
+    if (cuisines && cuisines.length > 0) {
+      selectedCuisine = cuisines[Math.floor(Math.random() * cuisines.length)];
+      console.log(`🎲 Randomly selected cuisine: ${selectedCuisine} (from ${cuisines.join(', ')})`);
+    }
 
     // Build dietary restrictions text
     const formatDietaryPreference = (pref) => {
@@ -848,7 +963,7 @@ app.post('/api/regenerate-meal', aiLimiter, requireAuth, async (req, res) => {
 - Cooking for: ${people || 2} people
 
 **Preferences:**
-- Cuisine preferences: ${cuisines?.join(', ') || 'Any'}
+- Cuisine focus: ${selectedCuisine}
 - Grocery Store: ${groceryStore?.name || 'Local grocery store'}
 - Store Type: ${groceryStore?.type || 'Conventional'}
 ${dietaryRestrictionsText}
@@ -856,14 +971,15 @@ ${dietaryRestrictionsText}
 **Requirements:**
 1. Create a DIFFERENT meal than: "${currentMeal}"
 2. Make it appropriate for ${mealType}
-${dietaryPreferences && dietaryPreferences.length > 0 ? `3. **CRITICAL**: This recipe MUST comply with these dietary restrictions: ${dietaryPreferences.map(formatDietaryPreference).join('; ')}. Do not use any ingredients that violate these restrictions.
-4. Include prep time and cooking time` : '3. Include prep time and cooking time'}
-${dietaryPreferences && dietaryPreferences.length > 0 ? '5' : '4'}. Include servings count (for ${people || 2} people)
-${dietaryPreferences && dietaryPreferences.length > 0 ? '6' : '5'}. **CRITICAL**: Include an "imageUrl" field with a high-quality Unsplash food image URL that matches the dish. Use URLs in format: https://images.unsplash.com/photo-[id]?w=800&q=80
-${dietaryPreferences && dietaryPreferences.length > 0 ? '7' : '6'}. List all ingredients with quantities
-${dietaryPreferences && dietaryPreferences.length > 0 ? '8' : '7'}. Provide clear, step-by-step cooking instructions
-${dietaryPreferences && dietaryPreferences.length > 0 ? '9' : '8'}. Estimate the cost
-${dietaryPreferences && dietaryPreferences.length > 0 ? '10' : '9'}. All ingredients should be commonly available at ${groceryStore?.name || 'the selected store'}
+3. Focus on ${selectedCuisine} cuisine style
+${dietaryPreferences && dietaryPreferences.length > 0 ? `4. **CRITICAL**: This recipe MUST comply with these dietary restrictions: ${dietaryPreferences.map(formatDietaryPreference).join('; ')}. Do not use any ingredients that violate these restrictions.
+5. Include prep time and cooking time` : '4. Include prep time and cooking time'}
+${dietaryPreferences && dietaryPreferences.length > 0 ? '6' : '5'}. Include servings count (for ${people || 2} people)
+${dietaryPreferences && dietaryPreferences.length > 0 ? '7' : '6'}. **CRITICAL**: Include an "imageUrl" field with a high-quality Unsplash food image URL that matches the dish. Use URLs in format: https://images.unsplash.com/photo-[id]?w=800&q=80
+${dietaryPreferences && dietaryPreferences.length > 0 ? '8' : '7'}. List all ingredients with quantities
+${dietaryPreferences && dietaryPreferences.length > 0 ? '9' : '8'}. Provide clear, step-by-step cooking instructions
+${dietaryPreferences && dietaryPreferences.length > 0 ? '10' : '9'}. Estimate the cost
+${dietaryPreferences && dietaryPreferences.length > 0 ? '11' : '10'}. All ingredients should be commonly available at ${groceryStore?.name || 'the selected store'}
 
 **Response Format:**
 Return ONLY valid JSON in this exact format:
@@ -1007,6 +1123,7 @@ const DISCOUNT_CODES = {
   'TESTFREE': { percentOff: 100, description: 'Free access for testers' },
   'BETA50': { percentOff: 50, description: '50% off for beta testers' },
   'WELCOME25': { percentOff: 25, description: '25% off welcome discount' },
+  'REDTEST': { percentOff: 100, description: 'Red test code - free access' },
   // Add your custom codes below:
   // 'FRIEND100': { percentOff: 100, description: 'Free for friends' },
   // 'LAUNCH20': { percentOff: 20, description: 'Launch discount' },
@@ -1433,6 +1550,64 @@ app.delete('/api/favorites/:id', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Error removing favorite:', error);
     res.status(500).json({ error: 'Failed to remove favorite' });
+  }
+});
+
+// Save shopping list state (checked items)
+app.post('/api/shopping-list-state', requireAuth, async (req, res) => {
+  try {
+    const { checkedItems, mealPlanDate } = req.body;
+
+    if (!checkedItems) {
+      return res.status(400).json({ error: 'No checked items provided' });
+    }
+
+    const planDate = mealPlanDate || new Date().toISOString().split('T')[0];
+
+    // Upsert shopping list state
+    await db.query(`
+      INSERT INTO shopping_list_states (user_id, meal_plan_date, checked_items, updated_at)
+      VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+      ON CONFLICT (user_id, meal_plan_date)
+      DO UPDATE SET
+        checked_items = EXCLUDED.checked_items,
+        updated_at = CURRENT_TIMESTAMP
+    `, [req.user.id, planDate, JSON.stringify(checkedItems)]);
+
+    console.log(`💾 ${req.user.email} saved shopping list state (${Object.keys(checkedItems).length} items checked)`);
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error('Error saving shopping list state:', error);
+    res.status(500).json({ error: 'Failed to save shopping list state' });
+  }
+});
+
+// Get shopping list state (checked items)
+app.get('/api/shopping-list-state', requireAuth, async (req, res) => {
+  try {
+    const { mealPlanDate } = req.query;
+    const planDate = mealPlanDate || new Date().toISOString().split('T')[0];
+
+    const result = await db.query(`
+      SELECT checked_items, updated_at
+      FROM shopping_list_states
+      WHERE user_id = $1 AND meal_plan_date = $2
+    `, [req.user.id, planDate]);
+
+    if (result.rows.length > 0) {
+      res.json({
+        checkedItems: result.rows[0].checked_items,
+        lastUpdated: result.rows[0].updated_at
+      });
+    } else {
+      // No saved state for this date
+      res.json({ checkedItems: {} });
+    }
+
+  } catch (error) {
+    console.error('Error getting shopping list state:', error);
+    res.status(500).json({ error: 'Failed to get shopping list state' });
   }
 });
 
@@ -2749,7 +2924,120 @@ Natural lighting, beautiful presentation, high-quality photo.`;
   }
 });
 
+// Initialize database tables on startup
+async function initializeDatabase() {
+  try {
+    console.log('🔍 Checking database schema...');
+
+    // Check if favorites table exists
+    const tableCheck = await db.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name = 'favorites'
+      );
+    `);
+
+    if (!tableCheck.rows[0].exists) {
+      console.log('📋 Creating favorites table...');
+
+      await db.query(`
+        CREATE TABLE favorites (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          meal_type VARCHAR(20) NOT NULL CHECK (meal_type IN ('breakfast', 'lunch', 'dinner')),
+          meal_data JSONB NOT NULL,
+          meal_name VARCHAR(255) NOT NULL,
+          servings_adjustment INTEGER,
+          user_notes TEXT,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(user_id, meal_name, meal_type)
+        );
+
+        CREATE INDEX idx_favorites_user_id ON favorites(user_id);
+        CREATE INDEX idx_favorites_meal_type ON favorites(meal_type);
+        CREATE INDEX idx_favorites_meal_name ON favorites(meal_name);
+      `);
+
+      console.log('✅ Favorites table created successfully');
+    } else {
+      console.log('✅ Favorites table already exists');
+    }
+
+    // Check if shopping_list_states table exists
+    const shoppingListTableCheck = await db.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name = 'shopping_list_states'
+      );
+    `);
+
+    if (!shoppingListTableCheck.rows[0].exists) {
+      console.log('📋 Creating shopping_list_states table...');
+
+      await db.query(`
+        CREATE TABLE shopping_list_states (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          meal_plan_date DATE NOT NULL DEFAULT CURRENT_DATE,
+          checked_items JSONB NOT NULL DEFAULT '{}',
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(user_id, meal_plan_date)
+        );
+
+        CREATE INDEX idx_shopping_list_states_user_id ON shopping_list_states(user_id);
+        CREATE INDEX idx_shopping_list_states_date ON shopping_list_states(meal_plan_date);
+      `);
+
+      console.log('✅ Shopping list states table created successfully');
+    } else {
+      console.log('✅ Shopping list states table already exists');
+    }
+
+    // Check if meal_plan_history table exists
+    const historyTableCheck = await db.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name = 'meal_plan_history'
+      );
+    `);
+
+    if (!historyTableCheck.rows[0].exists) {
+      console.log('📋 Creating meal_plan_history table...');
+
+      await db.query(`
+        CREATE TABLE meal_plan_history (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          preferences JSONB,
+          meal_plan JSONB NOT NULL,
+          stores JSONB,
+          shopping_list JSONB,
+          total_cost VARCHAR(50),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE INDEX idx_meal_plan_history_user_id ON meal_plan_history(user_id);
+        CREATE INDEX idx_meal_plan_history_created_at ON meal_plan_history(created_at);
+      `);
+
+      console.log('✅ Meal plan history table created successfully');
+    } else {
+      console.log('✅ Meal plan history table already exists');
+    }
+
+  } catch (error) {
+    console.error('❌ Database initialization error:', error.message);
+    // Don't crash the server - continue even if this fails
+  }
+}
+
 const port = PORT || 5000;
-app.listen(port, () => {
+app.listen(port, async () => {
   console.log(`server listening on port ${port}`);
+  await initializeDatabase();
 });

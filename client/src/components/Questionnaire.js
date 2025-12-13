@@ -39,6 +39,11 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
   // User selections
   const [cuisines, setCuisines] = useState([]);
   const [numberOfPeople, setNumberOfPeople] = useState(2);
+  const [servingsByMeal, setServingsByMeal] = useState({
+    breakfast: 2,
+    lunch: 2,
+    dinner: 2
+  });
   const [meals, setMeals] = useState({
     breakfast: false,
     lunch: false,
@@ -55,6 +60,7 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
   });
   const [dietaryPreferences, setDietaryPreferences] = useState({});
   const [leftovers, setLeftovers] = useState(['']);
+  const [specialOccasion, setSpecialOccasion] = useState(false);
   const [errors, setErrors] = useState({});
   const [loadingPreferences, setLoadingPreferences] = useState(true);
 
@@ -256,16 +262,25 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
       const daysArray = Object.keys(selectedDays).filter(day => selectedDays[day]);
       const leftoverIngredients = leftovers.filter(item => item.trim() !== '');
 
+      // Only include servings for selected meals
+      const servingsForSelectedMeals = {};
+      selectedMeals.forEach(meal => {
+        servingsForSelectedMeals[meal] = servingsByMeal[meal];
+      });
+
       console.log('📅 Selected days being submitted:', daysArray);
       console.log('🍽️ Selected meals being submitted:', selectedMeals);
+      console.log('🍽️ Servings by meal:', servingsForSelectedMeals);
 
       onSubmit({
         cuisines,
         people: numberOfPeople,
         selectedMeals: selectedMeals,  // Send array of meal types: ['breakfast', 'lunch', 'dinner']
+        servingsByMeal: servingsForSelectedMeals,  // Send object: {breakfast: 1, dinner: 3}
         selectedDays: daysArray,  // Send array of days: ['Monday', 'Tuesday', etc.]
         dietaryPreferences: selectedDietaryPreferences,  // Send array: ['diabetic', 'dairyFree', etc.]
-        leftovers: leftoverIngredients  // Send array of leftover ingredients
+        leftovers: leftoverIngredients,  // Send array of leftover ingredients
+        specialOccasion: specialOccasion  // Include special occasion flag
       });
     }
   };
@@ -288,7 +303,7 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
       case 2: return 'We\'ll adjust portions accordingly';
       case 3: return 'Add ingredients you\'d like to incorporate into your meals (optional)';
       case 4: return 'Select all that apply (optional)';
-      case 5: return 'Select all that apply';
+      case 5: return 'Select meals and set number of servings for each';
       case 6: return 'Select the days you need meal plans for';
       default: return '';
     }
@@ -386,35 +401,125 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
           <>
             <div className="meal-checkboxes">
               <label className={`meal-checkbox ${meals.breakfast ? 'checked' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={meals.breakfast}
-                  onChange={() => toggleMeal('breakfast')}
-                />
-                <span className="meal-icon">🌅</span>
-                <span className="meal-name">Breakfast</span>
+                <div className="meal-checkbox-left">
+                  <input
+                    type="checkbox"
+                    checked={meals.breakfast}
+                    onChange={() => toggleMeal('breakfast')}
+                  />
+                  <span className="meal-icon">🌅</span>
+                  <span className="meal-name">Breakfast</span>
+                </div>
+                {meals.breakfast && (
+                  <div className="servings-control">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setServingsByMeal(prev => ({...prev, breakfast: Math.max(1, prev.breakfast - 1)}));
+                      }}
+                      className="serving-btn"
+                    >−</button>
+                    <span className="servings-display">{servingsByMeal.breakfast}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setServingsByMeal(prev => ({...prev, breakfast: Math.min(12, prev.breakfast + 1)}));
+                      }}
+                      className="serving-btn"
+                    >+</button>
+                  </div>
+                )}
               </label>
 
               <label className={`meal-checkbox ${meals.lunch ? 'checked' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={meals.lunch}
-                  onChange={() => toggleMeal('lunch')}
-                />
-                <span className="meal-icon">☀️</span>
-                <span className="meal-name">Lunch</span>
+                <div className="meal-checkbox-left">
+                  <input
+                    type="checkbox"
+                    checked={meals.lunch}
+                    onChange={() => toggleMeal('lunch')}
+                  />
+                  <span className="meal-icon">☀️</span>
+                  <span className="meal-name">Lunch</span>
+                </div>
+                {meals.lunch && (
+                  <div className="servings-control">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setServingsByMeal(prev => ({...prev, lunch: Math.max(1, prev.lunch - 1)}));
+                      }}
+                      className="serving-btn"
+                    >−</button>
+                    <span className="servings-display">{servingsByMeal.lunch}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setServingsByMeal(prev => ({...prev, lunch: Math.min(12, prev.lunch + 1)}));
+                      }}
+                      className="serving-btn"
+                    >+</button>
+                  </div>
+                )}
               </label>
 
               <label className={`meal-checkbox ${meals.dinner ? 'checked' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={meals.dinner}
-                  onChange={() => toggleMeal('dinner')}
-                />
-                <span className="meal-icon">🌙</span>
-                <span className="meal-name">Dinner</span>
+                <div className="meal-checkbox-left">
+                  <input
+                    type="checkbox"
+                    checked={meals.dinner}
+                    onChange={() => toggleMeal('dinner')}
+                  />
+                  <span className="meal-icon">🌙</span>
+                  <span className="meal-name">Dinner</span>
+                </div>
+                {meals.dinner && (
+                  <div className="servings-control">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setServingsByMeal(prev => ({...prev, dinner: Math.max(1, prev.dinner - 1)}));
+                      }}
+                      className="serving-btn"
+                    >−</button>
+                    <span className="servings-display">{servingsByMeal.dinner}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setServingsByMeal(prev => ({...prev, dinner: Math.min(12, prev.dinner + 1)}));
+                      }}
+                      className="serving-btn"
+                    >+</button>
+                  </div>
+                )}
               </label>
             </div>
+
+            {/* Special Occasion Meal Toggle */}
+            <div className="special-occasion-section">
+              <label className={`special-occasion-toggle ${specialOccasion ? 'active' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={specialOccasion}
+                  onChange={() => setSpecialOccasion(!specialOccasion)}
+                />
+                <div className="special-occasion-content">
+                  <span className="special-occasion-icon">✨</span>
+                  <div className="special-occasion-text">
+                    <h4>Add a Special Occasion Meal</h4>
+                    <p className="special-occasion-desc">
+                      Elevate your week with a premium restaurant-quality meal featuring gourmet ingredients from Whole Foods and elevated serving suggestions.
+                    </p>
+                  </div>
+                </div>
+              </label>
+            </div>
+
             {errors.meals && <p className="error">{errors.meals}</p>}
           </>
         );
