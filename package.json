@@ -15,7 +15,8 @@
     "db:migrate": "node-pg-migrate up",
     "db:reset": "docker-compose down postgres && docker-compose up -d postgres",
     "lint": "echo 'Linting...' || true",
-    "setup:test": "docker-compose up -d postgres-test && sleep 5 && npm run db:migrate"
+    "setup:test": "docker-compose up -d postgres-test && sleep 5 && npm run db:migrate",
+    "md-to-pdf": "./scripts/md-to-pdf.sh"
   },
   "dependencies": {
     "connect-pg-simple": "^10.0.0",
