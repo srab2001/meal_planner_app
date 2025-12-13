@@ -10,8 +10,9 @@ Converts markdown files to PDF format using pandoc and wkhtmltopdf.
 
 #### Requirements
 
-- pandoc (version 3.0 or higher)
-- wkhtmltopdf (version 0.12.6 or higher)
+- pandoc
+- wkhtmltopdf
+- pdfinfo (optional, for page count display)
 
 Install on Ubuntu/Debian:
 ```bash

@@ -56,11 +56,15 @@ echo -e "${GREEN}Converting markdown to PDF...${NC}"
 echo "Input:  $INPUT_FILE"
 echo "Output: $OUTPUT_FILE"
 
+# Extract title from filename (remove .md extension if present)
+TITLE="${INPUT_FILE%.md}"
+TITLE="$(basename "$TITLE")"
+
 # Convert markdown to PDF using pandoc with wkhtmltopdf engine
 pandoc "$INPUT_FILE" \
     -o "$OUTPUT_FILE" \
     --pdf-engine=wkhtmltopdf \
-    --metadata title="$(basename "$INPUT_FILE" .md)" \
+    --metadata title="$TITLE" \
     --from markdown \
     --to html5 \
     --standalone
@@ -68,13 +72,18 @@ pandoc "$INPUT_FILE" \
 # Check if conversion was successful
 if [ $? -eq 0 ] && [ -f "$OUTPUT_FILE" ]; then
     FILE_SIZE=$(du -h "$OUTPUT_FILE" | cut -f1)
-    PAGE_COUNT=$(pdfinfo "$OUTPUT_FILE" 2>/dev/null | grep "Pages:" | awk '{print $2}')
     
     echo -e "${GREEN}✓ Conversion successful!${NC}"
     echo "  File size: $FILE_SIZE"
-    if [ ! -z "$PAGE_COUNT" ]; then
-        echo "  Pages: $PAGE_COUNT"
+    
+    # Try to get page count if pdfinfo is available
+    if command -v pdfinfo &> /dev/null; then
+        PAGE_COUNT=$(pdfinfo "$OUTPUT_FILE" 2>/dev/null | grep "Pages:" | awk '{print $2}')
+        if [[ -n "$PAGE_COUNT" ]]; then
+            echo "  Pages: $PAGE_COUNT"
+        fi
     fi
+    
     echo "  Output: $OUTPUT_FILE"
 else
     echo -e "${RED}✗ Conversion failed${NC}"
