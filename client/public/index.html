@@ -192,64 +192,6 @@
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
-    
-    <!-- Inline Splash Screen - Appears BEFORE React loads -->
-    <div id="splash-screen">
-      <div class="splash-content">
-        <div class="splash-logo">🍽️</div>
-        <h1 class="splash-title">ASR Digital Services</h1>
-        <p class="splash-subtitle">Meal Planner & Price Comparison</p>
-        <div class="splash-footer">
-          <span class="countdown">Loading in <span id="countdown">15</span>s</span>
-          <button class="skip-btn" onclick="skipSplash()">Skip</button>
-        </div>
-      </div>
-    </div>
-
-    <div id="root" style="display: none;"></div>
-    
-    <script>
-      console.log('🚀 index.html loaded - Splash screen initialized');
-      
-      let splashTimeout;
-      let countdownInterval;
-      let countdownValue = 15;
-
-      function updateCountdown() {
-        countdownValue--;
-        document.getElementById('countdown').textContent = countdownValue;
-        if (countdownValue <= 0) {
-          hideSplash();
-        }
-      }
-
-      function hideSplash() {
-        clearTimeout(splashTimeout);
-        clearInterval(countdownInterval);
-        const splash = document.getElementById('splash-screen');
-        if (splash) {
-          splash.classList.add('fade-out');
-          setTimeout(() => {
-            splash.style.display = 'none';
-            // Show React app after splash completes
-            document.getElementById('root').style.display = 'block';
-            console.log('✅ Splash screen hidden - React app now visible');
-          }, 800);
-        }
-      }
-
-      function skipSplash() {
-        console.log('⏭️ Splash screen skipped by user');
-        hideSplash();
-      }
-
-      // Start countdown timer
-      countdownInterval = setInterval(updateCountdown, 1000);
-      
-      // Auto-hide splash after 15 seconds
-      splashTimeout = setTimeout(hideSplash, 15000);
-      
-      console.log('🎬 Splash screen countdown timer started (15 seconds)');
-    </script>
+    <div id="root"></div>
   </body>
 </html>

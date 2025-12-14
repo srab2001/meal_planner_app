@@ -34,11 +34,21 @@ function App() {
 
   console.log('🎬 App.js loaded, showSplash:', showSplash);
 
-  // Handle splash completion
+  // Handle splash completion - hide after 15 seconds
   const handleSplashComplete = () => {
     console.log('✅ Splash screen completed');
     setShowSplash(false);
   };
+
+  // Automatically hide splash after 15 seconds, regardless of user action
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      console.log('⏱️ 15 seconds elapsed, auto-hiding splash screen');
+      handleSplashComplete();
+    }, 15000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   // Helper for authenticated API calls
   const fetchWithAuth = (url, options = {}) => {
