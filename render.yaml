@@ -1,10 +1,10 @@
 services:
   # Backend API Service
   - type: web
-    name: meal-planner-api-v2
+    name: meal-planner-api
     runtime: node
     env: node
-    buildCommand: rm -rf node_modules package-lock.json .yarn .npm && npm cache clean --force && npm install --production
+    buildCommand: rm -rf node_modules package-lock.json .yarn .npm dist build .next && npm cache clean --force && npm install --production
     startCommand: npm start
     healthCheckPath: /health
     envVars:
