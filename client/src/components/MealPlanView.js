@@ -421,12 +421,32 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
 
       if (response.ok) {
         // Update the selected meal to remove the ingredient
-        setSelectedMeal(prev => ({
-          ...prev,
-          ingredients: prev.ingredients.filter(ing => 
-            !ing.toLowerCase().includes(formData.ingredientToRemove.toLowerCase())
-          )
-        }));
+        const updatedIngredients = selectedMeal.ingredients.filter(ing => 
+          !ing.toLowerCase().includes(formData.ingredientToRemove.toLowerCase())
+        );
+        const updatedMeal = { ...selectedMeal, ingredients: updatedIngredients };
+        setSelectedMeal(updatedMeal);
+        
+        // Update the local meal plan
+        setLocalMealPlan(prev => {
+          const mealType = Object.keys(prev.mealPlan[selectedDay]).find(type => 
+            prev.mealPlan[selectedDay][type].name === selectedMeal.name
+          );
+          if (mealType) {
+            return {
+              ...prev,
+              mealPlan: {
+                ...prev.mealPlan,
+                [selectedDay]: {
+                  ...prev.mealPlan[selectedDay],
+                  [mealType]: updatedMeal
+                }
+              }
+            };
+          }
+          return prev;
+        });
+        
         setOperationMessage(`✅ Removed ${formData.ingredientToRemove}`);
         setFormData(prev => ({ ...prev, ingredientToRemove: '' }));
         setTimeout(() => setOperationMessage(null), 2000);
@@ -465,10 +485,30 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
 
       if (response.ok) {
         // Update the selected meal to add the ingredient
-        setSelectedMeal(prev => ({
-          ...prev,
-          ingredients: [...prev.ingredients, formData.ingredientToAdd]
-        }));
+        const updatedIngredients = [...selectedMeal.ingredients, formData.ingredientToAdd];
+        const updatedMeal = { ...selectedMeal, ingredients: updatedIngredients };
+        setSelectedMeal(updatedMeal);
+        
+        // Update the local meal plan
+        setLocalMealPlan(prev => {
+          const mealType = Object.keys(prev.mealPlan[selectedDay]).find(type => 
+            prev.mealPlan[selectedDay][type].name === selectedMeal.name
+          );
+          if (mealType) {
+            return {
+              ...prev,
+              mealPlan: {
+                ...prev.mealPlan,
+                [selectedDay]: {
+                  ...prev.mealPlan[selectedDay],
+                  [mealType]: updatedMeal
+                }
+              }
+            };
+          }
+          return prev;
+        });
+        
         setOperationMessage(`✅ Added ${formData.ingredientToAdd}`);
         setFormData(prev => ({ ...prev, ingredientToAdd: '', reasonToAdd: '' }));
         setTimeout(() => setOperationMessage(null), 2000);
@@ -508,14 +548,34 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
 
       if (response.ok) {
         // Update the selected meal to substitute the ingredient
-        setSelectedMeal(prev => ({
-          ...prev,
-          ingredients: prev.ingredients.map(ing =>
-            ing.toLowerCase().includes(formData.oldIngredient.toLowerCase())
-              ? ing.replace(new RegExp(formData.oldIngredient, 'i'), formData.newIngredient)
-              : ing
-          )
-        }));
+        const updatedIngredients = selectedMeal.ingredients.map(ing =>
+          ing.toLowerCase().includes(formData.oldIngredient.toLowerCase())
+            ? ing.replace(new RegExp(formData.oldIngredient, 'i'), formData.newIngredient)
+            : ing
+        );
+        const updatedMeal = { ...selectedMeal, ingredients: updatedIngredients };
+        setSelectedMeal(updatedMeal);
+        
+        // Update the local meal plan
+        setLocalMealPlan(prev => {
+          const mealType = Object.keys(prev.mealPlan[selectedDay]).find(type => 
+            prev.mealPlan[selectedDay][type].name === selectedMeal.name
+          );
+          if (mealType) {
+            return {
+              ...prev,
+              mealPlan: {
+                ...prev.mealPlan,
+                [selectedDay]: {
+                  ...prev.mealPlan[selectedDay],
+                  [mealType]: updatedMeal
+                }
+              }
+            };
+          }
+          return prev;
+        });
+        
         setOperationMessage(`✅ Substituted ${formData.oldIngredient} → ${formData.newIngredient}`);
         setFormData(prev => ({ ...prev, oldIngredient: '', newIngredient: '', reasonToSubstitute: '' }));
         setTimeout(() => setOperationMessage(null), 2000);
