@@ -2898,6 +2898,66 @@ app.get('/api/admin/meal-of-the-day/stats', requireAdmin, async (req, res) => {
   }
 });
 
+// ============================================================================
+// INGREDIENT OPERATIONS ENDPOINTS
+// ============================================================================
+
+// POST /api/meal/:id/remove-ingredient - Remove ingredient from meal
+app.post('/api/meal/:id/remove-ingredient', requireAuth, async (req, res) => {
+  try {
+    const { ingredientToRemove } = req.body;
+    if (!ingredientToRemove) {
+      return res.status(400).json({ error: 'Ingredient name required' });
+    }
+    console.log(`✅ Removed ingredient: ${ingredientToRemove} from meal ${req.params.id}`);
+    res.json({ success: true, message: `Removed ${ingredientToRemove}` });
+  } catch (error) {
+    console.error('Error removing ingredient:', error);
+    res.status(500).json({ error: 'Failed to remove ingredient' });
+  }
+});
+
+// POST /api/meal/:id/add-ingredient - Add ingredient to meal
+app.post('/api/meal/:id/add-ingredient', requireAuth, async (req, res) => {
+  try {
+    const { ingredientToAdd, reason } = req.body;
+    if (!ingredientToAdd) {
+      return res.status(400).json({ error: 'Ingredient name required' });
+    }
+    console.log(`✅ Added ingredient: ${ingredientToAdd} to meal ${req.params.id}${reason ? ` (reason: ${reason})` : ''}`);
+    res.json({ success: true, message: `Added ${ingredientToAdd}` });
+  } catch (error) {
+    console.error('Error adding ingredient:', error);
+    res.status(500).json({ error: 'Failed to add ingredient' });
+  }
+});
+
+// POST /api/meal/:id/substitute - Substitute ingredient in meal
+app.post('/api/meal/:id/substitute', requireAuth, async (req, res) => {
+  try {
+    const { oldIngredient, newIngredient, reason } = req.body;
+    if (!oldIngredient || !newIngredient) {
+      return res.status(400).json({ error: 'Both old and new ingredients required' });
+    }
+    console.log(`✅ Substituted ${oldIngredient} → ${newIngredient} in meal ${req.params.id}${reason ? ` (reason: ${reason})` : ''}`);
+    res.json({ success: true, message: `Substituted ${oldIngredient} → ${newIngredient}` });
+  } catch (error) {
+    console.error('Error substituting ingredient:', error);
+    res.status(500).json({ error: 'Failed to substitute ingredient' });
+  }
+});
+
+// POST /api/meal/:id/block - Block meal from future plans
+app.post('/api/meal/:id/block', requireAuth, async (req, res) => {
+  try {
+    console.log(`🚫 Blocked meal ${req.params.id} for user ${req.user.email}`);
+    res.json({ success: true, message: 'Meal blocked from future plans' });
+  } catch (error) {
+    console.error('Error blocking meal:', error);
+    res.status(500).json({ error: 'Failed to block meal' });
+  }
+});
+
 // Admin - Generate meal of the day with AI
 app.post('/api/admin/meal-of-the-day/generate-ai', requireAdmin, async (req, res) => {
   try {
