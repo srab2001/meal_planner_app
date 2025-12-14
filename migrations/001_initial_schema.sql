@@ -254,25 +254,3 @@ INSERT INTO discount_codes (code, description, discount_type, discount_value, ma
 ('WELCOME10', 'Welcome discount - 10% off first premium subscription', 'percentage', 10.00, NULL),
 ('FREEMONTH', 'Free month of premium', 'fixed_amount', 6.99, 100)
 ON CONFLICT (code) DO NOTHING;
-
--- ============================================================================
--- VERIFICATION QUERIES
--- ============================================================================
-
--- Verify tables created
-SELECT table_name
-FROM information_schema.tables
-WHERE table_schema = 'public'
-ORDER BY table_name;
-
--- Count indexes created
-SELECT
-  schemaname,
-  tablename,
-  COUNT(*) as index_count
-FROM pg_indexes
-WHERE schemaname = 'public'
-GROUP BY schemaname, tablename
-ORDER BY tablename;
-
-COMMIT;
