@@ -2909,8 +2909,43 @@ app.post('/api/meal/:id/remove-ingredient', requireAuth, async (req, res) => {
     if (!ingredientToRemove) {
       return res.status(400).json({ error: 'Ingredient name required' });
     }
+
+    // Generate updated recipe without the removed ingredient
+    const updatedRecipe = `Please regenerate the recipe instructions for this meal, but REMOVE all references to "${ingredientToRemove}". 
+    
+    Keep the same meal name and cooking style, but adjust the instructions to work without this ingredient. 
+    Keep it concise - 2-4 sentences maximum.`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4-turbo',
+        messages: [
+          { role: 'user', content: updatedRecipe }
+        ],
+        temperature: 0.7,
+        max_tokens: 200
+      })
+    });
+
+    let newInstructions = `Cook without ${ingredientToRemove}`;
+    if (response.ok) {
+      const data = await response.json();
+      if (data.choices && data.choices[0] && data.choices[0].message) {
+        newInstructions = data.choices[0].message.content.trim();
+      }
+    }
+
     console.log(`✅ Removed ingredient: ${ingredientToRemove} from meal ${req.params.id}`);
-    res.json({ success: true, message: `Removed ${ingredientToRemove}` });
+    res.json({ 
+      success: true, 
+      message: `Removed ${ingredientToRemove}`,
+      instructions: newInstructions
+    });
   } catch (error) {
     console.error('Error removing ingredient:', error);
     res.status(500).json({ error: 'Failed to remove ingredient' });
@@ -2924,8 +2959,44 @@ app.post('/api/meal/:id/add-ingredient', requireAuth, async (req, res) => {
     if (!ingredientToAdd) {
       return res.status(400).json({ error: 'Ingredient name required' });
     }
+
+    // Generate updated recipe with the new ingredient
+    const updatedRecipe = `Please regenerate the recipe instructions for this meal, but ADD "${ingredientToAdd}" as an ingredient.
+    ${reason ? `The reason for adding it is: ${reason}` : ''}
+    
+    Keep the same meal name and cooking style, but incorporate this new ingredient into the instructions.
+    Keep it concise - 2-4 sentences maximum.`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4-turbo',
+        messages: [
+          { role: 'user', content: updatedRecipe }
+        ],
+        temperature: 0.7,
+        max_tokens: 200
+      })
+    });
+
+    let newInstructions = `Cook with added ${ingredientToAdd}`;
+    if (response.ok) {
+      const data = await response.json();
+      if (data.choices && data.choices[0] && data.choices[0].message) {
+        newInstructions = data.choices[0].message.content.trim();
+      }
+    }
+
     console.log(`✅ Added ingredient: ${ingredientToAdd} to meal ${req.params.id}${reason ? ` (reason: ${reason})` : ''}`);
-    res.json({ success: true, message: `Added ${ingredientToAdd}` });
+    res.json({ 
+      success: true, 
+      message: `Added ${ingredientToAdd}`,
+      instructions: newInstructions
+    });
   } catch (error) {
     console.error('Error adding ingredient:', error);
     res.status(500).json({ error: 'Failed to add ingredient' });
@@ -2939,8 +3010,44 @@ app.post('/api/meal/:id/substitute', requireAuth, async (req, res) => {
     if (!oldIngredient || !newIngredient) {
       return res.status(400).json({ error: 'Both old and new ingredients required' });
     }
+
+    // Generate updated recipe with substituted ingredient
+    const updatedRecipe = `Please regenerate the recipe instructions for this meal, but SUBSTITUTE "${oldIngredient}" with "${newIngredient}".
+    ${reason ? `The reason for substituting is: ${reason}` : ''}
+    
+    Keep the same meal name and cooking style, but use the new ingredient instead.
+    Keep it concise - 2-4 sentences maximum.`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4-turbo',
+        messages: [
+          { role: 'user', content: updatedRecipe }
+        ],
+        temperature: 0.7,
+        max_tokens: 200
+      })
+    });
+
+    let newInstructions = `Cook with ${newIngredient} instead of ${oldIngredient}`;
+    if (response.ok) {
+      const data = await response.json();
+      if (data.choices && data.choices[0] && data.choices[0].message) {
+        newInstructions = data.choices[0].message.content.trim();
+      }
+    }
+
     console.log(`✅ Substituted ${oldIngredient} → ${newIngredient} in meal ${req.params.id}${reason ? ` (reason: ${reason})` : ''}`);
-    res.json({ success: true, message: `Substituted ${oldIngredient} → ${newIngredient}` });
+    res.json({ 
+      success: true, 
+      message: `Substituted ${oldIngredient} → ${newIngredient}`,
+      instructions: newInstructions
+    });
   } catch (error) {
     console.error('Error substituting ingredient:', error);
     res.status(500).json({ error: 'Failed to substitute ingredient' });
