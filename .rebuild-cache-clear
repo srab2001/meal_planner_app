@@ -1,0 +1,3 @@
+This file was created to force Render to clear its build cache and rebuild from scratch.
+Build time: 2025-12-14T00:49:00Z
+Reason: Clear stale cache that was executing old code with INTEGER user_id types
