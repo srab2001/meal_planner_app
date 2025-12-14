@@ -983,7 +983,7 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
               </ol>
             </div>
 
-            {/* Ingredient Operations Section */}
+            {/* Ingredient Operations Section - Customize your meal */}
             <div className="recipe-section ingredient-operations">
               <h3>⚙️ Customize Your Meal Ingredients</h3>
               
