@@ -1,6 +1,9 @@
 -- Migration 007: Add favorites table
 -- This table stores user's favorite meals for quick access
 
+-- Drop existing table if it has wrong types
+DROP TABLE IF EXISTS favorites CASCADE;
+
 CREATE TABLE IF NOT EXISTS favorites (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,

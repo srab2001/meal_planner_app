@@ -3,6 +3,10 @@
 -- Version: 1.0
 -- Created: December 13, 2025
 
+-- Drop existing table if it has wrong types (e.g., INTEGER user_id instead of UUID)
+-- This handles the case where an old version of the table exists
+DROP TABLE IF EXISTS shopping_list_states CASCADE;
+
 CREATE TABLE IF NOT EXISTS shopping_list_states (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
