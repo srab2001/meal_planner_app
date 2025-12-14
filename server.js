@@ -65,17 +65,28 @@ async function runMigrationsSync() {
   }
 }
 
-// Execute migrations immediately
-runMigrationsSync().catch(error => {
-  console.error('[SERVER] ❌ Failed to start: Migrations failed');
-  console.error(error);
-  process.exit(1);
-});
+// ============================================================================
+// START APP SETUP - WRAPPED IN ASYNC IIFE TO WAIT FOR MIGRATIONS
+// ============================================================================
+(async () => {
+  try {
+    // Run migrations first
+    await runMigrationsSync();
+    console.log('[SERVER] ✅ Migrations complete, starting Express app...');
+    
+    // NOW continue with Express setup and start the server
+    startExpressApp();
+  } catch (error) {
+    console.error('[SERVER] ❌ Fatal error - migrations failed');
+    console.error(error);
+    process.exit(1);
+  }
+})();
 
 // ============================================================================
-// END MIGRATIONS - CONTINUE WITH EXPRESS SETUP
+// EXPRESS APP SETUP - Called after migrations complete
 // ============================================================================
-
+function startExpressApp() {
 
 const {
   PORT,
@@ -3058,3 +3069,4 @@ app.listen(port, async () => {
   await initializeDatabase();
   console.log('[SERVER] initializeDatabase completed');
 });
+} // End of startExpressApp() function
