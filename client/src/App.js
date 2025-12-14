@@ -22,7 +22,12 @@ const setToken = (token) => localStorage.setItem('auth_token', token);
 const removeToken = () => localStorage.removeItem('auth_token');
 
 function App() {
-  const [showSplash, setShowSplash] = useState(true);
+  // Check if user has seen splash before (only show once per session)
+  const [showSplash, setShowSplash] = useState(() => {
+    // Only show splash if not already seen this session
+    const seen = sessionStorage.getItem('splash_seen');
+    return !seen;
+  });
   const [user, setUser] = useState(null);
   const [currentView, setCurrentView] = useState('login');
   const [zipCode, setZipCode] = useState('');
@@ -30,6 +35,12 @@ function App() {
   const [selectedStores, setSelectedStores] = useState({ primaryStore: null, comparisonStore: null });
   const [preferences, setPreferences] = useState(null);
   const [mealPlan, setMealPlan] = useState(null);
+
+  // Handle splash completion
+  const handleSplashComplete = () => {
+    sessionStorage.setItem('splash_seen', 'true');
+    setShowSplash(false);
+  };
 
   // Helper for authenticated API calls
   const fetchWithAuth = (url, options = {}) => {
@@ -263,7 +274,7 @@ function App() {
   return (
     <div className="App">
       {showSplash && (
-        <SplashScreen onComplete={() => setShowSplash(false)} />
+        <SplashScreen onComplete={handleSplashComplete} />
       )}
 
       {currentView === 'login' && (
