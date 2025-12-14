@@ -420,6 +420,13 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
       });
 
       if (response.ok) {
+        // Update the selected meal to remove the ingredient
+        setSelectedMeal(prev => ({
+          ...prev,
+          ingredients: prev.ingredients.filter(ing => 
+            !ing.toLowerCase().includes(formData.ingredientToRemove.toLowerCase())
+          )
+        }));
         setOperationMessage(`✅ Removed ${formData.ingredientToRemove}`);
         setFormData(prev => ({ ...prev, ingredientToRemove: '' }));
         setTimeout(() => setOperationMessage(null), 2000);
@@ -457,6 +464,11 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
       });
 
       if (response.ok) {
+        // Update the selected meal to add the ingredient
+        setSelectedMeal(prev => ({
+          ...prev,
+          ingredients: [...prev.ingredients, formData.ingredientToAdd]
+        }));
         setOperationMessage(`✅ Added ${formData.ingredientToAdd}`);
         setFormData(prev => ({ ...prev, ingredientToAdd: '', reasonToAdd: '' }));
         setTimeout(() => setOperationMessage(null), 2000);
@@ -495,6 +507,15 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
       });
 
       if (response.ok) {
+        // Update the selected meal to substitute the ingredient
+        setSelectedMeal(prev => ({
+          ...prev,
+          ingredients: prev.ingredients.map(ing =>
+            ing.toLowerCase().includes(formData.oldIngredient.toLowerCase())
+              ? ing.replace(new RegExp(formData.oldIngredient, 'i'), formData.newIngredient)
+              : ing
+          )
+        }));
         setOperationMessage(`✅ Substituted ${formData.oldIngredient} → ${formData.newIngredient}`);
         setFormData(prev => ({ ...prev, oldIngredient: '', newIngredient: '', reasonToSubstitute: '' }));
         setTimeout(() => setOperationMessage(null), 2000);
