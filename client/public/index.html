@@ -205,7 +205,7 @@
       </div>
     </div>
 
-    <div id="root"></div>
+    <div id="root" style="display: none;"></div>
     
     <script>
       console.log('🚀 index.html loaded - Splash screen initialized');
@@ -230,7 +230,9 @@
           splash.classList.add('fade-out');
           setTimeout(() => {
             splash.style.display = 'none';
-            console.log('✅ Splash screen hidden');
+            // Show React app after splash completes
+            document.getElementById('root').style.display = 'block';
+            console.log('✅ Splash screen hidden - React app now visible');
           }, 800);
         }
       }
