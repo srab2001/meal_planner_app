@@ -2,8 +2,8 @@
 -- This table stores user's favorite meals for quick access
 
 CREATE TABLE IF NOT EXISTS favorites (
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   meal_type VARCHAR(20) NOT NULL CHECK (meal_type IN ('breakfast', 'lunch', 'dinner')),
   meal_data JSONB NOT NULL,
   meal_name VARCHAR(255) NOT NULL,
