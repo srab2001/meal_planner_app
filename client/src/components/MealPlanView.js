@@ -974,9 +974,9 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
               </ul>
             </div>
 
-            {/* Ingredient Operations */}
+            {/* Ingredient Operations Section */}
             <div className="recipe-section ingredient-operations">
-              <h3>⚙️ Customize Ingredients</h3>
+              <h3>⚙️ Customize Your Ingredients</h3>
               
               {operationMessage && (
                 <div className={`operation-message ${operationMessage.includes('✅') ? 'success' : 'error'}`}>
