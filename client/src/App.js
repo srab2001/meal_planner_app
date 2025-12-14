@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
+import SplashScreen from './components/SplashScreen';
 import LoginPage from './components/LoginPage';
 import ZIPCodeInput from './components/ZIPCodeInput';
 import StoreSelection from './components/StoreSelection';
@@ -21,6 +22,7 @@ const setToken = (token) => localStorage.setItem('auth_token', token);
 const removeToken = () => localStorage.removeItem('auth_token');
 
 function App() {
+  const [showSplash, setShowSplash] = useState(true);
   const [user, setUser] = useState(null);
   const [currentView, setCurrentView] = useState('login');
   const [zipCode, setZipCode] = useState('');
@@ -260,6 +262,10 @@ function App() {
 
   return (
     <div className="App">
+      {showSplash && (
+        <SplashScreen onComplete={() => setShowSplash(false)} />
+      )}
+
       {currentView === 'login' && (
         <LoginPage onLogin={handleLogin} />
       )}
