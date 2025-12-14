@@ -4,7 +4,7 @@ import './SplashScreen.css';
 function SplashScreen({ onComplete }) {
   const [isVisible, setIsVisible] = useState(true);
   const [fadeOut, setFadeOut] = useState(false);
-  const [countdown, setCountdown] = useState(10);
+  const [countdown, setCountdown] = useState(15);
 
   useEffect(() => {
     // Countdown timer
