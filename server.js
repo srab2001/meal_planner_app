@@ -2974,25 +2974,10 @@ async function initializeDatabase() {
       );
     `);
 
+    // NOTE: shopping_list_states table is now created via migration (007_shopping_list_states.sql)
+    // with correct UUID type for user_id. Skipping dynamic creation to avoid type conflicts.
     if (!shoppingListTableCheck.rows[0].exists) {
-      console.log('📋 Creating shopping_list_states table...');
-
-      await db.query(`
-        CREATE TABLE shopping_list_states (
-          id SERIAL PRIMARY KEY,
-          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-          meal_plan_date DATE NOT NULL DEFAULT CURRENT_DATE,
-          checked_items JSONB NOT NULL DEFAULT '{}',
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-          UNIQUE(user_id, meal_plan_date)
-        );
-
-        CREATE INDEX idx_shopping_list_states_user_id ON shopping_list_states(user_id);
-        CREATE INDEX idx_shopping_list_states_date ON shopping_list_states(meal_plan_date);
-      `);
-
-      console.log('✅ Shopping list states table created successfully');
+      console.log('⏭️  Skipping shopping_list_states creation (handled by migrations)');
     } else {
       console.log('✅ Shopping list states table already exists');
     }
@@ -3007,25 +2992,7 @@ async function initializeDatabase() {
     `);
 
     if (!historyTableCheck.rows[0].exists) {
-      console.log('📋 Creating meal_plan_history table...');
-
-      await db.query(`
-        CREATE TABLE meal_plan_history (
-          id SERIAL PRIMARY KEY,
-          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-          preferences JSONB,
-          meal_plan JSONB NOT NULL,
-          stores JSONB,
-          shopping_list JSONB,
-          total_cost VARCHAR(50),
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE INDEX idx_meal_plan_history_user_id ON meal_plan_history(user_id);
-        CREATE INDEX idx_meal_plan_history_created_at ON meal_plan_history(created_at);
-      `);
-
-      console.log('✅ Meal plan history table created successfully');
+      console.log('⏭️  Skipping meal_plan_history creation (handled by migrations)');
     } else {
       console.log('✅ Meal plan history table already exists');
     }
