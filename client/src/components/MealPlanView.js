@@ -22,6 +22,8 @@ const shortenDayName = (day) => {
 function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver, onLogout, onViewProfile}) {
   const [selectedDay, setSelectedDay] = useState('Monday');
   const [selectedMeal, setSelectedMeal] = useState(null);
+  const [selectedMealDay, setSelectedMealDay] = useState(null);  // Track which day the selected meal came from
+  const [selectedMealType, setSelectedMealType] = useState(null);  // Track which meal type (breakfast, lunch, etc.)
   const [activeTab, setActiveTab] = useState('meals');
   const [regeneratingMeal, setRegeneratingMeal] = useState(null);
   const [localMealPlan, setLocalMealPlan] = useState(mealPlan);
@@ -133,14 +135,18 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   // Get all meal types from preferences for favorites dropdown
   const allMealTypes = preferences?.selectedMeals || ['breakfast', 'lunch', 'dinner'];
 
-  const handleMealClick = (meal) => {
+  const handleMealClick = (meal, day, mealType) => {
     setSelectedMeal(meal);
+    setSelectedMealDay(day);
+    setSelectedMealType(mealType);
     setCustomServings(meal.servings || 2);
     setRecipeNotes('');
   };
 
   const closeModal = () => {
     setSelectedMeal(null);
+    setSelectedMealDay(null);
+    setSelectedMealType(null);
     setCustomServings(null);
     setRecipeNotes('');
   };
@@ -427,25 +433,19 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
         const updatedMeal = { ...selectedMeal, ingredients: updatedIngredients };
         setSelectedMeal(updatedMeal);
         
-        // Update the local meal plan
-        setLocalMealPlan(prev => {
-          const mealType = Object.keys(prev.mealPlan[selectedDay]).find(type => 
-            prev.mealPlan[selectedDay][type].name === selectedMeal.name
-          );
-          if (mealType) {
-            return {
-              ...prev,
-              mealPlan: {
-                ...prev.mealPlan,
-                [selectedDay]: {
-                  ...prev.mealPlan[selectedDay],
-                  [mealType]: updatedMeal
-                }
+        // Update the local meal plan with the new meal
+        if (selectedMealDay && selectedMealType) {
+          setLocalMealPlan(prev => ({
+            ...prev,
+            mealPlan: {
+              ...prev.mealPlan,
+              [selectedMealDay]: {
+                ...prev.mealPlan[selectedMealDay],
+                [selectedMealType]: updatedMeal
               }
-            };
-          }
-          return prev;
-        });
+            }
+          }));
+        }
         
         setOperationMessage(`✅ Removed ${formData.ingredientToRemove}`);
         setFormData(prev => ({ ...prev, ingredientToRemove: '' }));
@@ -489,25 +489,19 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
         const updatedMeal = { ...selectedMeal, ingredients: updatedIngredients };
         setSelectedMeal(updatedMeal);
         
-        // Update the local meal plan
-        setLocalMealPlan(prev => {
-          const mealType = Object.keys(prev.mealPlan[selectedDay]).find(type => 
-            prev.mealPlan[selectedDay][type].name === selectedMeal.name
-          );
-          if (mealType) {
-            return {
-              ...prev,
-              mealPlan: {
-                ...prev.mealPlan,
-                [selectedDay]: {
-                  ...prev.mealPlan[selectedDay],
-                  [mealType]: updatedMeal
-                }
+        // Update the local meal plan with the new meal
+        if (selectedMealDay && selectedMealType) {
+          setLocalMealPlan(prev => ({
+            ...prev,
+            mealPlan: {
+              ...prev.mealPlan,
+              [selectedMealDay]: {
+                ...prev.mealPlan[selectedMealDay],
+                [selectedMealType]: updatedMeal
               }
-            };
-          }
-          return prev;
-        });
+            }
+          }));
+        }
         
         setOperationMessage(`✅ Added ${formData.ingredientToAdd}`);
         setFormData(prev => ({ ...prev, ingredientToAdd: '', reasonToAdd: '' }));
@@ -556,25 +550,19 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
         const updatedMeal = { ...selectedMeal, ingredients: updatedIngredients };
         setSelectedMeal(updatedMeal);
         
-        // Update the local meal plan
-        setLocalMealPlan(prev => {
-          const mealType = Object.keys(prev.mealPlan[selectedDay]).find(type => 
-            prev.mealPlan[selectedDay][type].name === selectedMeal.name
-          );
-          if (mealType) {
-            return {
-              ...prev,
-              mealPlan: {
-                ...prev.mealPlan,
-                [selectedDay]: {
-                  ...prev.mealPlan[selectedDay],
-                  [mealType]: updatedMeal
-                }
+        // Update the local meal plan with the new meal
+        if (selectedMealDay && selectedMealType) {
+          setLocalMealPlan(prev => ({
+            ...prev,
+            mealPlan: {
+              ...prev.mealPlan,
+              [selectedMealDay]: {
+                ...prev.mealPlan[selectedMealDay],
+                [selectedMealType]: updatedMeal
               }
-            };
-          }
-          return prev;
-        });
+            }
+          }));
+        }
         
         setOperationMessage(`✅ Substituted ${formData.oldIngredient} → ${formData.newIngredient}`);
         setFormData(prev => ({ ...prev, oldIngredient: '', newIngredient: '', reasonToSubstitute: '' }));
@@ -864,7 +852,7 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                     <div className="meal-card-actions">
                       <button
                         className="view-recipe-btn"
-                        onClick={() => handleMealClick(meal)}
+                        onClick={() => handleMealClick(meal, selectedDay, mealType)}
                       >
                         👁️ View Recipe
                       </button>
@@ -967,7 +955,7 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                     <div className="favorite-actions">
                       <button
                         className="view-recipe-btn"
-                        onClick={() => handleMealClick(favorite.meal)}
+                        onClick={() => handleMealClick(favorite.meal, selectedDay, 'breakfast')}
                       >
                         👁️ View Recipe
                       </button>
