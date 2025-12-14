@@ -2938,29 +2938,10 @@ async function initializeDatabase() {
       );
     `);
 
+    // NOTE: Favorites table is created via migration (007_favorites.sql)
+    // with correct UUID type for user_id. Skipping dynamic creation to avoid type conflicts.
     if (!tableCheck.rows[0].exists) {
-      console.log('📋 Creating favorites table...');
-
-      await db.query(`
-        CREATE TABLE favorites (
-          id SERIAL PRIMARY KEY,
-          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-          meal_type VARCHAR(20) NOT NULL CHECK (meal_type IN ('breakfast', 'lunch', 'dinner')),
-          meal_data JSONB NOT NULL,
-          meal_name VARCHAR(255) NOT NULL,
-          servings_adjustment INTEGER,
-          user_notes TEXT,
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-          UNIQUE(user_id, meal_name, meal_type)
-        );
-
-        CREATE INDEX idx_favorites_user_id ON favorites(user_id);
-        CREATE INDEX idx_favorites_meal_type ON favorites(meal_type);
-        CREATE INDEX idx_favorites_meal_name ON favorites(meal_name);
-      `);
-
-      console.log('✅ Favorites table created successfully');
+      console.log('⏭️  Skipping favorites creation (handled by migrations)');
     } else {
       console.log('✅ Favorites table already exists');
     }
