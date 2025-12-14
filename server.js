@@ -2927,6 +2927,7 @@ Natural lighting, beautiful presentation, high-quality photo.`;
 // Initialize database tables on startup
 async function initializeDatabase() {
   try {
+    console.log('[SERVER] initializeDatabase called at', new Date().toISOString());
     console.log('🔍 Checking database schema...');
 
     // Check if favorites table exists
@@ -2986,6 +2987,8 @@ async function initializeDatabase() {
 
 const port = PORT || 5000;
 app.listen(port, async () => {
+  console.log(`[SERVER] app.listen callback executed at ${new Date().toISOString()}`);
   console.log(`server listening on port ${port}`);
   await initializeDatabase();
+  console.log('[SERVER] initializeDatabase completed');
 });
