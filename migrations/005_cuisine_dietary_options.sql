@@ -72,9 +72,3 @@ INSERT INTO dietary_options (key, label, display_order) VALUES
 ('keto', 'Keto', 9),
 ('paleo', 'Paleo', 10)
 ON CONFLICT (key) DO NOTHING;
-
--- Verify tables created
-SELECT COUNT(*) as cuisine_count FROM cuisine_options;
-SELECT COUNT(*) as dietary_count FROM dietary_options;
-
-COMMIT;

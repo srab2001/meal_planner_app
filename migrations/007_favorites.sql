@@ -2,7 +2,7 @@
 -- This table stores user's favorite meals for quick access
 
 CREATE TABLE IF NOT EXISTS favorites (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   meal_type VARCHAR(20) NOT NULL CHECK (meal_type IN ('breakfast', 'lunch', 'dinner')),
   meal_data JSONB NOT NULL,

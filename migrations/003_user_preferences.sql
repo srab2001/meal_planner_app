@@ -158,34 +158,3 @@ INSERT INTO user_preferences (user_id)
 SELECT id FROM users
 WHERE id NOT IN (SELECT user_id FROM user_preferences)
 ON CONFLICT (user_id) DO NOTHING;
-
--- ============================================================================
--- VERIFICATION QUERIES
--- ============================================================================
-
--- Verify new columns added to users table
-SELECT column_name, data_type, column_default
-FROM information_schema.columns
-WHERE table_name = 'users'
-AND column_name IN ('phone_number', 'timezone', 'meal_plans_generated', 'bio')
-ORDER BY column_name;
-
--- Verify user_preferences table created
-SELECT column_name, data_type
-FROM information_schema.columns
-WHERE table_name = 'user_preferences'
-ORDER BY ordinal_position;
-
--- Verify favorites enhancements
-SELECT column_name, data_type
-FROM information_schema.columns
-WHERE table_name = 'favorites'
-AND column_name IN ('servings_adjustment', 'ingredient_swaps', 'user_notes', 'custom_instructions', 'cooking_time_actual', 'difficulty_rating', 'last_cooked_at')
-ORDER BY column_name;
-
--- Count preferences created
-SELECT
-  (SELECT COUNT(*) FROM users) as total_users,
-  (SELECT COUNT(*) FROM user_preferences) as users_with_preferences;
-
-COMMIT;
