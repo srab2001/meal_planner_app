@@ -4,8 +4,8 @@ services:
     name: meal-planner-api
     runtime: node
     env: node
-    buildCommand: rm -rf node_modules package-lock.json .yarn .npm dist build .next && npm cache clean --force && npm install --production
-    startCommand: npm start
+    buildCommand: rm -rf node_modules package-lock.json .yarn .npm dist build .next yarn.lock && npm cache clean --force && npm install --production
+    startCommand: node scripts/run-migrations.js && node server.js
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
