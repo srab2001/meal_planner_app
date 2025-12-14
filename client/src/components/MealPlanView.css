@@ -1750,6 +1750,140 @@
   }
 }
 
+/* Ingredient Operations Styles */
+.ingredient-operations {
+  background: #f8f9fa;
+  border-left: 4px solid #667eea;
+  padding: 20px;
+  margin: 20px 0;
+  border-radius: 8px;
+}
+
+.ingredient-operations h3 {
+  color: #667eea;
+  margin-top: 0;
+}
+
+.operation-group {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+
+.operation-group h4 {
+  color: #333;
+  margin: 0 0 10px 0;
+  font-size: 1rem;
+}
+
+.operation-note {
+  font-size: 0.9rem;
+  color: #666;
+  margin: 5px 0 10px 0;
+  font-style: italic;
+}
+
+.operation-inputs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.operation-input {
+  flex: 1;
+  min-width: 150px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+
+.operation-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.operation-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.95rem;
+}
+
+.operation-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.remove-btn {
+  background: #ff6b6b;
+  color: white;
+}
+
+.remove-btn:hover:not(:disabled) {
+  background: #ee5a52;
+  transform: translateY(-2px);
+}
+
+.add-btn {
+  background: #51cf66;
+  color: white;
+}
+
+.add-btn:hover:not(:disabled) {
+  background: #40c057;
+  transform: translateY(-2px);
+}
+
+.substitute-btn {
+  background: #4dabf7;
+  color: white;
+}
+
+.substitute-btn:hover:not(:disabled) {
+  background: #339af0;
+  transform: translateY(-2px);
+}
+
+.block-btn {
+  background: #868e96;
+  color: white;
+  width: 100%;
+}
+
+.block-btn:hover:not(:disabled) {
+  background: #748085;
+  transform: translateY(-2px);
+}
+
+.operation-message {
+  padding: 12px;
+  border-radius: 6px;
+  margin-top: 10px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.operation-message.success {
+  background: #d3f9d8;
+  color: #2b8a3e;
+  border: 1px solid #51cf66;
+}
+
+.operation-message.error {
+  background: #ffe0e0;
+  color: #c92a2a;
+  border: 1px solid #ff6b6b;
+}
+
 /* Print styles */
 @media print {
   .special-occasion-badge {
@@ -1765,4 +1899,9 @@
   .wine-pairing-section {
     page-break-inside: avoid;
   }
+
+  .ingredient-operations {
+    display: none;
+  }
 }
+

@@ -38,6 +38,18 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   const [recipeNotes, setRecipeNotes] = useState('');
   const [savingCustomization, setSavingCustomization] = useState(false);
 
+  // Ingredient operations form state
+  const [formData, setFormData] = useState({
+    ingredientToRemove: '',
+    ingredientToAdd: '',
+    reasonToAdd: '',
+    oldIngredient: '',
+    newIngredient: '',
+    reasonToSubstitute: '',
+  });
+  const [operationLoading, setOperationLoading] = useState(false);
+  const [operationMessage, setOperationMessage] = useState(null);
+
   // Mobile UI state
   const [showFabMenu, setShowFabMenu] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
@@ -382,6 +394,148 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
       }
     }));
     console.log(`✨ Applied favorite "${favorite.meal.name}" to ${day} ${mealType}`);
+  };
+
+  // Ingredient operation handlers
+  const handleRemoveIngredient = async (day, mealType) => {
+    if (!formData.ingredientToRemove.trim()) {
+      setOperationMessage('❌ Please enter an ingredient name');
+      return;
+    }
+    
+    setOperationLoading(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const mealId = selectedMeal?.id || `${day}-${mealType}`;
+      
+      const response = await fetch(`${API_BASE}/api/meal/${mealId}/remove-ingredient`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
+        body: JSON.stringify({
+          ingredientToRemove: formData.ingredientToRemove
+        }),
+      });
+
+      if (response.ok) {
+        setOperationMessage(`✅ Removed ${formData.ingredientToRemove}`);
+        setFormData(prev => ({ ...prev, ingredientToRemove: '' }));
+        setTimeout(() => setOperationMessage(null), 2000);
+      } else {
+        setOperationMessage('❌ Failed to remove ingredient');
+      }
+    } catch (error) {
+      setOperationMessage('❌ Error: ' + error.message);
+    } finally {
+      setOperationLoading(false);
+    }
+  };
+
+  const handleAddIngredient = async (day, mealType) => {
+    if (!formData.ingredientToAdd.trim()) {
+      setOperationMessage('❌ Please enter an ingredient name');
+      return;
+    }
+    
+    setOperationLoading(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const mealId = selectedMeal?.id || `${day}-${mealType}`;
+      
+      const response = await fetch(`${API_BASE}/api/meal/${mealId}/add-ingredient`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
+        body: JSON.stringify({
+          ingredientToAdd: formData.ingredientToAdd,
+          reason: formData.reasonToAdd
+        }),
+      });
+
+      if (response.ok) {
+        setOperationMessage(`✅ Added ${formData.ingredientToAdd}`);
+        setFormData(prev => ({ ...prev, ingredientToAdd: '', reasonToAdd: '' }));
+        setTimeout(() => setOperationMessage(null), 2000);
+      } else {
+        setOperationMessage('❌ Failed to add ingredient');
+      }
+    } catch (error) {
+      setOperationMessage('❌ Error: ' + error.message);
+    } finally {
+      setOperationLoading(false);
+    }
+  };
+
+  const handleSubstituteIngredient = async (day, mealType) => {
+    if (!formData.oldIngredient.trim() || !formData.newIngredient.trim()) {
+      setOperationMessage('❌ Please enter both ingredients');
+      return;
+    }
+    
+    setOperationLoading(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const mealId = selectedMeal?.id || `${day}-${mealType}`;
+      
+      const response = await fetch(`${API_BASE}/api/meal/${mealId}/substitute`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
+        body: JSON.stringify({
+          oldIngredient: formData.oldIngredient,
+          newIngredient: formData.newIngredient,
+          reason: formData.reasonToSubstitute
+        }),
+      });
+
+      if (response.ok) {
+        setOperationMessage(`✅ Substituted ${formData.oldIngredient} → ${formData.newIngredient}`);
+        setFormData(prev => ({ ...prev, oldIngredient: '', newIngredient: '', reasonToSubstitute: '' }));
+        setTimeout(() => setOperationMessage(null), 2000);
+      } else {
+        setOperationMessage('❌ Failed to substitute ingredient');
+      }
+    } catch (error) {
+      setOperationMessage('❌ Error: ' + error.message);
+    } finally {
+      setOperationLoading(false);
+    }
+  };
+
+  const handleBlockMeal = async (day, mealType) => {
+    setOperationLoading(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const mealId = selectedMeal?.id || `${day}-${mealType}`;
+      
+      const response = await fetch(`${API_BASE}/api/meal/${mealId}/block`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
+      });
+
+      if (response.ok) {
+        setOperationMessage(`🚫 Blocked "${selectedMeal.name}" - won't appear in future plans`);
+        setTimeout(() => {
+          closeModal();
+          setOperationMessage(null);
+        }, 2000);
+      } else {
+        setOperationMessage('❌ Failed to block meal');
+      }
+    } catch (error) {
+      setOperationMessage('❌ Error: ' + error.message);
+    } finally {
+      setOperationLoading(false);
+    }
   };
 
   const handleViewHistory = async (days = null) => {
@@ -818,6 +972,113 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                   </li>
                 ))}
               </ul>
+            </div>
+
+            {/* Ingredient Operations */}
+            <div className="recipe-section ingredient-operations">
+              <h3>⚙️ Customize Ingredients</h3>
+              
+              {operationMessage && (
+                <div className={`operation-message ${operationMessage.includes('✅') ? 'success' : 'error'}`}>
+                  {operationMessage}
+                </div>
+              )}
+              
+              {/* Remove Ingredient */}
+              <div className="operation-group">
+                <h4>❌ Remove Ingredient</h4>
+                <div className="operation-inputs">
+                  <input
+                    type="text"
+                    placeholder="Enter ingredient name (e.g., 'tomato')"
+                    value={formData.ingredientToRemove || ''}
+                    onChange={(e) => setFormData({...formData, ingredientToRemove: e.target.value})}
+                    className="operation-input"
+                  />
+                  <button 
+                    onClick={() => handleRemoveIngredient(selectedDay, Object.keys(localMealPlan.mealPlan[selectedDay])[0])}
+                    className="operation-btn remove-btn"
+                    disabled={!formData.ingredientToRemove?.trim()}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+
+              {/* Add Ingredient */}
+              <div className="operation-group">
+                <h4>➕ Add Ingredient</h4>
+                <div className="operation-inputs">
+                  <input
+                    type="text"
+                    placeholder="New ingredient (e.g., 'fresh basil')"
+                    value={formData.ingredientToAdd || ''}
+                    onChange={(e) => setFormData({...formData, ingredientToAdd: e.target.value})}
+                    className="operation-input"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Why? (e.g., 'better flavor')"
+                    value={formData.reasonToAdd || ''}
+                    onChange={(e) => setFormData({...formData, reasonToAdd: e.target.value})}
+                    className="operation-input"
+                  />
+                  <button 
+                    onClick={() => handleAddIngredient(selectedDay, Object.keys(localMealPlan.mealPlan[selectedDay])[0])}
+                    className="operation-btn add-btn"
+                    disabled={!formData.ingredientToAdd?.trim()}
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+
+              {/* Substitute Ingredient */}
+              <div className="operation-group">
+                <h4>🔄 Substitute Ingredient</h4>
+                <div className="operation-inputs">
+                  <input
+                    type="text"
+                    placeholder="Current ingredient"
+                    value={formData.oldIngredient || ''}
+                    onChange={(e) => setFormData({...formData, oldIngredient: e.target.value})}
+                    className="operation-input"
+                  />
+                  <input
+                    type="text"
+                    placeholder="New ingredient"
+                    value={formData.newIngredient || ''}
+                    onChange={(e) => setFormData({...formData, newIngredient: e.target.value})}
+                    className="operation-input"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Why? (e.g., 'vegan alternative')"
+                    value={formData.reasonToSubstitute || ''}
+                    onChange={(e) => setFormData({...formData, reasonToSubstitute: e.target.value})}
+                    className="operation-input"
+                  />
+                  <button 
+                    onClick={() => handleSubstituteIngredient(selectedDay, Object.keys(localMealPlan.mealPlan[selectedDay])[0])}
+                    className="operation-btn substitute-btn"
+                    disabled={!formData.oldIngredient?.trim() || !formData.newIngredient?.trim()}
+                  >
+                    Substitute
+                  </button>
+                </div>
+              </div>
+
+              {/* Block Meal */}
+              <div className="operation-group">
+                <h4>🚫 Block This Meal</h4>
+                <p className="operation-note">This meal won't appear in future meal plans</p>
+                <button 
+                  onClick={() => handleBlockMeal(selectedDay, Object.keys(localMealPlan.mealPlan[selectedDay])[0])}
+                  className="operation-btn block-btn"
+                >
+                  Block Meal
+                </button>
+              </div>
             </div>
 
             <div className="recipe-section">
