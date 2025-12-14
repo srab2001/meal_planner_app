@@ -11,6 +11,72 @@ const db = require('./db');
 const jwt = require('jsonwebtoken');
 const pgSession = require('connect-pg-simple')(session);
 
+// ============================================================================
+// RUN MIGRATIONS FIRST - BEFORE ANY EXPRESS SETUP
+// ============================================================================
+console.log('[SERVER] Starting application...');
+console.log('[SERVER] Database migrations will be executed automatically');
+
+const { Pool } = require('pg');
+const fs = require('fs');
+const path = require('path');
+
+async function runMigrationsSync() {
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  });
+
+  try {
+    console.log('[MIGRATIONS] Starting migrations at', new Date().toISOString());
+    
+    const migrationsDir = path.join(__dirname, './migrations');
+    const files = fs.readdirSync(migrationsDir)
+      .filter(f => f.endsWith('.sql'))
+      .sort();
+
+    console.log(`[MIGRATIONS] Found ${files.length} migration files to execute`);
+
+    for (const file of files) {
+      const filepath = path.join(migrationsDir, file);
+      const sql = fs.readFileSync(filepath, 'utf-8');
+
+      try {
+        console.log(`[MIGRATIONS] ▶️  Executing ${file}...`);
+        await pool.query(sql);
+        console.log(`[MIGRATIONS] ✅ ${file} completed successfully`);
+      } catch (error) {
+        if (error.message.includes('already exists')) {
+          console.log(`[MIGRATIONS] ℹ️  ${file} - already exists, skipping`);
+        } else {
+          console.error(`[MIGRATIONS] ❌ ERROR in ${file}:`, error.message);
+          throw error;
+        }
+      }
+    }
+
+    console.log('[MIGRATIONS] ✅ All migrations completed successfully');
+    return true;
+  } catch (error) {
+    console.error('[MIGRATIONS] ❌ Migration execution failed:', error.message);
+    throw error;
+  } finally {
+    await pool.end();
+  }
+}
+
+// Execute migrations immediately
+runMigrationsSync().catch(error => {
+  console.error('[SERVER] ❌ Failed to start: Migrations failed');
+  console.error(error);
+  process.exit(1);
+});
+
+// ============================================================================
+// END MIGRATIONS - CONTINUE WITH EXPRESS SETUP
+// ============================================================================
+
+
 const {
   PORT,
   NODE_ENV = 'development',
