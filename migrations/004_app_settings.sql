@@ -19,8 +19,3 @@ FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 INSERT INTO app_settings (key, value, description)
 VALUES ('free_meal_plans_limit', '10', 'Number of free meal plans per month per user')
 ON CONFLICT (key) DO NOTHING;
-
--- Verify table created
-SELECT * FROM app_settings;
-
-COMMIT;
