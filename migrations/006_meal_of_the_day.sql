@@ -89,8 +89,3 @@ INSERT INTO meal_of_the_day (
   'admin',
   CURRENT_TIMESTAMP
 ) ON CONFLICT DO NOTHING;
-
--- Verify tables created
-SELECT COUNT(*) as meal_of_day_count FROM meal_of_the_day;
-
-COMMIT;
