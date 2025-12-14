@@ -17,12 +17,16 @@ async function runMigrations() {
   });
 
   try {
+    console.log('[MIGRATIONS] Starting at', new Date().toISOString());
     console.log('🔄 Running database migrations...');
+    console.log('[MIGRATIONS] DATABASE_URL:', process.env.DATABASE_URL ? '✅ SET' : '❌ NOT SET');
 
     // Get all SQL files in migrations directory
     const files = fs.readdirSync(migrationsDir)
       .filter(f => f.endsWith('.sql'))
       .sort();
+
+    console.log(`[MIGRATIONS] Found ${files.length} migration files`);
 
     for (const file of files) {
       const filepath = path.join(migrationsDir, file);
@@ -37,15 +41,18 @@ async function runMigrations() {
           console.log(`  ℹ️  ${file} already exists, skipping`);
         } else {
           console.error(`  ❌ Error in ${file}:`, error.message);
+          console.error('[MIGRATIONS] Stack:', error.stack);
           throw error;
         }
       }
     }
 
     console.log('✅ All migrations completed successfully');
+    console.log('[MIGRATIONS] Finished at', new Date().toISOString());
     process.exit(0);
   } catch (error) {
     console.error('❌ Migration failed:', error.message);
+    console.error('[MIGRATIONS] Failed at', new Date().toISOString());
     process.exit(1);
   } finally {
     await pool.end();
