@@ -32,8 +32,11 @@ function App() {
   const [preferences, setPreferences] = useState(null);
   const [mealPlan, setMealPlan] = useState(null);
 
+  console.log('🎬 App.js loaded, showSplash:', showSplash);
+
   // Handle splash completion
   const handleSplashComplete = () => {
+    console.log('✅ Splash screen completed');
     setShowSplash(false);
   };
 
