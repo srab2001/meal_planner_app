@@ -974,6 +974,15 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
               </ul>
             </div>
 
+            <div className="recipe-section">
+              <h3>Instructions</h3>
+              <ol className="instructions-list">
+                {selectedMeal.instructions?.map((instruction, index) => (
+                  <li key={index}>{instruction}</li>
+                ))}
+              </ol>
+            </div>
+
             {/* Ingredient Operations Section */}
             <div className="recipe-section ingredient-operations">
               <h3>⚙️ Customize Your Meal Ingredients</h3>
@@ -1079,15 +1088,6 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                   Block Meal
                 </button>
               </div>
-            </div>
-
-            <div className="recipe-section">
-              <h3>Instructions</h3>
-              <ol className="instructions-list">
-                {selectedMeal.instructions?.map((instruction, index) => (
-                  <li key={index}>{instruction}</li>
-                ))}
-              </ol>
             </div>
 
             {/* Special Occasion Product Recommendations */}
