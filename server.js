@@ -3105,6 +3105,66 @@ Keep it concise - 2-4 sentences maximum.`;
   }
 });
 
+// POST /api/meal/:id/regenerate-recipe - Regenerate recipe with current ingredients
+app.post('/api/meal/:id/regenerate-recipe', requireAuth, async (req, res) => {
+  try {
+    const { mealName, currentIngredients, currentInstructions } = req.body;
+    
+    // Create a comprehensive prompt for full recipe regeneration
+    const ingredientsList = Array.isArray(currentIngredients) 
+      ? currentIngredients.map(ing => typeof ing === 'string' ? ing : ing.name).join(', ')
+      : (currentIngredients || '');
+
+    const regeneratePrompt = `You are a professional chef. Please generate complete and detailed recipe instructions for "${mealName || 'this meal'}".
+
+Ingredients to use: ${ingredientsList || 'Not provided'}
+
+Current instructions: ${currentInstructions || 'Not provided'}
+
+Please provide comprehensive, step-by-step cooking instructions that:
+1. Incorporate all the listed ingredients
+2. Are clear and easy to follow
+3. Include cooking times and temperatures where applicable
+4. Are 4-6 sentences, organized logically
+
+Generate only the instructions, without listing ingredients again.`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4-turbo',
+        messages: [
+          { role: 'user', content: regeneratePrompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 400
+      })
+    });
+
+    let newInstructions = currentInstructions || 'Recipe instructions updated';
+    if (response.ok) {
+      const data = await response.json();
+      if (data.choices && data.choices[0] && data.choices[0].message) {
+        newInstructions = data.choices[0].message.content.trim();
+      }
+    }
+
+    console.log(`✅ Regenerated recipe for meal ${req.params.id} with updated ingredients`);
+    res.json({ 
+      success: true, 
+      message: 'Recipe regenerated',
+      instructions: newInstructions
+    });
+  } catch (error) {
+    console.error('Error regenerating recipe:', error);
+    res.status(500).json({ error: 'Failed to regenerate recipe' });
+  }
+});
+
 // POST /api/meal/:id/block - Block meal from future plans
 app.post('/api/meal/:id/block', requireAuth, async (req, res) => {
   try {

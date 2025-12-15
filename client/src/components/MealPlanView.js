@@ -685,6 +685,63 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
     }
   };
 
+  const handleSubmitRecipeChanges = async (day, mealType) => {
+    setOperationLoading(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      
+      // Send a request to regenerate the full recipe with current ingredients
+      const response = await fetch(`${API_BASE}/api/meal/${selectedMeal?.id}/regenerate-recipe`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
+        body: JSON.stringify({
+          mealName: selectedMeal?.name,
+          currentIngredients: selectedMeal?.ingredients || [],
+          currentInstructions: selectedMeal?.instructions
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Update the meal with the regenerated recipe
+        const updatedMeal = {
+          ...selectedMeal,
+          instructions: data.instructions || selectedMeal.instructions
+        };
+        setSelectedMeal(updatedMeal);
+        
+        // Update the local meal plan
+        if (selectedMealDay && selectedMealType) {
+          const updatedPlan = {
+            ...localMealPlan,
+            mealPlan: {
+              ...localMealPlan.mealPlan,
+              [selectedMealDay]: {
+                ...localMealPlan.mealPlan[selectedMealDay],
+                [selectedMealType]: updatedMeal
+              }
+            }
+          };
+          
+          setLocalMealPlan(updatedPlan);
+        }
+        
+        setOperationMessage(`✅ Recipe updated with your ingredient changes!`);
+        setTimeout(() => setOperationMessage(null), 3000);
+      } else {
+        setOperationMessage('❌ Failed to update recipe');
+      }
+    } catch (error) {
+      setOperationMessage('❌ Error: ' + error.message);
+    } finally {
+      setOperationLoading(false);
+    }
+  };
+
   const handleViewHistory = async (days = null) => {
     setLoadingHistory(true);
     try {
@@ -1233,6 +1290,19 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                   className="operation-btn block-btn"
                 >
                   Block Meal
+                </button>
+              </div>
+
+              {/* Submit Recipe Changes */}
+              <div className="operation-group submit-changes-group">
+                <h4>✅ Save Recipe Changes</h4>
+                <p className="operation-note">Click to finalize all your ingredient modifications and regenerate the recipe</p>
+                <button 
+                  onClick={() => handleSubmitRecipeChanges(selectedDay, Object.keys(localMealPlan.mealPlan[selectedDay])[0])}
+                  className="operation-btn submit-changes-btn"
+                  disabled={operationLoading}
+                >
+                  {operationLoading ? 'Processing...' : 'Submit Recipe Changes'}
                 </button>
               </div>
             </div>

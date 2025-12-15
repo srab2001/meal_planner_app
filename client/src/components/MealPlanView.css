@@ -1864,6 +1864,52 @@
   transform: translateY(-2px);
 }
 
+.submit-changes-btn {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  color: white;
+  width: 100%;
+  font-weight: 600;
+  border: none;
+  padding: 14px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 16px;
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.submit-changes-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #20c997 0%, #1ee0c6 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+}
+
+.submit-changes-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(40, 167, 69, 0.3);
+}
+
+.submit-changes-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+}
+
+.submit-changes-group {
+  background: #f8f9fa;
+  border-left: 4px solid #28a745;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.submit-changes-group h4 {
+  margin: 0 0 8px 0;
+  color: #28a745;
+  font-size: 16px;
+  font-weight: 600;
+}
+
 .operation-message {
   padding: 12px;
   border-radius: 6px;
