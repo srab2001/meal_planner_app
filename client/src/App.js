@@ -36,14 +36,15 @@ function App() {
 
   // Handle splash completion - hide after 15 seconds
   const handleSplashComplete = () => {
-    console.log('✅ Splash screen completed');
+    console.warn('✅ handleSplashComplete CALLED');
     setShowSplash(false);
   };
 
   // Automatically hide splash after 15 seconds, regardless of user action
   useEffect(() => {
+    console.warn('⏱️ Setting 15-second timeout for splash screen auto-hide');
     const timer = setTimeout(() => {
-      console.log('⏱️ 15 seconds elapsed, auto-hiding splash screen');
+      console.warn('⏱️ 15 seconds elapsed, auto-hiding splash screen');
       handleSplashComplete();
     }, 15000);
 
@@ -281,8 +282,12 @@ function App() {
 
   return (
     <div className="App">
+      {console.warn('🎨 App.js RENDERING - showSplash:', showSplash, 'currentView:', currentView)}
       {showSplash && (
-        <SplashScreen onComplete={handleSplashComplete} />
+        <>
+          {console.warn('📺 RENDERING SplashScreen component')}
+          <SplashScreen onComplete={handleSplashComplete} />
+        </>
       )}
 
       {currentView === 'login' && (
