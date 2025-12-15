@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './Admin.css';
 
 const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
@@ -60,50 +60,7 @@ function Admin() {
   });
   const [showAiForm, setShowAiForm] = useState(true);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    const token = localStorage.getItem('admin_token');
-    if (token) {
-      setIsAuthenticated(true);
-      loadData();
-    }
-  }, [activeTab, loadData]);
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoginError('');
-
-    try {
-      const response = await fetch(`${API_BASE}/api/admin/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ password })
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        localStorage.setItem('admin_token', data.token);
-        setIsAuthenticated(true);
-        setPassword('');
-        loadData();
-      } else {
-        setLoginError(data.error || 'Invalid password');
-      }
-    } catch (error) {
-      setLoginError('Failed to login');
-    }
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('admin_token');
-    setIsAuthenticated(false);
-    setPassword('');
-  };
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     const token = localStorage.getItem('admin_token');
     if (!token) return;
 
@@ -179,6 +136,48 @@ function Admin() {
       console.error('Error loading data:', error);
       setMessage(`❌ Error loading data: ${error.message}`);
     }
+  }, [activeTab]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('admin_token');
+    if (token) {
+      setIsAuthenticated(true);
+      loadData();
+    }
+  }, [activeTab, loadData]);
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoginError('');
+
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ password })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        localStorage.setItem('admin_token', data.token);
+        setIsAuthenticated(true);
+        setPassword('');
+        loadData();
+      } else {
+        setLoginError(data.error || 'Invalid password');
+      }
+    } catch (error) {
+      setLoginError('Failed to login');
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('admin_token');
+    setIsAuthenticated(false);
+    setPassword('');
   };
 
   const handleCreateCode = async (e) => {

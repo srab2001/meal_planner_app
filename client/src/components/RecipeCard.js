@@ -7,7 +7,7 @@ const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'pro
 function RecipeCard() {
   const [meal, setMeal] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showFormats, setShowFormats] = useState(false);
+  const [showFormats] = useState(false);
 
   // Extract meal ID from URL path
   const getMealIdFromUrl = () => {
