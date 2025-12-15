@@ -938,7 +938,6 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                 const meal = currentDayMeals[mealType];
                 const mealKey = `${selectedDay}-${mealType}`;
                 const isRegenerating = regeneratingMeal === mealKey;
-                const isFavoriting = favoritingMeal === mealKey;
                 const alreadyFavorited = isFavorited(meal.name);
 
                 return (
@@ -995,7 +994,7 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                       <button
                         className={`favorite-btn ${alreadyFavorited ? 'favorited' : ''}`}
                         onClick={() => handleAddFavorite(meal, mealType, selectedDay)}
-                        disabled={isFavoriting || alreadyFavorited}
+                        disabled={alreadyFavorited}
                         title={alreadyFavorited ? 'Already in favorites' : 'Add to favorites'}
                       >
                         {isFavoriting ? '...' : alreadyFavorited ? '❤️' : '🤍'}
