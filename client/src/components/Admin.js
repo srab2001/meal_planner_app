@@ -60,13 +60,14 @@ function Admin() {
   });
   const [showAiForm, setShowAiForm] = useState(true);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const token = localStorage.getItem('admin_token');
     if (token) {
       setIsAuthenticated(true);
       loadData();
     }
-  }, [activeTab]);
+  }, [activeTab, loadData]);
 
   const handleLogin = async (e) => {
     e.preventDefault();

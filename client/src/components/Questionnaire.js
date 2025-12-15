@@ -62,7 +62,6 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
   const [leftovers, setLeftovers] = useState(['']);
   const [specialOccasion, setSpecialOccasion] = useState(false);
   const [errors, setErrors] = useState({});
-  const [loadingPreferences, setLoadingPreferences] = useState(true);
 
   // Load cuisine and dietary options from API on mount
   useEffect(() => {
@@ -166,8 +165,6 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
       } catch (error) {
         console.error('Error loading preferences:', error);
         // Fail silently - user can still fill out the form manually
-      } finally {
-        setLoadingPreferences(false);
       }
     };
 
