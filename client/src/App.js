@@ -272,8 +272,6 @@ function App() {
 
   return (
     <div className="App">
-      {console.error('🎨 APP RENDER: showSplash=' + showSplash + ' currentView=' + currentView)}
-      {showSplash && console.error('🎨 SHOWSPLASH IS TRUE - RENDERING SPLASHSCREEN')}
       {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
 
       {currentView === 'login' && (
