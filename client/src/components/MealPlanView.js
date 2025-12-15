@@ -476,13 +476,10 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
       if (response.ok) {
         const data = await response.json();
         
-        // Update the selected meal to remove the ingredient and update instructions
-        const updatedIngredients = selectedMeal.ingredients.filter(ing => 
-          !ing.toLowerCase().includes(formData.ingredientToRemove.toLowerCase())
-        );
+        // Update the selected meal with the new ingredients and updated instructions from backend
         const updatedMeal = { 
           ...selectedMeal, 
-          ingredients: updatedIngredients,
+          ingredients: data.ingredients || selectedMeal.ingredients,
           instructions: data.instructions || selectedMeal.instructions
         };
         setSelectedMeal(updatedMeal);
@@ -548,11 +545,10 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
       if (response.ok) {
         const data = await response.json();
         
-        // Update the selected meal to add the ingredient and update instructions
-        const updatedIngredients = [...selectedMeal.ingredients, formData.ingredientToAdd];
+        // Update the selected meal with the new ingredients and updated instructions from backend
         const updatedMeal = { 
           ...selectedMeal, 
-          ingredients: updatedIngredients,
+          ingredients: data.ingredients || selectedMeal.ingredients,
           instructions: data.instructions || selectedMeal.instructions
         };
         setSelectedMeal(updatedMeal);
@@ -619,15 +615,10 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
       if (response.ok) {
         const data = await response.json();
         
-        // Update the selected meal to substitute the ingredient and update instructions
-        const updatedIngredients = selectedMeal.ingredients.map(ing =>
-          ing.toLowerCase().includes(formData.oldIngredient.toLowerCase())
-            ? ing.replace(new RegExp(formData.oldIngredient, 'i'), formData.newIngredient)
-            : ing
-        );
+        // Update the selected meal with the new ingredients and updated instructions from backend
         const updatedMeal = { 
           ...selectedMeal, 
-          ingredients: updatedIngredients,
+          ingredients: data.ingredients || selectedMeal.ingredients,
           instructions: data.instructions || selectedMeal.instructions
         };
         setSelectedMeal(updatedMeal);

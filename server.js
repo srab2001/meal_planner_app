@@ -2910,18 +2910,26 @@ app.post('/api/meal/:id/remove-ingredient', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Ingredient name required' });
     }
 
+    // Remove the ingredient from the ingredients list
+    const updatedIngredients = Array.isArray(currentIngredients)
+      ? currentIngredients.filter(ing => 
+          typeof ing === 'string'
+            ? !ing.toLowerCase().includes(ingredientToRemove.toLowerCase())
+            : !ing.name?.toLowerCase().includes(ingredientToRemove.toLowerCase())
+        )
+      : [];
+
     // Generate updated recipe without the removed ingredient
-    const ingredientsList = Array.isArray(currentIngredients) 
-      ? currentIngredients.join(', ') 
-      : (currentIngredients || '');
+    const ingredientsList = Array.isArray(updatedIngredients) 
+      ? updatedIngredients.map(ing => typeof ing === 'string' ? ing : ing.name).join(', ')
+      : (updatedIngredients || '');
     
     const updatedRecipe = `You are a professional chef. Please regenerate the recipe instructions for "${mealName || 'this meal'}".
 
-Current ingredients: ${ingredientsList}
+Current ingredients: ${ingredientsList || 'No ingredients'}
 Current instructions: ${currentInstructions || 'Not provided'}
 
-Please REMOVE all references to "${ingredientToRemove}" from both the ingredient list and instructions.
-Keep the same meal name and cooking style, but adjust the instructions to work without this ingredient.
+Keep the same meal name and cooking style, but adjust the instructions to work with these ingredients.
 Keep it concise - 2-4 sentences maximum.`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -2952,7 +2960,8 @@ Keep it concise - 2-4 sentences maximum.`;
     res.json({ 
       success: true, 
       message: `Removed ${ingredientToRemove}`,
-      instructions: newInstructions
+      instructions: newInstructions,
+      ingredients: updatedIngredients
     });
   } catch (error) {
     console.error('Error removing ingredient:', error);
@@ -2968,20 +2977,23 @@ app.post('/api/meal/:id/add-ingredient', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Ingredient name required' });
     }
 
+    // Add the ingredient to the ingredients list
+    const updatedIngredients = Array.isArray(currentIngredients)
+      ? [...currentIngredients, ingredientToAdd]
+      : [ingredientToAdd];
+
     // Generate updated recipe with the new ingredient
-    const ingredientsList = Array.isArray(currentIngredients) 
-      ? currentIngredients.join(', ') 
-      : (currentIngredients || '');
+    const ingredientsList = Array.isArray(updatedIngredients) 
+      ? updatedIngredients.map(ing => typeof ing === 'string' ? ing : ing.name).join(', ')
+      : (updatedIngredients || '');
     
     const updatedRecipe = `You are a professional chef. Please regenerate the recipe instructions for "${mealName || 'this meal'}".
 
 Current ingredients: ${ingredientsList}
 Current instructions: ${currentInstructions || 'Not provided'}
 
-Please ADD "${ingredientToAdd}" as a new ingredient and incorporate it into the cooking instructions.
-${reason ? `The reason for adding it is: ${reason}` : ''}
-
-Keep the same meal name and cooking style, but incorporate this new ingredient into the instructions.
+Keep the same meal name and cooking style, but incorporate all these ingredients including "${ingredientToAdd}" into the instructions.
+${reason ? `The reason for adding "${ingredientToAdd}" is: ${reason}` : ''}
 Keep it concise - 2-4 sentences maximum.`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -3012,7 +3024,8 @@ Keep it concise - 2-4 sentences maximum.`;
     res.json({ 
       success: true, 
       message: `Added ${ingredientToAdd}`,
-      instructions: newInstructions
+      instructions: newInstructions,
+      ingredients: updatedIngredients
     });
   } catch (error) {
     console.error('Error adding ingredient:', error);
@@ -3028,20 +3041,31 @@ app.post('/api/meal/:id/substitute', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Both old and new ingredients required' });
     }
 
+    // Substitute the ingredient in the ingredients list
+    const updatedIngredients = Array.isArray(currentIngredients)
+      ? currentIngredients.map(ing =>
+          typeof ing === 'string'
+            ? ing.toLowerCase().includes(oldIngredient.toLowerCase())
+              ? ing.replace(new RegExp(oldIngredient, 'i'), newIngredient)
+              : ing
+            : ing.name?.toLowerCase().includes(oldIngredient.toLowerCase())
+              ? { ...ing, name: ing.name.replace(new RegExp(oldIngredient, 'i'), newIngredient) }
+              : ing
+        )
+      : [newIngredient];
+
     // Generate updated recipe with substituted ingredient
-    const ingredientsList = Array.isArray(currentIngredients) 
-      ? currentIngredients.join(', ') 
-      : (currentIngredients || '');
+    const ingredientsList = Array.isArray(updatedIngredients) 
+      ? updatedIngredients.map(ing => typeof ing === 'string' ? ing : ing.name).join(', ')
+      : (updatedIngredients || '');
     
     const updatedRecipe = `You are a professional chef. Please regenerate the recipe instructions for "${mealName || 'this meal'}".
 
 Current ingredients: ${ingredientsList}
 Current instructions: ${currentInstructions || 'Not provided'}
 
-Please SUBSTITUTE "${oldIngredient}" with "${newIngredient}" throughout the ingredient list and instructions.
+Keep the same meal name and cooking style, but adjust instructions to use these updated ingredients.
 ${reason ? `The reason for substituting is: ${reason}` : ''}
-
-Keep the same meal name and cooking style, but use the new ingredient instead.
 Keep it concise - 2-4 sentences maximum.`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -3072,7 +3096,8 @@ Keep it concise - 2-4 sentences maximum.`;
     res.json({ 
       success: true, 
       message: `Substituted ${oldIngredient} → ${newIngredient}`,
-      instructions: newInstructions
+      instructions: newInstructions,
+      ingredients: updatedIngredients
     });
   } catch (error) {
     console.error('Error substituting ingredient:', error);
