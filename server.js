@@ -150,7 +150,9 @@ const allowedOrigins = [
   FRONTEND_BASE,
   'http://localhost:3000',  // Local development
   'http://localhost:5000',  // Local backend
+  'https://meal-planner-app-chi.vercel.app',  // Current Vercel deployment
   'https://meal-planner-rjyhqof89-stus-projects-458dd35a.vercel.app',  // Vercel preview
+  'https://meal-planner.vercel.app',  // Production Vercel URL
   // Add your production Vercel URL here when deployed
 ].filter(Boolean); // Remove undefined values
 
