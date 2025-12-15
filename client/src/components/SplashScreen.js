@@ -6,7 +6,8 @@ function SplashScreen({ onComplete }) {
   const [fadeOut, setFadeOut] = useState(false);
   const [countdown, setCountdown] = useState(15);
 
-  console.log('🎬 SplashScreen mounted, countdown:', countdown, 'isVisible:', isVisible);
+  console.warn('🎬 SplashScreen COMPONENT RENDERING - countdown:', countdown, 'isVisible:', isVisible, 'fadeOut:', fadeOut);
+  console.warn('🎬 onComplete callback:', typeof onComplete);
 
   useEffect(() => {
     console.log('🎬 SplashScreen countdown timer started');
