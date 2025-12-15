@@ -1118,6 +1118,8 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close" onClick={closeModal}>✕</button>
+            {console.log('🎯 Recipe Modal opened - Submit Recipe Changes button should be visible below')}
+
 
             <h2 className="recipe-title">{selectedMeal.name}</h2>
 
@@ -1278,6 +1280,7 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
               <div className="operation-group submit-changes-group">
                 <h4>✅ Save Recipe Changes</h4>
                 <p className="operation-note">Click to finalize all your ingredient modifications and regenerate the recipe</p>
+                {console.log('✅ BUTTON RENDERING - Submit Recipe Changes button is now visible on page')}
                 <button 
                   onClick={() => handleSubmitRecipeChanges(selectedDay, Object.keys(localMealPlan.mealPlan[selectedDay])[0])}
                   className="operation-btn submit-changes-btn"
