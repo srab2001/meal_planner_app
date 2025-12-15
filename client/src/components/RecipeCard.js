@@ -86,9 +86,6 @@ function RecipeCard() {
   const generateEmailTemplate = () => {
     if (!meal) return '';
 
-    const ingredientsList = meal.ingredients.map((ing, i) => `${i + 1}. ${ing}`).join('\n');
-    const instructionsList = meal.instructions.map((inst, i) => `${i + 1}. ${inst}`).join('\n\n');
-
     return `<!DOCTYPE html>
 <html>
 <head>
@@ -205,10 +202,6 @@ The text includes hashtags and a link to your app.`);
       console.error('🔴 Failed to copy to clipboard:', err);
       alert('Error copying to clipboard. Please try again.');
     });
-  };
-
-  const handleGenerateAll = () => {
-    setShowFormats(true);
   };
 
   const handleBack = () => {

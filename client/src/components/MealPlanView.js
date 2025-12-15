@@ -814,24 +814,6 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
     }
   };
 
-  // Pull-to-refresh handler
-  const handlePullStart = (e) => {
-    if (window.scrollY === 0) {
-      pullStartY.current = e.touches[0].clientY;
-    }
-  };
-
-  const handlePullMove = (e) => {
-    const pullDistance = e.touches[0].clientY - pullStartY.current;
-    if (pullDistance > 100 && window.scrollY === 0 && !refreshing) {
-      setRefreshing(true);
-      // Reload the current view
-      setTimeout(() => {
-        window.location.reload();
-      }, 500);
-    }
-  };
-
   // Handle FAB menu toggle
   const toggleFabMenu = () => {
     setShowFabMenu(!showFabMenu);
