@@ -24,6 +24,16 @@ export default function SplashScreenOverlay() {
 
   return (
     <div id="splash-overlay" className={`splash-overlay ${fadeOut ? 'fade-out' : ''}`}>
+      <video 
+        className="splash-video" 
+        autoPlay 
+        muted 
+        loop 
+        playsInline
+      >
+        <source src="/videos/splash-bg.mp4" type="video/mp4" />
+        <source src="/videos/splash-bg.webm" type="video/webm" />
+      </video>
       <div className="splash-bg"></div>
       <div className="splash-inner">
         <div className="splash-logo">
