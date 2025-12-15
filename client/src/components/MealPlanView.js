@@ -228,11 +228,17 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
     try {
       const token = localStorage.getItem('auth_token');
 
+      if (!token) {
+        console.error('❌ No authentication token found');
+        alert('Authentication required. Please log in again.');
+        return;
+      }
+
       const response = await fetch(`${API_BASE}/api/favorites/add`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : ''
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           meal: selectedMeal,
@@ -242,17 +248,26 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
         })
       });
 
+      // Handle authentication errors
+      if (response.status === 401 || response.status === 403) {
+        console.error('❌ Authentication failed (401/403)');
+        localStorage.removeItem('auth_token');
+        window.location.href = '/';
+        return;
+      }
+
       if (response.ok) {
         const data = await response.json();
         setFavorites(prev => [...prev, data.favorite]);
         alert('✅ Customized recipe saved to favorites!');
         closeModal();
       } else {
-        throw new Error('Failed to save');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to save');
       }
     } catch (error) {
       console.error('Error saving customized favorite:', error);
-      alert('Failed to save customized recipe');
+      alert('❌ ' + error.message);
     } finally {
       setSavingCustomization(false);
     }
@@ -688,12 +703,18 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
     try {
       const token = localStorage.getItem('auth_token');
       
+      if (!token) {
+        console.error('❌ No authentication token found');
+        setOperationMessage('❌ Authentication required. Please log in again.');
+        return;
+      }
+      
       // Send a request to regenerate the full recipe with current ingredients
       const response = await fetch(`${API_BASE}/api/meal/${selectedMeal?.id}/regenerate-recipe`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : ''
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           mealName: selectedMeal?.name,
@@ -701,6 +722,14 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
           currentInstructions: selectedMeal?.instructions
         }),
       });
+
+      // Handle authentication errors
+      if (response.status === 401 || response.status === 403) {
+        console.error('❌ Authentication failed (401/403)');
+        localStorage.removeItem('auth_token');
+        window.location.href = '/';
+        return;
+      }
 
       if (response.ok) {
         const data = await response.json();
@@ -731,9 +760,12 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
         setOperationMessage(`✅ Recipe updated with your ingredient changes!`);
         setTimeout(() => setOperationMessage(null), 3000);
       } else {
-        setOperationMessage('❌ Failed to update recipe');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Recipe update failed:', response.status, errorData);
+        setOperationMessage(`❌ Failed to update recipe: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
+      console.error('❌ Exception in handleSubmitRecipeChanges:', error);
       setOperationMessage('❌ Error: ' + error.message);
     } finally {
       setOperationLoading(false);
