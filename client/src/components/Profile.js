@@ -60,11 +60,6 @@ function Profile({ user, onBack }) {
     loadOptions();
   }, []);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    loadProfileData();
-  }, []);
-
   const loadProfileData = async () => {
     try {
       setLoading(true);
@@ -105,6 +100,11 @@ function Profile({ user, onBack }) {
       setLoading(false);
     }
   };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    loadProfileData();
+  }, []);
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();

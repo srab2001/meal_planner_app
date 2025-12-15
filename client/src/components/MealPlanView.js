@@ -100,12 +100,10 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   // Mobile UI state
   const [showFabMenu, setShowFabMenu] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
 
   // Touch gesture refs
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
-  const pullStartY = useRef(0);
   const mealsContentRef = useRef(null);
 
   // Load favorites and save meal plan to history on mount
