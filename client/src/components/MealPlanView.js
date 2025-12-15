@@ -1190,6 +1190,9 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
             {/* Ingredient Operations Section - Customize your meal */}
             <div className="recipe-section ingredient-operations">
               <h3>⚙️ Customize Your Meal Ingredients</h3>
+              <div style={{background: '#28a745', color: 'white', padding: '10px', borderRadius: '4px', marginBottom: '15px', fontWeight: 'bold'}}>
+                ✅ NEW VERSION - Button should appear below Block Meal
+              </div>
               
               {operationMessage && (
                 <div className={`operation-message ${operationMessage.includes('✅') ? 'success' : 'error'}`}>
