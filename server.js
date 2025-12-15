@@ -1576,8 +1576,10 @@ app.post('/api/favorites/add', requireAuth, async (req, res) => {
     }
 
   } catch (error) {
-    console.error('Error adding favorite:', error);
-    res.status(500).json({ error: 'Failed to add favorite' });
+    console.error('[POST /api/favorites/add] Error adding favorite:', error.message);
+    console.error('[POST /api/favorites/add] Full error:', error);
+    console.error('[POST /api/favorites/add] User ID:', req.user?.id);
+    res.status(500).json({ error: 'Failed to add favorite', details: error.message });
   }
 });
 
@@ -1607,8 +1609,10 @@ app.get('/api/favorites', requireAuth, async (req, res) => {
     res.json({ favorites });
 
   } catch (error) {
-    console.error('Error reading favorites:', error);
-    res.status(500).json({ error: 'Failed to read favorites' });
+    console.error('[GET /api/favorites] Error reading favorites:', error.message);
+    console.error('[GET /api/favorites] Full error:', error);
+    console.error('[GET /api/favorites] User ID:', req.user?.id);
+    res.status(500).json({ error: 'Failed to read favorites', details: error.message });
   }
 });
 
@@ -1722,8 +1726,10 @@ app.post('/api/save-meal-plan', requireAuth, async (req, res) => {
     res.json({ success: true });
 
   } catch (error) {
-    console.error('Error saving meal plan:', error);
-    res.status(500).json({ error: 'Failed to save meal plan' });
+    console.error('[POST /api/save-meal-plan] Error saving meal plan:', error.message);
+    console.error('[POST /api/save-meal-plan] Full error:', error);
+    console.error('[POST /api/save-meal-plan] User ID:', req.user?.id);
+    res.status(500).json({ error: 'Failed to save meal plan', details: error.message });
   }
 });
 
