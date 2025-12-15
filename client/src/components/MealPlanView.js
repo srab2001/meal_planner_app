@@ -997,7 +997,7 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                         disabled={alreadyFavorited}
                         title={alreadyFavorited ? 'Already in favorites' : 'Add to favorites'}
                       >
-                        {isFavoriting ? '...' : alreadyFavorited ? '❤️' : '🤍'}
+                        {alreadyFavorited ? '❤️' : '🤍'}
                       </button>
 
                       <button
