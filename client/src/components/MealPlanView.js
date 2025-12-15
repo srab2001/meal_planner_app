@@ -1585,14 +1585,6 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
           </button>
         </div>
       )}
-
-      {/* Pull to Refresh Indicator */}
-      {refreshing && (
-        <div className="refresh-indicator">
-          <div className="spinner"></div>
-          <p>Refreshing...</p>
-        </div>
-      )}
     </div>
   );
 }
