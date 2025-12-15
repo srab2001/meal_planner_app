@@ -126,9 +126,8 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
 
         // Handle authentication errors
         if (response.status === 401 || response.status === 403) {
-          console.error('❌ Authentication failed when loading favorites (401/403)');
-          localStorage.removeItem('auth_token');
-          window.location.href = '/';
+          console.warn('⚠️ Token may be expired - user will be logged out on next action');
+          // Don't redirect here - let user actions trigger logout if needed
           return;
         }
 
@@ -169,9 +168,8 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
 
         // Handle authentication errors
         if (response.status === 401 || response.status === 403) {
-          console.error('❌ Authentication failed when saving meal plan (401/403)');
-          localStorage.removeItem('auth_token');
-          window.location.href = '/';
+          console.warn('⚠️ Token may be expired - user will be logged out on next action');
+          // Don't redirect here - let user actions trigger logout if needed
           return;
         }
 
@@ -443,20 +441,37 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
       // Get JWT token from localStorage
       const token = localStorage.getItem('auth_token');
 
+      if (!token) {
+        console.error('❌ No authentication token found');
+        alert('Authentication required. Please log in again.');
+        return;
+      }
+
       const response = await fetch(`${API_BASE}/api/favorites/${favoriteId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': token ? `Bearer ${token}` : ''
+          'Authorization': `Bearer ${token}`
         },
       });
+
+      // Handle authentication errors
+      if (response.status === 401 || response.status === 403) {
+        console.error('❌ Authentication failed (401/403) - removing token and redirecting');
+        localStorage.removeItem('auth_token');
+        window.location.href = '/';
+        return;
+      }
 
       if (response.ok) {
         setFavorites(prev => prev.filter(fav => fav.id !== favoriteId));
         console.log('🗑️ Removed from favorites');
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to remove favorite');
       }
     } catch (error) {
       console.error('Error removing favorite:', error);
-      alert('Failed to remove from favorites');
+      alert('❌ ' + error.message);
     }
   };
 
@@ -810,7 +825,7 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
         }
       });
 
-      // Handle authentication errors
+      // Handle authentication errors - redirect on user action
       if (response.status === 401 || response.status === 403) {
         console.error('❌ Authentication failed (401/403) - removing token and redirecting');
         localStorage.removeItem('auth_token');
