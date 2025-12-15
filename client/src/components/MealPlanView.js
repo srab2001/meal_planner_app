@@ -394,33 +394,13 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   };
 
   const handleAddFavorite = async (meal, mealType, day) => {
-    const key = `${day}-${mealType}`;
-    setFavoritingMeal(key);
-
-    try {
-      // Get JWT token from localStorage
-      const token = localStorage.getItem('auth_token');
-
-      const response = await fetch(`${API_BASE}/api/favorites/add`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : ''
-        },
-        body: JSON.stringify({ meal, mealType }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setFavorites(prev => [...prev, data.favorite]);
-        console.log('❤️ Added to favorites:', meal.name);
-      }
-    } catch (error) {
-      console.error('Error adding favorite:', error);
-      alert('Failed to add to favorites');
-    } finally {
-      setFavoritingMeal(null);
-    }
+    // Open the modal so user can customize the meal before favoriting
+    console.log('❤️ Opening meal modal for customization and favorite save');
+    setSelectedMeal(meal);
+    setSelectedMealDay(day);
+    setSelectedMealType(mealType);
+    setCustomServings(meal.servings || 2);
+    setRecipeNotes('');
   };
 
   const handleRemoveFavorite = async (favoriteId) => {
