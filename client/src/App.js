@@ -22,7 +22,7 @@ const setToken = (token) => localStorage.setItem('auth_token', token);
 const removeToken = () => localStorage.removeItem('auth_token');
 
 function App() {
-  // Always show splash screen on app load
+  // Track whether to show splash screen overlay
   const [showSplash, setShowSplash] = useState(true);
   const [user, setUser] = useState(null);
   const [currentView, setCurrentView] = useState('login');
@@ -32,23 +32,13 @@ function App() {
   const [preferences, setPreferences] = useState(null);
   const [mealPlan, setMealPlan] = useState(null);
 
-  console.log('🎬 App.js loaded, showSplash:', showSplash);
-
-  // Handle splash completion - hide after 15 seconds
-  const handleSplashComplete = () => {
-    console.warn('✅ handleSplashComplete CALLED');
-    setShowSplash(false);
-  };
-
-  // Automatically hide splash after 15 seconds, regardless of user action
+  // Hide splash after 15 seconds
   useEffect(() => {
-    console.warn('⏱️ Setting 15-second timeout for splash screen auto-hide');
-    const timer = setTimeout(() => {
-      console.warn('⏱️ 15 seconds elapsed, auto-hiding splash screen');
-      handleSplashComplete();
+    const splashTimer = setTimeout(() => {
+      setShowSplash(false);
     }, 15000);
 
-    return () => clearTimeout(timer);
+    return () => clearTimeout(splashTimer);
   }, []);
 
   // Helper for authenticated API calls
@@ -282,13 +272,7 @@ function App() {
 
   return (
     <div className="App">
-      {console.warn('🎨 App.js RENDERING - showSplash:', showSplash, 'currentView:', currentView)}
-      {showSplash && (
-        <>
-          {console.warn('📺 RENDERING SplashScreen component')}
-          <SplashScreen onComplete={handleSplashComplete} />
-        </>
-      )}
+      {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
 
       {currentView === 'login' && (
         <LoginPage onLogin={handleLogin} />

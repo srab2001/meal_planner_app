@@ -2,52 +2,42 @@ import React, { useState, useEffect } from 'react';
 import './SplashScreen.css';
 
 function SplashScreen({ onComplete }) {
-  const [isVisible, setIsVisible] = useState(true);
   const [fadeOut, setFadeOut] = useState(false);
   const [countdown, setCountdown] = useState(15);
 
-  console.warn('🎬 SplashScreen COMPONENT RENDERING - countdown:', countdown, 'isVisible:', isVisible, 'fadeOut:', fadeOut);
-  console.warn('🎬 onComplete callback:', typeof onComplete);
-
+  // Start countdown immediately on mount
   useEffect(() => {
-    console.log('🎬 SplashScreen countdown timer started');
-    // Countdown timer
     const countdownTimer = setInterval(() => {
       setCountdown(prev => {
-        if (prev <= 1) {
+        const newVal = prev - 1;
+        if (newVal <= 0) {
           clearInterval(countdownTimer);
           return 0;
         }
-        return prev - 1;
+        return newVal;
       });
     }, 1000);
 
     return () => clearInterval(countdownTimer);
   }, []);
 
-  // Auto-close splash when countdown reaches 0
+  // Auto-hide when countdown reaches 0
   useEffect(() => {
     if (countdown === 0) {
       setFadeOut(true);
-      // Wait for fade animation to complete before calling onComplete
-      const fadeTimer = setTimeout(() => {
-        setIsVisible(false);
-        onComplete();
+      const timer = setTimeout(() => {
+        if (onComplete) onComplete();
       }, 500);
-
-      return () => clearTimeout(fadeTimer);
+      return () => clearTimeout(timer);
     }
   }, [countdown, onComplete]);
 
   const handleSkip = () => {
     setFadeOut(true);
     setTimeout(() => {
-      setIsVisible(false);
-      onComplete();
+      if (onComplete) onComplete();
     }, 500);
   };
-
-  if (!isVisible) return null;
 
   return (
     <div className={`splash-screen ${fadeOut ? 'fade-out' : ''}`}>
