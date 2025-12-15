@@ -686,7 +686,6 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   };
 
   const handleSubmitRecipeChanges = async (day, mealType) => {
-    console.log('🟢 handleSubmitRecipeChanges called - button is working!');
     setOperationLoading(true);
     try {
       const token = localStorage.getItem('auth_token');
@@ -1296,7 +1295,7 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
 
               {/* Submit Recipe Changes */}
               <div className="operation-group submit-changes-group">
-                <h4>✅ Save Recipe Changes [DEPLOYED]</h4>
+                <h4>✅ Save Recipe Changes</h4>
                 <p className="operation-note">Click to finalize all your ingredient modifications and regenerate the recipe</p>
                 <button 
                   onClick={() => handleSubmitRecipeChanges(selectedDay, Object.keys(localMealPlan.mealPlan[selectedDay])[0])}
