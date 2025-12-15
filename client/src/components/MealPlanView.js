@@ -73,7 +73,6 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   const [regeneratingMeal, setRegeneratingMeal] = useState(null);
   const [localMealPlan, setLocalMealPlan] = useState(mealPlan);
   const [favorites, setFavorites] = useState([]);
-  const [favoritingMeal, setFavoritingMeal] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
