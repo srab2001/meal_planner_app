@@ -865,7 +865,11 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   };
 
   const isFavorited = (mealName) => {
-    return favorites.some(fav => fav.meal.name === mealName);
+    return favorites.some(fav => {
+      // Handle different data structures for favorites
+      const name = fav?.meal?.name || fav?.meal_name || fav?.name;
+      return name === mealName;
+    });
   };
 
   // Touch gesture handlers for swipeable day selector
