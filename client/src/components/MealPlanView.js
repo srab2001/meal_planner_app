@@ -19,6 +19,51 @@ const shortenDayName = (day) => {
   return dayMap[day] || day;
 };
 
+// Helper function to regenerate shopping list from meal plan
+const regenerateShoppingList = (mealPlan) => {
+  const ingredientMap = new Map();
+  
+  // Collect all ingredients from all meals
+  if (mealPlan && mealPlan.mealPlan) {
+    Object.keys(mealPlan.mealPlan).forEach(day => {
+      const dayMeals = mealPlan.mealPlan[day];
+      Object.keys(dayMeals).forEach(mealType => {
+        const meal = dayMeals[mealType];
+        if (meal && meal.ingredients && Array.isArray(meal.ingredients)) {
+          meal.ingredients.forEach(ingredient => {
+            const key = typeof ingredient === 'string' 
+              ? ingredient.toLowerCase() 
+              : (ingredient.name || '').toLowerCase();
+            
+            if (key) {
+              if (!ingredientMap.has(key)) {
+                ingredientMap.set(key, {
+                  item: typeof ingredient === 'string' ? ingredient : ingredient.name || '',
+                  quantity: typeof ingredient === 'string' ? '1' : ingredient.quantity || '1',
+                  unit: typeof ingredient === 'string' ? '' : ingredient.unit || '',
+                  category: typeof ingredient === 'string' ? 'Other' : ingredient.category || 'Other'
+                });
+              }
+            }
+          });
+        }
+      });
+    });
+  }
+  
+  // Group by category
+  const shoppingList = {};
+  ingredientMap.forEach(item => {
+    const category = item.category;
+    if (!shoppingList[category]) {
+      shoppingList[category] = [];
+    }
+    shoppingList[category].push(item);
+  });
+  
+  return shoppingList;
+};
+
 function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver, onLogout, onViewProfile}) {
   const [selectedDay, setSelectedDay] = useState('Monday');
   const [selectedMeal, setSelectedMeal] = useState(null);
@@ -441,16 +486,21 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
         
         // Update the local meal plan with the new meal
         if (selectedMealDay && selectedMealType) {
-          setLocalMealPlan(prev => ({
-            ...prev,
+          const updatedPlan = {
+            ...localMealPlan,
             mealPlan: {
-              ...prev.mealPlan,
+              ...localMealPlan.mealPlan,
               [selectedMealDay]: {
-                ...prev.mealPlan[selectedMealDay],
+                ...localMealPlan.mealPlan[selectedMealDay],
                 [selectedMealType]: updatedMeal
               }
             }
-          }));
+          };
+          
+          // Regenerate shopping list from updated meal plan
+          updatedPlan.shoppingList = regenerateShoppingList(updatedPlan);
+          
+          setLocalMealPlan(updatedPlan);
         }
         
         setOperationMessage(`✅ Removed ${formData.ingredientToRemove}`);
@@ -503,16 +553,21 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
         
         // Update the local meal plan with the new meal
         if (selectedMealDay && selectedMealType) {
-          setLocalMealPlan(prev => ({
-            ...prev,
+          const updatedPlan = {
+            ...localMealPlan,
             mealPlan: {
-              ...prev.mealPlan,
+              ...localMealPlan.mealPlan,
               [selectedMealDay]: {
-                ...prev.mealPlan[selectedMealDay],
+                ...localMealPlan.mealPlan[selectedMealDay],
                 [selectedMealType]: updatedMeal
               }
             }
-          }));
+          };
+          
+          // Regenerate shopping list from updated meal plan
+          updatedPlan.shoppingList = regenerateShoppingList(updatedPlan);
+          
+          setLocalMealPlan(updatedPlan);
         }
         
         setOperationMessage(`✅ Added ${formData.ingredientToAdd}`);
@@ -570,16 +625,21 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
         
         // Update the local meal plan with the new meal
         if (selectedMealDay && selectedMealType) {
-          setLocalMealPlan(prev => ({
-            ...prev,
+          const updatedPlan = {
+            ...localMealPlan,
             mealPlan: {
-              ...prev.mealPlan,
+              ...localMealPlan.mealPlan,
               [selectedMealDay]: {
-                ...prev.mealPlan[selectedMealDay],
+                ...localMealPlan.mealPlan[selectedMealDay],
                 [selectedMealType]: updatedMeal
               }
             }
-          }));
+          };
+          
+          // Regenerate shopping list from updated meal plan
+          updatedPlan.shoppingList = regenerateShoppingList(updatedPlan);
+          
+          setLocalMealPlan(updatedPlan);
         }
         
         setOperationMessage(`✅ Substituted ${formData.oldIngredient} → ${formData.newIngredient}`);
