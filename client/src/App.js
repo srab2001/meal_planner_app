@@ -22,8 +22,6 @@ const setToken = (token) => localStorage.setItem('auth_token', token);
 const removeToken = () => localStorage.removeItem('auth_token');
 
 function App() {
-  // Track whether to show splash screen overlay
-  const [showSplash, setShowSplash] = useState(true);
   const [user, setUser] = useState(null);
   const [currentView, setCurrentView] = useState('login');
   const [zipCode, setZipCode] = useState('');
@@ -31,15 +29,6 @@ function App() {
   const [selectedStores, setSelectedStores] = useState({ primaryStore: null, comparisonStore: null });
   const [preferences, setPreferences] = useState(null);
   const [mealPlan, setMealPlan] = useState(null);
-
-  // Hide splash after 15 seconds
-  useEffect(() => {
-    const splashTimer = setTimeout(() => {
-      setShowSplash(false);
-    }, 15000);
-
-    return () => clearTimeout(splashTimer);
-  }, []);
 
   // Helper for authenticated API calls
   const fetchWithAuth = (url, options = {}) => {
