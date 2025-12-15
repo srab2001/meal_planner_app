@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './Profile.css';
 
 const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
@@ -60,7 +60,7 @@ function Profile({ user, onBack }) {
     loadOptions();
   }, []);
 
-  const loadProfileData = async () => {
+  const loadProfileData = useCallback(async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('auth_token');
@@ -99,12 +99,11 @@ function Profile({ user, onBack }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [emailNotifications]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     loadProfileData();
-  }, []);
+  }, [loadProfileData]);
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
