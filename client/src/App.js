@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
-import SplashScreen from './components/SplashScreen';
+import SplashScreenOverlay from './components/SplashScreenOverlay';
 import LoginPage from './components/LoginPage';
 import ZIPCodeInput from './components/ZIPCodeInput';
 import StoreSelection from './components/StoreSelection';
@@ -272,7 +272,7 @@ function App() {
 
   return (
     <div className="App">
-      {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
+      <SplashScreenOverlay />
 
       {currentView === 'login' && (
         <LoginPage onLogin={handleLogin} />
