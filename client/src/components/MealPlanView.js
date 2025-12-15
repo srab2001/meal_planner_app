@@ -113,14 +113,31 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
         // Get JWT token from localStorage
         const token = localStorage.getItem('auth_token');
 
+        if (!token) {
+          console.warn('⚠️ No auth token - favorites not loaded');
+          return;
+        }
+
         const response = await fetch(`${API_BASE}/api/favorites`, {
           headers: {
-            'Authorization': token ? `Bearer ${token}` : ''
+            'Authorization': `Bearer ${token}`
           }
         });
+
+        // Handle authentication errors
+        if (response.status === 401 || response.status === 403) {
+          console.error('❌ Authentication failed when loading favorites (401/403)');
+          localStorage.removeItem('auth_token');
+          window.location.href = '/';
+          return;
+        }
+
         if (response.ok) {
           const data = await response.json();
           setFavorites(data.favorites || []);
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          console.error('Failed to load favorites:', errorData.error);
         }
       } catch (error) {
         console.error('Error loading favorites:', error);
@@ -132,11 +149,16 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
         // Get JWT token from localStorage
         const token = localStorage.getItem('auth_token');
 
-        await fetch(`${API_BASE}/api/save-meal-plan`, {
+        if (!token) {
+          console.warn('⚠️ No auth token - meal plan history not saved');
+          return;
+        }
+
+        const response = await fetch(`${API_BASE}/api/save-meal-plan`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': token ? `Bearer ${token}` : ''
+            'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({
             mealPlan: localMealPlan,
@@ -144,7 +166,21 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
             selectedStores
           }),
         });
-        console.log('📝 Meal plan saved to history');
+
+        // Handle authentication errors
+        if (response.status === 401 || response.status === 403) {
+          console.error('❌ Authentication failed when saving meal plan (401/403)');
+          localStorage.removeItem('auth_token');
+          window.location.href = '/';
+          return;
+        }
+
+        if (response.ok) {
+          console.log('📝 Meal plan saved to history');
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          console.error('Failed to save meal plan:', errorData.error);
+        }
       } catch (error) {
         console.error('Error saving meal plan to history:', error);
       }
@@ -757,23 +793,42 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
       // Get JWT token from localStorage
       const token = localStorage.getItem('auth_token');
 
+      if (!token) {
+        console.error('❌ No authentication token found');
+        alert('Authentication required. Please log in again.');
+        setLoadingHistory(false);
+        return;
+      }
+
       const url = days
         ? `${API_BASE}/api/meal-plan-history?days=${days}`
         : `${API_BASE}/api/meal-plan-history`;
 
       const response = await fetch(url, {
         headers: {
-          'Authorization': token ? `Bearer ${token}` : ''
+          'Authorization': `Bearer ${token}`
         }
       });
+
+      // Handle authentication errors
+      if (response.status === 401 || response.status === 403) {
+        console.error('❌ Authentication failed (401/403) - removing token and redirecting');
+        localStorage.removeItem('auth_token');
+        window.location.href = '/';
+        return;
+      }
+
       if (response.ok) {
         const data = await response.json();
         setHistory(data.history || []);
         setShowHistory(true);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to load history');
       }
     } catch (error) {
       console.error('Error loading history:', error);
-      alert('Failed to load history');
+      alert('❌ ' + error.message);
     } finally {
       setLoadingHistory(false);
     }
