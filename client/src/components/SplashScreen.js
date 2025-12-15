@@ -2,9 +2,13 @@ import React, { useState, useEffect } from 'react';
 import './SplashScreen.css';
 
 function SplashScreen({ onComplete }) {
-  console.error('🎬 SPLASHSCREEN COMPONENT CALLED - onComplete:', typeof onComplete);
   const [countdown, setCountdown] = useState(15);
   const [fadeOut, setFadeOut] = useState(false);
+
+  // This will ALWAYS fire if component renders
+  useEffect(() => {
+    window.splashScreenMounted = true;
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
