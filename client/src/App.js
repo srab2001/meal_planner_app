@@ -30,10 +30,10 @@ function App() {
   const [preferences, setPreferences] = useState(null);
   const [mealPlan, setMealPlan] = useState(null);
 
-  // Helper for authenticated API calls
-  const fetchWithAuth = (url, options = {}) => {
+  // Helper for authenticated API calls with 401 handling
+  const fetchWithAuth = async (url, options = {}) => {
     const token = getToken();
-    return fetch(url, {
+    const response = await fetch(url, {
       ...options,
       headers: {
         ...options.headers,
@@ -41,6 +41,16 @@ function App() {
         'Content-Type': 'application/json'
       }
     });
+
+    // Handle authentication failures globally
+    if (response.status === 401 || response.status === 403) {
+      console.error('🔐 Authentication failed - logging out user');
+      removeToken();
+      setUser(null);
+      setCurrentView('login');
+    }
+
+    return response;
   };
 
   // Check for token in URL hash (from OAuth redirect) and authenticate

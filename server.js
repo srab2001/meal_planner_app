@@ -3116,6 +3116,7 @@ Keep it concise - 2-4 sentences maximum.`;
 // POST /api/meal/:id/regenerate-recipe - Regenerate recipe with current ingredients
 app.post('/api/meal/:id/regenerate-recipe', requireAuth, async (req, res) => {
   try {
+    console.log(`[POST /api/meal/:id/regenerate-recipe] User ${req.user?.email} regenerating recipe for meal ${req.params.id}`);
     const { mealName, currentIngredients, currentInstructions } = req.body;
     
     // Create a comprehensive prompt for full recipe regeneration
@@ -3161,15 +3162,17 @@ Generate only the instructions, without listing ingredients again.`;
       }
     }
 
-    console.log(`✅ Regenerated recipe for meal ${req.params.id} with updated ingredients`);
+    console.log(`✅ [POST /api/meal/:id/regenerate-recipe] Recipe regenerated for ${req.user?.email}, meal ${req.params.id}`);
     res.json({ 
       success: true, 
       message: 'Recipe regenerated',
       instructions: newInstructions
     });
   } catch (error) {
-    console.error('Error regenerating recipe:', error);
-    res.status(500).json({ error: 'Failed to regenerate recipe' });
+    console.error('[POST /api/meal/:id/regenerate-recipe] Error regenerating recipe:', error.message);
+    console.error('[POST /api/meal/:id/regenerate-recipe] Full error:', error);
+    console.error('[POST /api/meal/:id/regenerate-recipe] User:', req.user?.email);
+    res.status(500).json({ error: 'Failed to regenerate recipe', details: error.message });
   }
 });
 
