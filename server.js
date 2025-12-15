@@ -2905,16 +2905,24 @@ app.get('/api/admin/meal-of-the-day/stats', requireAdmin, async (req, res) => {
 // POST /api/meal/:id/remove-ingredient - Remove ingredient from meal
 app.post('/api/meal/:id/remove-ingredient', requireAuth, async (req, res) => {
   try {
-    const { ingredientToRemove } = req.body;
+    const { ingredientToRemove, mealName, currentIngredients, currentInstructions } = req.body;
     if (!ingredientToRemove) {
       return res.status(400).json({ error: 'Ingredient name required' });
     }
 
     // Generate updated recipe without the removed ingredient
-    const updatedRecipe = `Please regenerate the recipe instructions for this meal, but REMOVE all references to "${ingredientToRemove}". 
+    const ingredientsList = Array.isArray(currentIngredients) 
+      ? currentIngredients.join(', ') 
+      : (currentIngredients || '');
     
-    Keep the same meal name and cooking style, but adjust the instructions to work without this ingredient. 
-    Keep it concise - 2-4 sentences maximum.`;
+    const updatedRecipe = `You are a professional chef. Please regenerate the recipe instructions for "${mealName || 'this meal'}".
+
+Current ingredients: ${ingredientsList}
+Current instructions: ${currentInstructions || 'Not provided'}
+
+Please REMOVE all references to "${ingredientToRemove}" from both the ingredient list and instructions.
+Keep the same meal name and cooking style, but adjust the instructions to work without this ingredient.
+Keep it concise - 2-4 sentences maximum.`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -2928,7 +2936,7 @@ app.post('/api/meal/:id/remove-ingredient', requireAuth, async (req, res) => {
           { role: 'user', content: updatedRecipe }
         ],
         temperature: 0.7,
-        max_tokens: 200
+        max_tokens: 300
       })
     });
 
@@ -2955,17 +2963,26 @@ app.post('/api/meal/:id/remove-ingredient', requireAuth, async (req, res) => {
 // POST /api/meal/:id/add-ingredient - Add ingredient to meal
 app.post('/api/meal/:id/add-ingredient', requireAuth, async (req, res) => {
   try {
-    const { ingredientToAdd, reason } = req.body;
+    const { ingredientToAdd, reason, mealName, currentIngredients, currentInstructions } = req.body;
     if (!ingredientToAdd) {
       return res.status(400).json({ error: 'Ingredient name required' });
     }
 
     // Generate updated recipe with the new ingredient
-    const updatedRecipe = `Please regenerate the recipe instructions for this meal, but ADD "${ingredientToAdd}" as an ingredient.
-    ${reason ? `The reason for adding it is: ${reason}` : ''}
+    const ingredientsList = Array.isArray(currentIngredients) 
+      ? currentIngredients.join(', ') 
+      : (currentIngredients || '');
     
-    Keep the same meal name and cooking style, but incorporate this new ingredient into the instructions.
-    Keep it concise - 2-4 sentences maximum.`;
+    const updatedRecipe = `You are a professional chef. Please regenerate the recipe instructions for "${mealName || 'this meal'}".
+
+Current ingredients: ${ingredientsList}
+Current instructions: ${currentInstructions || 'Not provided'}
+
+Please ADD "${ingredientToAdd}" as a new ingredient and incorporate it into the cooking instructions.
+${reason ? `The reason for adding it is: ${reason}` : ''}
+
+Keep the same meal name and cooking style, but incorporate this new ingredient into the instructions.
+Keep it concise - 2-4 sentences maximum.`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -2979,7 +2996,7 @@ app.post('/api/meal/:id/add-ingredient', requireAuth, async (req, res) => {
           { role: 'user', content: updatedRecipe }
         ],
         temperature: 0.7,
-        max_tokens: 200
+        max_tokens: 300
       })
     });
 
@@ -3006,17 +3023,26 @@ app.post('/api/meal/:id/add-ingredient', requireAuth, async (req, res) => {
 // POST /api/meal/:id/substitute - Substitute ingredient in meal
 app.post('/api/meal/:id/substitute', requireAuth, async (req, res) => {
   try {
-    const { oldIngredient, newIngredient, reason } = req.body;
+    const { oldIngredient, newIngredient, reason, mealName, currentIngredients, currentInstructions } = req.body;
     if (!oldIngredient || !newIngredient) {
       return res.status(400).json({ error: 'Both old and new ingredients required' });
     }
 
     // Generate updated recipe with substituted ingredient
-    const updatedRecipe = `Please regenerate the recipe instructions for this meal, but SUBSTITUTE "${oldIngredient}" with "${newIngredient}".
-    ${reason ? `The reason for substituting is: ${reason}` : ''}
+    const ingredientsList = Array.isArray(currentIngredients) 
+      ? currentIngredients.join(', ') 
+      : (currentIngredients || '');
     
-    Keep the same meal name and cooking style, but use the new ingredient instead.
-    Keep it concise - 2-4 sentences maximum.`;
+    const updatedRecipe = `You are a professional chef. Please regenerate the recipe instructions for "${mealName || 'this meal'}".
+
+Current ingredients: ${ingredientsList}
+Current instructions: ${currentInstructions || 'Not provided'}
+
+Please SUBSTITUTE "${oldIngredient}" with "${newIngredient}" throughout the ingredient list and instructions.
+${reason ? `The reason for substituting is: ${reason}` : ''}
+
+Keep the same meal name and cooking style, but use the new ingredient instead.
+Keep it concise - 2-4 sentences maximum.`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -3030,7 +3056,7 @@ app.post('/api/meal/:id/substitute', requireAuth, async (req, res) => {
           { role: 'user', content: updatedRecipe }
         ],
         temperature: 0.7,
-        max_tokens: 200
+        max_tokens: 300
       })
     });
 

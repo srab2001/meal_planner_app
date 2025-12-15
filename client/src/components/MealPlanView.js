@@ -466,7 +466,10 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
           'Authorization': token ? `Bearer ${token}` : ''
         },
         body: JSON.stringify({
-          ingredientToRemove: formData.ingredientToRemove
+          ingredientToRemove: formData.ingredientToRemove,
+          mealName: selectedMeal?.name,
+          currentIngredients: selectedMeal?.ingredients || [],
+          currentInstructions: selectedMeal?.instructions
         }),
       });
 
@@ -535,7 +538,10 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
         },
         body: JSON.stringify({
           ingredientToAdd: formData.ingredientToAdd,
-          reason: formData.reasonToAdd
+          reason: formData.reasonToAdd,
+          mealName: selectedMeal?.name,
+          currentIngredients: selectedMeal?.ingredients || [],
+          currentInstructions: selectedMeal?.instructions
         }),
       });
 
@@ -603,7 +609,10 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
         body: JSON.stringify({
           oldIngredient: formData.oldIngredient,
           newIngredient: formData.newIngredient,
-          reason: formData.reasonToSubstitute
+          reason: formData.reasonToSubstitute,
+          mealName: selectedMeal?.name,
+          currentIngredients: selectedMeal?.ingredients || [],
+          currentInstructions: selectedMeal?.instructions
         }),
       });
 
