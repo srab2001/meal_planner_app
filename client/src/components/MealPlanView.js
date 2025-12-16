@@ -865,10 +865,18 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   };
 
   const isFavorited = (mealName) => {
+    if (!mealName || !favorites || !Array.isArray(favorites)) {
+      return false;
+    }
     return favorites.some(fav => {
-      // Handle different data structures for favorites
-      const name = fav?.meal?.name || fav?.meal_name || fav?.name;
-      return name === mealName;
+      try {
+        // Handle different data structures for favorites
+        const name = fav?.meal?.name || fav?.meal_name || fav?.name;
+        return name === mealName;
+      } catch (e) {
+        console.warn('Error checking favorite:', fav, e);
+        return false;
+      }
     });
   };
 
@@ -1012,7 +1020,7 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                 const meal = currentDayMeals[mealType];
                 const mealKey = `${selectedDay}-${mealType}`;
                 const isRegenerating = regeneratingMeal === mealKey;
-                const alreadyFavorited = isFavorited(meal.name);
+                const alreadyFavorited = meal && meal.name ? isFavorited(meal.name) : false;
 
                 return (
                   <div key={mealType} className="meal-card">
