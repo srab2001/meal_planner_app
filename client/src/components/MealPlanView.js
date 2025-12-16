@@ -309,13 +309,13 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
       console.log('📥 [Favorite] Response status:', response.status);
       console.log('📥 [Favorite] Response headers:', response.headers);
 
-      // Handle authentication errors
+      // Handle authentication errors - DON'T redirect, stay on meal plan page
       if (response.status === 401 || response.status === 403) {
         console.error('❌ [Favorite] Authentication failed (401/403)');
         console.error('❌ [Favorite] Response:', response.statusText);
         localStorage.removeItem('auth_token');
-        window.location.href = '/';
-        return;
+        // Don't redirect - let user see error message and stay on meal plan
+        throw new Error('Authentication failed. Please log in again.');
       }
 
       if (response.ok) {
