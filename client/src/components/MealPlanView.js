@@ -109,37 +109,50 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   // This useEffect must come before any early returns to follow React hooks rules
   useEffect(() => {
     const loadFavorites = async () => {
+      console.log('📋 [Favorite] Loading favorites from server...');
       try {
         // Get JWT token from localStorage
         const token = localStorage.getItem('auth_token');
+        console.log('🔑 [Favorite] Token exists:', !!token);
 
         if (!token) {
-          console.warn('⚠️ No auth token - favorites not loaded');
+          console.warn('⚠️ [Favorite] No auth token - favorites not loaded');
           return;
         }
 
+        console.log('📤 [Favorite] Fetching from:', `${API_BASE}/api/favorites`);
         const response = await fetch(`${API_BASE}/api/favorites`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
 
+        console.log('📥 [Favorite] Response status:', response.status);
+
         // Handle authentication errors
         if (response.status === 401 || response.status === 403) {
-          console.warn('⚠️ Token may be expired - user will be logged out on next action');
+          console.warn('⚠️ [Favorite] Token may be expired (401/403) - user will be logged out on next action');
           // Don't redirect here - let user actions trigger logout if needed
           return;
         }
 
         if (response.ok) {
           const data = await response.json();
+          console.log('✅ [Favorite] Received favorites:', data);
+          console.log('✅ [Favorite] Favorites count:', data.favorites?.length || 0);
+          console.log('✅ [Favorite] Favorite items:', data.favorites);
           setFavorites(data.favorites || []);
         } else {
           const errorData = await response.json().catch(() => ({}));
-          console.error('Failed to load favorites:', errorData.error);
+          console.error('❌ [Favorite] Failed to load favorites:', response.status, errorData.error);
         }
       } catch (error) {
-        console.error('Error loading favorites:', error);
+        console.error('❌ [Favorite] Error loading favorites:', error);
+        console.error('❌ [Favorite] Error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        });
       }
     };
 
@@ -255,17 +268,34 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   };
 
   const handleSaveCustomizedFavorite = async () => {
-    if (!selectedMeal) return;
+    if (!selectedMeal) {
+      console.warn('⚠️ [Favorite] No meal selected for customization');
+      return;
+    }
+
+    console.log('📝 [Favorite] Starting customized favorite save...');
+    console.log('📝 [Favorite] Selected meal:', selectedMeal);
+    console.log('📝 [Favorite] Custom servings:', customServings);
+    console.log('📝 [Favorite] Recipe notes:', recipeNotes);
 
     setSavingCustomization(true);
     try {
       const token = localStorage.getItem('auth_token');
+      console.log('🔑 [Favorite] Token exists:', !!token);
 
       if (!token) {
-        console.error('❌ No authentication token found');
+        console.error('❌ [Favorite] No authentication token found');
         alert('Authentication required. Please log in again.');
         return;
       }
+
+      const favoritePayload = {
+        meal: selectedMeal,
+        mealType: 'dinner', // Default type
+        servings_adjustment: customServings,
+        user_notes: recipeNotes
+      };
+      console.log('📤 [Favorite] Sending payload:', favoritePayload);
 
       const response = await fetch(`${API_BASE}/api/favorites/add`, {
         method: 'POST',
@@ -273,17 +303,16 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          meal: selectedMeal,
-          mealType: 'dinner', // Default type
-          servings_adjustment: customServings,
-          user_notes: recipeNotes
-        })
+        body: JSON.stringify(favoritePayload)
       });
+
+      console.log('📥 [Favorite] Response status:', response.status);
+      console.log('📥 [Favorite] Response headers:', response.headers);
 
       // Handle authentication errors
       if (response.status === 401 || response.status === 403) {
-        console.error('❌ Authentication failed (401/403)');
+        console.error('❌ [Favorite] Authentication failed (401/403)');
+        console.error('❌ [Favorite] Response:', response.statusText);
         localStorage.removeItem('auth_token');
         window.location.href = '/';
         return;
@@ -291,16 +320,30 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
 
       if (response.ok) {
         const data = await response.json();
-        setFavorites(prev => [...prev, data.favorite]);
+        console.log('✅ [Favorite] Server response:', data);
+        console.log('✅ [Favorite] Received favorite object:', data.favorite);
+        
+        setFavorites(prev => {
+          const updated = [...prev, data.favorite];
+          console.log('✅ [Favorite] Updated favorites state. New total:', updated.length);
+          return updated;
+        });
+        
         alert('✅ Customized recipe saved to favorites!');
         closeModal();
       } else {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to save');
+        console.error('❌ [Favorite] Non-OK response:', response.status, errorData);
+        throw new Error(errorData.error || `Server error: ${response.status}`);
       }
     } catch (error) {
-      console.error('Error saving customized favorite:', error);
-      alert('❌ ' + error.message);
+      console.error('❌ [Favorite] Error saving customized favorite:', error);
+      console.error('❌ [Favorite] Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+      alert('❌ ' + (error.message || 'Failed to save favorite'));
     } finally {
       setSavingCustomization(false);
     }
@@ -428,25 +471,44 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
 
   const handleAddFavorite = async (meal, mealType, day) => {
     // Open the modal so user can customize the meal before favoriting
-    console.log('❤️ Opening meal modal for customization and favorite save');
+    console.log('❤️ [Favorite] Opening meal modal for customization and favorite save');
+    console.log('❤️ [Favorite] Meal details:', {
+      name: meal?.name,
+      mealType,
+      day,
+      hasRecipe: !!meal?.recipe,
+      hasIngredients: !!meal?.ingredients
+    });
+    
+    if (!meal) {
+      console.error('❌ [Favorite] No meal data provided');
+      alert('❌ Error: No meal data available');
+      return;
+    }
+    
     setSelectedMeal(meal);
     setSelectedMealDay(day);
     setSelectedMealType(mealType);
     setCustomServings(meal.servings || 2);
     setRecipeNotes('');
+    console.log('❤️ [Favorite] Modal state updated, ready for customization');
   };
 
   const handleRemoveFavorite = async (favoriteId) => {
+    console.log('🗑️ [Favorite] Starting favorite removal. ID:', favoriteId);
+    
     try {
       // Get JWT token from localStorage
       const token = localStorage.getItem('auth_token');
+      console.log('🔑 [Favorite] Token exists:', !!token);
 
       if (!token) {
-        console.error('❌ No authentication token found');
+        console.error('❌ [Favorite] No authentication token found');
         alert('Authentication required. Please log in again.');
         return;
       }
 
+      console.log('📤 [Favorite] Sending DELETE request to /api/favorites/' + favoriteId);
       const response = await fetch(`${API_BASE}/api/favorites/${favoriteId}`, {
         method: 'DELETE',
         headers: {
@@ -454,24 +516,37 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
         },
       });
 
+      console.log('📥 [Favorite] DELETE response status:', response.status);
+
       // Handle authentication errors
       if (response.status === 401 || response.status === 403) {
-        console.error('❌ Authentication failed (401/403) - removing token and redirecting');
+        console.error('❌ [Favorite] Authentication failed (401/403) - removing token and redirecting');
         localStorage.removeItem('auth_token');
         window.location.href = '/';
         return;
       }
 
       if (response.ok) {
-        setFavorites(prev => prev.filter(fav => fav.id !== favoriteId));
-        console.log('🗑️ Removed from favorites');
+        console.log('✅ [Favorite] Server confirmed deletion');
+        setFavorites(prev => {
+          const updated = prev.filter(fav => fav.id !== favoriteId);
+          console.log('✅ [Favorite] Updated favorites state. New total:', updated.length);
+          return updated;
+        });
+        console.log('🗑️ [Favorite] Removed from favorites');
       } else {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to remove favorite');
+        console.error('❌ [Favorite] Non-OK response:', response.status, errorData);
+        throw new Error(errorData.error || `Server error: ${response.status}`);
       }
     } catch (error) {
-      console.error('Error removing favorite:', error);
-      alert('❌ ' + error.message);
+      console.error('❌ [Favorite] Error removing favorite:', error);
+      console.error('❌ [Favorite] Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+      alert('❌ ' + (error.message || 'Failed to remove favorite'));
     }
   };
 
@@ -865,16 +940,41 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   };
 
   const isFavorited = (mealName) => {
-    if (!mealName || !favorites || !Array.isArray(favorites)) {
+    // Validate inputs
+    if (!mealName) {
+      console.debug('❓ [Favorite] isFavorited called with no mealName');
       return false;
     }
+    
+    if (!favorites) {
+      console.debug('❓ [Favorite] isFavorited - favorites is null/undefined');
+      return false;
+    }
+    
+    if (!Array.isArray(favorites)) {
+      console.warn('⚠️ [Favorite] isFavorited - favorites is not an array:', typeof favorites);
+      return false;
+    }
+
+    console.debug(`🔍 [Favorite] Checking if "${mealName}" is favorited. Total favorites: ${favorites.length}`);
+    
     return favorites.some(fav => {
       try {
         // Handle different data structures for favorites
         const name = fav?.meal?.name || fav?.meal_name || fav?.name;
-        return name === mealName;
+        const isFav = name === mealName;
+        
+        if (isFav) {
+          console.debug(`✅ [Favorite] Found favorite: "${mealName}"`);
+        }
+        
+        return isFav;
       } catch (e) {
-        console.warn('Error checking favorite:', fav, e);
+        console.warn('⚠️ [Favorite] Error checking favorite:', { 
+          mealName, 
+          favoriteObj: fav, 
+          error: e.message 
+        });
         return false;
       }
     });
