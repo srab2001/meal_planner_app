@@ -145,6 +145,18 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
         } else {
           const errorData = await response.json().catch(() => ({}));
           console.error('❌ [Favorite] Failed to load favorites:', response.status, errorData.error);
+          
+          // FALLBACK: Load from localStorage
+          console.warn('⚠️ [Favorite] Backend unavailable - loading from localStorage');
+          try {
+            const localFavorites = JSON.parse(localStorage.getItem('local_favorites') || '[]');
+            if (localFavorites.length > 0) {
+              console.log('💾 [Favorite] Loaded', localFavorites.length, 'favorites from localStorage');
+              setFavorites(localFavorites);
+            }
+          } catch (localError) {
+            console.error('❌ [Favorite] Failed to load from localStorage:', localError);
+          }
         }
       } catch (error) {
         console.error('❌ [Favorite] Error loading favorites:', error);
@@ -153,6 +165,18 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
           stack: error.stack,
           name: error.name
         });
+        
+        // FALLBACK: Load from localStorage if network error
+        console.warn('⚠️ [Favorite] Network error - loading from localStorage');
+        try {
+          const localFavorites = JSON.parse(localStorage.getItem('local_favorites') || '[]');
+          if (localFavorites.length > 0) {
+            console.log('💾 [Favorite] Loaded', localFavorites.length, 'favorites from localStorage');
+            setFavorites(localFavorites);
+          }
+        } catch (localError) {
+          console.error('❌ [Favorite] Failed to load from localStorage:', localError);
+        }
       }
     };
 
@@ -303,7 +327,8 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(favoritePayload)
+        body: JSON.stringify(favoritePayload),
+        timeout: 5000 // 5 second timeout
       });
 
       console.log('📥 [Favorite] Response status:', response.status);
@@ -351,7 +376,47 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
         stack: error.stack,
         name: error.name
       });
-      alert('❌ ' + (error.message || 'Failed to save favorite'));
+      
+      // FALLBACK: Save to localStorage if backend fails
+      console.warn('⚠️ [Favorite] Backend unavailable - saving to localStorage');
+      try {
+        const localFavorites = JSON.parse(localStorage.getItem('local_favorites') || '[]');
+        const newFavorite = {
+          id: `local_${Date.now()}`,
+          meal: selectedMeal,
+          meal_name: selectedMeal.name,
+          mealType: 'dinner',
+          servings_adjustment: customServings,
+          user_notes: recipeNotes,
+          created_at: new Date().toISOString(),
+          local: true  // Mark as local storage only
+        };
+        
+        // Check if already favorited
+        const exists = localFavorites.some(f => f.meal_name === selectedMeal.name);
+        if (!exists) {
+          localFavorites.push(newFavorite);
+          localStorage.setItem('local_favorites', JSON.stringify(localFavorites));
+          console.log('💾 [Favorite] Saved to localStorage:', localFavorites.length, 'favorites');
+          
+          // Update UI favorites state with local favorite
+          setFavorites(prev => [...prev, newFavorite]);
+          
+          // Close modal
+          setSelectedMeal(null);
+          setSelectedMealDay(null);
+          setSelectedMealType(null);
+          setCustomServings(null);
+          setRecipeNotes('');
+          
+          alert('✅ Recipe saved locally! (Note: Requires internet to sync to your account)');
+        } else {
+          alert('⚠️ Recipe already in favorites');
+        }
+      } catch (localError) {
+        console.error('❌ [Favorite] LocalStorage fallback failed:', localError);
+        alert('❌ Failed to save favorite: ' + (error.message || 'Unknown error'));
+      }
     } finally {
       setSavingCustomization(false);
     }
