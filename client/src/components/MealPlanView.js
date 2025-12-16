@@ -323,14 +323,22 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
         console.log('✅ [Favorite] Server response:', data);
         console.log('✅ [Favorite] Received favorite object:', data.favorite);
         
+        // Update favorites state
         setFavorites(prev => {
           const updated = [...prev, data.favorite];
           console.log('✅ [Favorite] Updated favorites state. New total:', updated.length);
           return updated;
         });
         
+        // Close modal BEFORE alert so React can update state
+        console.log('✅ [Favorite] Closing modal and clearing selected meal');
+        setSelectedMeal(null);
+        setSelectedMealDay(null);
+        setSelectedMealType(null);
+        setCustomServings(null);
+        setRecipeNotes('');
+        
         alert('✅ Customized recipe saved to favorites!');
-        closeModal();
       } else {
         const errorData = await response.json().catch(() => ({}));
         console.error('❌ [Favorite] Non-OK response:', response.status, errorData);
