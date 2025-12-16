@@ -1122,6 +1122,18 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                 const isRegenerating = regeneratingMeal === mealKey;
                 const alreadyFavorited = meal && meal.name ? isFavorited(meal.name) : false;
 
+                // Guard: Don't render if meal doesn't exist
+                if (!meal || !meal.name) {
+                  return (
+                    <div key={mealType} className="meal-card empty-meal-slot">
+                      <div className="meal-card-content">
+                        <div className="meal-type">{mealType}</div>
+                        <p className="no-meal-message">No meal selected</p>
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
                   <div key={mealType} className="meal-card">
                     {(meal.imageUrl || meal.image_url || meal.image) && (
