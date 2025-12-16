@@ -1128,7 +1128,17 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
               </div>
             ) : (
               <div className="favorites-grid">
-                {favorites.map((favorite) => (
+                {favorites.map((favorite) => {
+                  const mealData = favorite.meal || {};
+                  const mealName = mealData.name || favorite.meal_name || 'Unnamed Meal';
+                  
+                  // Skip rendering if no meal data available
+                  if (!mealData.name && !favorite.meal_name) {
+                    console.warn('Favorite missing meal data:', favorite);
+                    return null;
+                  }
+                  
+                  return (
                   <div key={favorite.id} className="favorite-card">
                     <div className="favorite-header">
                       <span className="favorite-type">{favorite.mealType}</span>
@@ -1140,22 +1150,22 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                         ×
                       </button>
                     </div>
-                    <h3 className="favorite-name">{favorite.meal.name}</h3>
-                    {favorite.meal.prepTime && (
-                      <p className="favorite-time">⏱️ Prep: {favorite.meal.prepTime}</p>
+                    <h3 className="favorite-name">{mealName}</h3>
+                    {mealData.prepTime && (
+                      <p className="favorite-time">⏱️ Prep: {mealData.prepTime}</p>
                     )}
-                    {favorite.meal.cookTime && (
-                      <p className="favorite-time">🔥 Cook: {favorite.meal.cookTime}</p>
+                    {mealData.cookTime && (
+                      <p className="favorite-time">🔥 Cook: {mealData.cookTime}</p>
                     )}
-                    {favorite.meal.servings && (
-                      <p className="favorite-servings">👥 Serves {favorite.meal.servings}</p>
+                    {mealData.servings && (
+                      <p className="favorite-servings">👥 Serves {mealData.servings}</p>
                     )}
                     <p className="favorite-saved">Saved: {new Date(favorite.savedAt).toLocaleDateString()}</p>
 
                     <div className="favorite-actions">
                       <button
                         className="view-recipe-btn"
-                        onClick={() => handleMealClick(favorite.meal, selectedDay, 'breakfast')}
+                        onClick={() => handleMealClick(mealData, selectedDay, 'breakfast')}
                       >
                         👁️ View Recipe
                       </button>
@@ -1180,7 +1190,8 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                       </select>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

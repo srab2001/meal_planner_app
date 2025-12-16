@@ -1601,7 +1601,8 @@ app.get('/api/favorites', requireAuth, async (req, res) => {
     // Format response for frontend
     const favorites = result.rows.map(row => ({
       id: row.id,
-      meal: row.meal_data,
+      meal: row.meal_data || { name: row.meal_name || 'Unnamed Meal' },
+      meal_name: row.meal_name,
       mealType: row.meal_type,
       savedAt: row.created_at
     }));
