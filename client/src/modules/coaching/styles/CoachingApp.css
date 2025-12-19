@@ -1,0 +1,224 @@
+/* CoachingApp.css - Main Coaching Module Styles */
+
+.coaching-app {
+  min-height: 100vh;
+  background: var(--asr-gray-50);
+}
+
+/* Loading State */
+.coaching-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 1rem;
+}
+
+.coaching-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--asr-gray-200);
+  border-top-color: var(--asr-purple-600);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.coaching-loading p {
+  color: var(--asr-gray-600);
+  font-size: 1rem;
+}
+
+/* Error State */
+.coaching-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+.error-icon {
+  font-size: 3rem;
+}
+
+.coaching-error h2 {
+  margin: 0;
+  color: var(--asr-gray-800);
+}
+
+.coaching-error p {
+  margin: 0;
+  color: var(--asr-gray-600);
+}
+
+.retry-btn {
+  padding: 0.75rem 1.5rem;
+  background: var(--asr-purple-600);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.retry-btn:hover {
+  background: var(--asr-purple-700);
+}
+
+/* Header */
+.coaching-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  background: white;
+  border-bottom: 1px solid var(--asr-gray-200);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.back-button {
+  background: none;
+  border: none;
+  color: var(--asr-purple-600);
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  margin-left: -0.5rem;
+}
+
+.back-button:hover {
+  text-decoration: underline;
+}
+
+.header-title h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--asr-gray-900);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-info {
+  font-size: 0.85rem;
+  color: var(--asr-gray-600);
+}
+
+.logout-btn {
+  padding: 0.4rem 0.75rem;
+  background: var(--asr-gray-100);
+  border: 1px solid var(--asr-gray-300);
+  border-radius: 6px;
+  color: var(--asr-gray-700);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.logout-btn:hover {
+  background: var(--asr-gray-200);
+}
+
+/* Navigation */
+.coaching-nav {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: white;
+  border-bottom: 1px solid var(--asr-gray-200);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.coaching-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.nav-tab {
+  flex-shrink: 0;
+  padding: 0.5rem 1rem;
+  background: none;
+  border: none;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  color: var(--asr-gray-600);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.nav-tab:hover {
+  background: var(--asr-gray-100);
+}
+
+.nav-tab.active {
+  background: var(--asr-purple-100);
+  color: var(--asr-purple-700);
+  font-weight: 500;
+}
+
+/* Main Content */
+.coaching-content {
+  padding: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .coaching-header {
+    padding: 0.75rem 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .header-title h1 {
+    font-size: 1.1rem;
+  }
+
+  .user-info {
+    display: none;
+  }
+
+  .coaching-nav {
+    padding: 0.5rem 1rem;
+  }
+
+  .nav-tab {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.85rem;
+  }
+
+  .coaching-content {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .back-button {
+    font-size: 0.85rem;
+  }
+
+  .header-actions {
+    gap: 0.5rem;
+  }
+
+  .logout-btn {
+    padding: 0.3rem 0.5rem;
+    font-size: 0.75rem;
+  }
+}

@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import './ShoppingList.css';
+import analyticsService from '../shared/services/AnalyticsService';
 
-const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
+// API Configuration - Always use production URLs (Vercel/Render)
+const PRODUCTION_API = 'https://meal-planner-app-mve2.onrender.com';
+const API_BASE = process.env.REACT_APP_API_URL || PRODUCTION_API;
 
 function ShoppingList({ shoppingList, totalCost, priceComparison, selectedStores }) {
   const [checkedItems, setCheckedItems] = useState({});
@@ -169,6 +172,10 @@ function ShoppingList({ shoppingList, totalCost, priceComparison, selectedStores
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+
+    // Track shopping list save/export
+    const totalItems = categories.reduce((sum, cat) => sum + (shoppingList[cat]?.length || 0), 0);
+    analyticsService.trackShoppingListSave(totalItems, { format: 'txt' });
   };
 
   // Calculate adjusted total excluding checked items

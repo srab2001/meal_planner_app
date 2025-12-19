@@ -1,0 +1,185 @@
+/* ========================================
+   MACRO BREAKDOWN - Macronutrient Display
+   Uses ASR Theme tokens
+   ======================================== */
+
+.macro-breakdown {
+  width: 100%;
+  max-width: 320px;
+  padding: 10px;
+}
+
+.breakdown-title {
+  color: var(--color-text-primary);
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 20px;
+  text-align: center;
+}
+
+/* Distribution Bar */
+.macro-distribution {
+  margin-bottom: 24px;
+}
+
+.distribution-bar {
+  display: flex;
+  height: 24px;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  background: var(--color-border-light);
+}
+
+.distribution-segment {
+  height: 100%;
+  transition: width var(--transition-base);
+  min-width: 2px;
+}
+
+.distribution-segment.protein {
+  background: var(--asr-red-500);
+}
+
+.distribution-segment.carbs {
+  background: var(--asr-purple-500);
+}
+
+.distribution-segment.fat {
+  background: var(--asr-orange-500);
+}
+
+.distribution-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.distribution-labels .label {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+}
+
+.label.protein {
+  background: var(--asr-red-100);
+  color: var(--asr-red-700);
+}
+
+.label.carbs {
+  background: var(--asr-purple-100);
+  color: var(--asr-purple-700);
+}
+
+.label.fat {
+  background: var(--asr-orange-100);
+  color: var(--asr-orange-700);
+}
+
+/* Macro Details */
+.macro-details {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.macro-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.macro-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.macro-icon {
+  font-size: 20px;
+}
+
+.macro-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.macro-progress-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.macro-progress-bar {
+  flex: 1;
+  height: 10px;
+  background: var(--color-border-light);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.macro-progress-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width var(--transition-base);
+}
+
+.macro-progress-fill.protein {
+  background: var(--asr-red-500);
+}
+
+.macro-progress-fill.carbs {
+  background: var(--asr-purple-500);
+}
+
+.macro-progress-fill.fat {
+  background: var(--asr-orange-500);
+}
+
+.macro-values {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  min-width: 80px;
+  text-align: right;
+}
+
+/* Total */
+.macro-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16px;
+  margin-top: 8px;
+  border-top: 1px solid var(--color-border-light);
+}
+
+.total-label {
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.total-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .distribution-labels {
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .distribution-labels .label {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+
+  .macro-values {
+    font-size: 12px;
+    min-width: 70px;
+  }
+}

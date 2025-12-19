@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import SplashScreenOverlay from './components/SplashScreenOverlay';
+import AppSwitchboard from './components/AppSwitchboard';
 import LoginPage from './components/LoginPage';
 import ZIPCodeInput from './components/ZIPCodeInput';
 import StoreSelection from './components/StoreSelection';
@@ -12,8 +13,28 @@ import Admin from './components/Admin';
 import MealOfTheDay from './components/MealOfTheDay';
 import RecipeCard from './components/RecipeCard';
 
-// Use relative paths in production (proxied by Vercel) or localhost in development
-const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
+// Nutrition Module
+import { NutritionApp } from './modules/nutrition';
+
+// Coaching Module
+import { CoachingApp } from './modules/coaching';
+
+// Progress Module (streaks, badges, referrals)
+import { ProgressApp } from './modules/progress';
+
+// Integrations Module (health data connections)
+import { IntegrationsApp } from './modules/integrations';
+
+// Analytics Service
+import analyticsService from './shared/services/AnalyticsService';
+
+// Engagement Services
+import { EngagementProvider } from './shared/context/EngagementContext';
+
+// API Configuration - Always use production URLs (Vercel/Render)
+// Local development should also point to production to avoid port conflicts
+const PRODUCTION_API = 'https://meal-planner-app-mve2.onrender.com';
+const API_BASE = process.env.REACT_APP_API_URL || PRODUCTION_API;
 console.log('API_BASE in browser:', API_BASE);
 
 // Token management helpers
@@ -23,7 +44,8 @@ const removeToken = () => localStorage.removeItem('auth_token');
 
 function App() {
   const [user, setUser] = useState(null);
-  const [currentView, setCurrentView] = useState('login');
+  const [showSplash, setShowSplash] = useState(true);
+  const [currentView, setCurrentView] = useState('switchboard');
   const [zipCode, setZipCode] = useState('');
   const [stores, setStores] = useState([]);
   const [selectedStores, setSelectedStores] = useState({ primaryStore: null, comparisonStore: null });
@@ -55,20 +77,23 @@ function App() {
 
   // Check for token in URL hash (from OAuth redirect) and authenticate
   useEffect(() => {
-    // Check if accessing admin panel
+    // Check if accessing admin panel (public route - skip splash)
     if (window.location.pathname === '/admin') {
+      setShowSplash(false);
       setCurrentView('admin');
       return;
     }
 
-    // Check if accessing meal of the day
+    // Check if accessing meal of the day (public route - skip splash)
     if (window.location.pathname === '/meal-of-the-day') {
+      setShowSplash(false);
       setCurrentView('meal-of-the-day');
       return;
     }
 
-    // Check if accessing recipe card
+    // Check if accessing recipe card (public route - skip splash)
     if (window.location.pathname.startsWith('/recipe-card/')) {
+      setShowSplash(false);
       setCurrentView('recipe-card');
       return;
     }
@@ -109,7 +134,7 @@ function App() {
           if (data.user) {
             console.log('User authenticated:', data.user.email);
             setUser(data.user);
-            setCurrentView('zip');
+            // Don't change view here - let splash complete first, then switchboard handles it
           } else {
             console.log('Token invalid, removing');
             removeToken();
@@ -178,12 +203,22 @@ function App() {
 
   // Handler: Payment Complete
   const handlePaymentComplete = () => {
+    // Track conversion to paid
+    analyticsService.trackConversion('paid', {
+      source: 'payment_page'
+    });
     generateMealPlan(preferences);
   };
 
   // Generate meal plan (called after payment)
   const generateMealPlan = async (prefs) => {
     setCurrentView('loading');
+
+    // Track plan generation started
+    analyticsService.trackPlanGeneration('started', {
+      days: prefs?.selectedDays?.length,
+      preferences: prefs?.cuisines?.length || 0
+    });
 
     try {
       const startTime = Date.now();
@@ -220,8 +255,20 @@ function App() {
       const data = await response.json();
       setMealPlan(data);
       setCurrentView('mealplan');
+
+      // Track plan generation completed
+      analyticsService.trackPlanGeneration('completed', {
+        days: prefs?.selectedDays?.length,
+        duration: ((Date.now() - startTime) / 1000).toFixed(2)
+      });
     } catch (error) {
       console.error('Frontend error:', error);
+
+      // Track plan generation failed
+      analyticsService.trackPlanGeneration('failed', {
+        error: error.message
+      });
+
       alert(
         'Failed to generate meal plan: ' +
         error.message +
@@ -245,13 +292,96 @@ function App() {
   const handleLogout = () => {
     removeToken();
     setUser(null);
-    setCurrentView('login');
+    setCurrentView('switchboard');
     setZipCode('');
     setStores([]);
     setSelectedStores({ primaryStore: null, comparisonStore: null });
     setPreferences(null);
     setMealPlan(null);
     console.log('User logged out');
+  };
+
+  // Handler: Splash Complete - Route to App Switchboard
+  const handleSplashComplete = () => {
+    setShowSplash(false);
+    // If there's a specific route (admin, meal-of-the-day, etc), don't override
+    // Otherwise show switchboard
+    if (!['admin', 'meal-of-the-day', 'recipe-card'].includes(currentView)) {
+      setCurrentView('switchboard');
+      // Track switchboard view
+      analyticsService.trackSwitchboardView();
+    }
+  };
+
+  // Handler: App Selection from Switchboard
+  const handleSelectApp = (appId) => {
+    console.log('Selected app:', appId);
+
+    // Track app selection analytics
+    analyticsService.trackAppSelection(appId, currentView);
+
+    switch (appId) {
+      case 'meal-planner':
+        // Check if user is authenticated
+        const token = getToken();
+        if (token && user) {
+          setCurrentView('zip');
+        } else {
+          setCurrentView('login');
+        }
+        break;
+      case 'nutrition':
+        // Nutrition module - requires authentication
+        const nutritionToken = getToken();
+        if (nutritionToken && user) {
+          setCurrentView('nutrition');
+        } else {
+          // Remember where user wants to go after login
+          localStorage.setItem('redirect_after_login', 'nutrition');
+          setCurrentView('login');
+        }
+        break;
+      case 'coaching':
+        // Coaching module - requires authentication
+        const coachingToken = getToken();
+        if (coachingToken && user) {
+          setCurrentView('coaching');
+        } else {
+          // Remember where user wants to go after login
+          localStorage.setItem('redirect_after_login', 'coaching');
+          setCurrentView('login');
+        }
+        break;
+      case 'progress':
+        // Progress module - requires authentication
+        const progressToken = getToken();
+        if (progressToken && user) {
+          setCurrentView('progress');
+        } else {
+          // Remember where user wants to go after login
+          localStorage.setItem('redirect_after_login', 'progress');
+          setCurrentView('login');
+        }
+        break;
+      case 'integrations':
+        // Integrations module - requires authentication
+        const integrationsToken = getToken();
+        if (integrationsToken && user) {
+          setCurrentView('integrations');
+        } else {
+          // Remember where user wants to go after login
+          localStorage.setItem('redirect_after_login', 'integrations');
+          setCurrentView('login');
+        }
+        break;
+      case 'health-tracker':
+      case 'fitness':
+        // Future apps - not yet implemented
+        alert(`${appId} is coming soon!`);
+        break;
+      default:
+        setCurrentView('switchboard');
+    }
   };
 
   // Handler: View Profile
@@ -270,8 +400,20 @@ function App() {
   };
 
   return (
-    <div className="App">
-      <SplashScreenOverlay />
+    <EngagementProvider toastPosition="top-right">
+      <div className="App">
+        {/* Splash Screen - shown on first load only, before app selection */}
+        {showSplash && (
+          <SplashScreenOverlay onComplete={handleSplashComplete} />
+        )}
+
+      {/* App Switchboard - main app launcher */}
+      {!showSplash && currentView === 'switchboard' && (
+        <AppSwitchboard 
+          onSelectApp={handleSelectApp} 
+          user={user}
+        />
+      )}
 
       {currentView === 'login' && (
         <LoginPage onLogin={handleLogin} />
@@ -358,7 +500,44 @@ function App() {
       {currentView === 'recipe-card' && (
         <RecipeCard />
       )}
-    </div>
+
+      {/* Nutrition Module */}
+      {currentView === 'nutrition' && (
+        <NutritionApp
+          user={user}
+          onBack={() => setCurrentView('switchboard')}
+          onLogout={handleLogout}
+        />
+      )}
+
+      {/* Coaching Module */}
+      {currentView === 'coaching' && (
+        <CoachingApp
+          user={user}
+          onBack={() => setCurrentView('switchboard')}
+          onLogout={handleLogout}
+        />
+      )}
+
+      {/* Progress Module (streaks, badges, referrals) */}
+      {currentView === 'progress' && (
+        <ProgressApp
+          user={user}
+          onBack={() => setCurrentView('switchboard')}
+          onLogout={handleLogout}
+        />
+      )}
+
+      {/* Integrations Module (health data connections) */}
+      {currentView === 'integrations' && (
+        <IntegrationsApp
+          user={user}
+          onBack={() => setCurrentView('switchboard')}
+          onLogout={handleLogout}
+        />
+      )}
+      </div>
+    </EngagementProvider>
   );
 }
 

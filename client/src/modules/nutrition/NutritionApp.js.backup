@@ -1,0 +1,314 @@
+import React, { useState, useEffect } from 'react';
+import { API_BASE, fetchWithAuth } from '../../shared/utils/api';
+import NutritionDashboard from './components/NutritionDashboard';
+import './styles/NutritionApp.css';
+
+/**
+ * NutritionApp - Main Nutrition Module Component
+ * 
+ * Provides calorie tracking, macro breakdown, and nutritional insights.
+ * Has READ-ONLY access to Meal Plan data.
+ */
+export default function NutritionApp({ user, onBack, onLogout }) {
+  const [currentView, setCurrentView] = useState('dashboard');
+  const [mealPlanData, setMealPlanData] = useState(null);
+  const [nutritionSummary, setNutritionSummary] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch meal plan data on mount (READ-ONLY)
+  useEffect(() => {
+    const loadNutritionData = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        // Fetch user's meal plan (READ-ONLY access)
+        const response = await fetchWithAuth(`${API_BASE}/api/nutrition/meal-plan-summary`, {
+          method: 'GET'
+        });
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            // No meal plan exists - that's okay
+            setMealPlanData(null);
+            setNutritionSummary(null);
+          } else {
+            throw new Error('Failed to load nutrition data');
+          }
+        } else {
+          const data = await response.json();
+          setMealPlanData(data.mealPlan);
+          setNutritionSummary(data.summary);
+        }
+      } catch (err) {
+        console.error('Error loading nutrition data:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadNutritionData();
+  }, []);
+
+  // Handle navigation
+  const handleNavigate = (view) => {
+    setCurrentView(view);
+  };
+
+  // Render loading state
+  if (loading) {
+    return (
+      <div className="nutrition-app">
+        <div className="nutrition-loading">
+          <div className="nutrition-spinner"></div>
+          <p>Loading your nutrition data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="nutrition-app">
+      {/* Header */}
+      <header className="nutrition-header">
+        <button className="back-button" onClick={onBack}>
+          ← Back to Portal
+        </button>
+        <div className="header-title">
+          <h1>🥗 Nutrition Tracker</h1>
+          <p>Track your calories and macros</p>
+        </div>
+        <div className="header-actions">
+          {user && (
+            <span className="user-name">{user.name || user.email}</span>
+          )}
+          <button className="logout-button" onClick={onLogout}>
+            Logout
+          </button>
+        </div>
+      </header>
+
+      {/* Navigation Tabs */}
+      <nav className="nutrition-nav">
+        <button 
+          className={`nav-tab ${currentView === 'dashboard' ? 'active' : ''}`}
+          onClick={() => handleNavigate('dashboard')}
+        >
+          📊 Dashboard
+        </button>
+        <button 
+          className={`nav-tab ${currentView === 'meals' ? 'active' : ''}`}
+          onClick={() => handleNavigate('meals')}
+        >
+          🍽️ Meal Plan
+        </button>
+        <button 
+          className={`nav-tab ${currentView === 'trends' ? 'active' : ''}`}
+          onClick={() => handleNavigate('trends')}
+        >
+          📈 Trends
+        </button>
+      </nav>
+
+      {/* Main Content */}
+      <main className="nutrition-content">
+        {error && (
+          <div className="nutrition-error">
+            <p>⚠️ {error}</p>
+            <button onClick={() => window.location.reload()}>Retry</button>
+          </div>
+        )}
+
+        {currentView === 'dashboard' && (
+          <NutritionDashboard 
+            mealPlanData={mealPlanData}
+            nutritionSummary={nutritionSummary}
+            user={user}
+          />
+        )}
+
+        {currentView === 'meals' && (
+          <MealPlanNutritionView 
+            mealPlanData={mealPlanData}
+          />
+        )}
+
+        {currentView === 'trends' && (
+          <NutritionTrendsView 
+            mealPlanData={mealPlanData}
+            nutritionSummary={nutritionSummary}
+          />
+        )}
+      </main>
+
+      {/* Footer */}
+      <footer className="nutrition-footer">
+        <p>ASR Digital Services • Nutrition Tracker</p>
+      </footer>
+    </div>
+  );
+}
+
+/**
+ * MealPlanNutritionView - Shows nutrition info for each meal in the plan
+ * READ-ONLY view of meal plan data
+ */
+function MealPlanNutritionView({ mealPlanData }) {
+  if (!mealPlanData || !mealPlanData.meals) {
+    return (
+      <div className="no-data-message">
+        <span className="no-data-icon">📋</span>
+        <h3>No Meal Plan Available</h3>
+        <p>Create a meal plan in the Meal Planner app to see nutrition details here.</p>
+      </div>
+    );
+  }
+
+  const meals = mealPlanData.meals;
+
+  return (
+    <div className="meal-plan-nutrition">
+      <h2>Meal Plan Nutrition</h2>
+      <p className="section-subtitle">Nutritional breakdown for each meal in your current plan</p>
+      
+      <div className="meals-grid">
+        {meals.map((meal, index) => (
+          <div key={index} className="meal-nutrition-card">
+            <div className="meal-header">
+              <span className="meal-day">{meal.day || `Day ${index + 1}`}</span>
+              <span className="meal-type">{meal.mealType || 'Meal'}</span>
+            </div>
+            <h3 className="meal-name">{meal.name || 'Unnamed Meal'}</h3>
+            <div className="meal-macros">
+              <div className="macro-item calories">
+                <span className="macro-value">{meal.calories || 0}</span>
+                <span className="macro-label">cal</span>
+              </div>
+              <div className="macro-item protein">
+                <span className="macro-value">{meal.protein || 0}g</span>
+                <span className="macro-label">protein</span>
+              </div>
+              <div className="macro-item carbs">
+                <span className="macro-value">{meal.carbs || 0}g</span>
+                <span className="macro-label">carbs</span>
+              </div>
+              <div className="macro-item fat">
+                <span className="macro-value">{meal.fat || 0}g</span>
+                <span className="macro-label">fat</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * NutritionTrendsView - Shows weekly nutrition trends
+ * READ-ONLY analysis of meal plan data
+ */
+function NutritionTrendsView({ mealPlanData, nutritionSummary }) {
+  if (!nutritionSummary) {
+    return (
+      <div className="no-data-message">
+        <span className="no-data-icon">📈</span>
+        <h3>No Trends Available</h3>
+        <p>Start tracking your meals to see nutrition trends over time.</p>
+      </div>
+    );
+  }
+
+  const { dailyAverages, weeklyTotals } = nutritionSummary;
+
+  return (
+    <div className="nutrition-trends">
+      <h2>Nutrition Trends</h2>
+      <p className="section-subtitle">Your nutrition patterns over time</p>
+
+      {/* Daily Averages */}
+      <div className="trends-section">
+        <h3>📊 Daily Averages</h3>
+        <div className="averages-grid">
+          <div className="average-card">
+            <span className="average-icon">🔥</span>
+            <span className="average-value">{dailyAverages?.calories || 0}</span>
+            <span className="average-label">Calories/day</span>
+          </div>
+          <div className="average-card">
+            <span className="average-icon">🥩</span>
+            <span className="average-value">{dailyAverages?.protein || 0}g</span>
+            <span className="average-label">Protein/day</span>
+          </div>
+          <div className="average-card">
+            <span className="average-icon">🍞</span>
+            <span className="average-value">{dailyAverages?.carbs || 0}g</span>
+            <span className="average-label">Carbs/day</span>
+          </div>
+          <div className="average-card">
+            <span className="average-icon">🥑</span>
+            <span className="average-value">{dailyAverages?.fat || 0}g</span>
+            <span className="average-label">Fat/day</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Weekly Bar Chart (Simple CSS-based) */}
+      <div className="trends-section">
+        <h3>📅 Weekly Overview</h3>
+        <div className="weekly-chart">
+          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => {
+            const dayData = weeklyTotals?.[index] || { calories: 0 };
+            const maxCalories = 2500;
+            const percentage = Math.min((dayData.calories / maxCalories) * 100, 100);
+            
+            return (
+              <div key={day} className="chart-bar-container">
+                <div 
+                  className="chart-bar" 
+                  style={{ height: `${percentage}%` }}
+                  title={`${dayData.calories} calories`}
+                >
+                  <span className="bar-value">{dayData.calories}</span>
+                </div>
+                <span className="chart-label">{day}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Insights */}
+      <div className="trends-section">
+        <h3>💡 Insights</h3>
+        <div className="insights-list">
+          {dailyAverages?.calories > 2000 ? (
+            <div className="insight-item warning">
+              <span>⚠️</span>
+              <p>Your average daily calories ({dailyAverages.calories}) are above the typical 2000 calorie goal.</p>
+            </div>
+          ) : (
+            <div className="insight-item success">
+              <span>✅</span>
+              <p>Your average daily calories ({dailyAverages?.calories || 0}) are within a healthy range.</p>
+            </div>
+          )}
+          
+          {dailyAverages?.protein >= 50 ? (
+            <div className="insight-item success">
+              <span>✅</span>
+              <p>Great protein intake! You're getting {dailyAverages.protein}g per day.</p>
+            </div>
+          ) : (
+            <div className="insight-item info">
+              <span>ℹ️</span>
+              <p>Consider increasing protein intake. Current: {dailyAverages?.protein || 0}g/day.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

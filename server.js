@@ -3291,6 +3291,242 @@ Natural lighting, beautiful presentation, high-quality photo.`;
   }
 });
 
+// ============================================================================
+// NUTRITION MODULE ROUTES - READ-ONLY ACCESS TO MEAL PLAN DATA
+// ============================================================================
+
+/**
+ * GET /api/nutrition/meal-plan-summary
+ * Returns nutrition summary from user's current meal plan
+ * READ-ONLY - does not modify meal plan data
+ */
+app.get('/api/nutrition/meal-plan-summary', requireAuth, async (req, res) => {
+  try {
+    console.log(`[NUTRITION] Fetching meal plan summary for user ${req.user.email}`);
+
+    // Get user's most recent meal plan (READ-ONLY)
+    const result = await db.query(`
+      SELECT id, meals, shopping_list, total_cost, created_at
+      FROM meal_plans
+      WHERE user_id = $1
+      ORDER BY created_at DESC
+      LIMIT 1
+    `, [req.user.id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        error: 'No meal plan found',
+        hasMealPlan: false 
+      });
+    }
+
+    const mealPlan = result.rows[0];
+    const meals = mealPlan.meals || [];
+
+    // Calculate nutrition summary from meals
+    const summary = calculateNutritionSummary(meals);
+
+    res.json({
+      mealPlan: {
+        id: mealPlan.id,
+        meals: meals,
+        createdAt: mealPlan.created_at
+      },
+      summary: summary,
+      hasMealPlan: true
+    });
+
+    console.log(`[NUTRITION] ✅ Returned summary with ${meals.length} meals`);
+  } catch (error) {
+    console.error('[NUTRITION] Error fetching meal plan summary:', error);
+    res.status(500).json({ error: 'Failed to fetch nutrition data' });
+  }
+});
+
+/**
+ * GET /api/nutrition/daily/:date
+ * Returns nutrition for a specific day from meal plan
+ * READ-ONLY
+ */
+app.get('/api/nutrition/daily/:date', requireAuth, async (req, res) => {
+  try {
+    const { date } = req.params;
+    console.log(`[NUTRITION] Fetching daily nutrition for ${date}, user ${req.user.email}`);
+
+    // Get user's meal plan
+    const result = await db.query(`
+      SELECT meals FROM meal_plans
+      WHERE user_id = $1
+      ORDER BY created_at DESC
+      LIMIT 1
+    `, [req.user.id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'No meal plan found' });
+    }
+
+    const meals = result.rows[0].meals || [];
+    
+    // Parse the date to get day of week
+    const dayOfWeek = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
+    
+    // Filter meals for the requested day
+    const dayMeals = meals.filter(meal => 
+      meal.day?.toLowerCase() === dayOfWeek.toLowerCase()
+    );
+
+    // Calculate totals for the day
+    const dailyTotals = dayMeals.reduce((totals, meal) => ({
+      calories: totals.calories + (parseInt(meal.calories) || 0),
+      protein: totals.protein + (parseInt(meal.protein) || 0),
+      carbs: totals.carbs + (parseInt(meal.carbs) || 0),
+      fat: totals.fat + (parseInt(meal.fat) || 0),
+      fiber: totals.fiber + (parseInt(meal.fiber) || 0),
+      sodium: totals.sodium + (parseInt(meal.sodium) || 0)
+    }), { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sodium: 0 });
+
+    res.json({
+      date: date,
+      dayOfWeek: dayOfWeek,
+      meals: dayMeals,
+      totals: dailyTotals,
+      mealCount: dayMeals.length
+    });
+  } catch (error) {
+    console.error('[NUTRITION] Error fetching daily nutrition:', error);
+    res.status(500).json({ error: 'Failed to fetch daily nutrition' });
+  }
+});
+
+/**
+ * GET /api/nutrition/weekly
+ * Returns weekly nutrition summary from meal plan
+ * READ-ONLY
+ */
+app.get('/api/nutrition/weekly', requireAuth, async (req, res) => {
+  try {
+    console.log(`[NUTRITION] Fetching weekly summary for user ${req.user.email}`);
+
+    // Get user's meal plan
+    const result = await db.query(`
+      SELECT meals FROM meal_plans
+      WHERE user_id = $1
+      ORDER BY created_at DESC
+      LIMIT 1
+    `, [req.user.id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'No meal plan found' });
+    }
+
+    const meals = result.rows[0].meals || [];
+    const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+    // Calculate daily totals for each day
+    const weeklyData = daysOfWeek.map(day => {
+      const dayMeals = meals.filter(meal => 
+        meal.day?.toLowerCase() === day.toLowerCase()
+      );
+
+      const totals = dayMeals.reduce((acc, meal) => ({
+        calories: acc.calories + (parseInt(meal.calories) || 0),
+        protein: acc.protein + (parseInt(meal.protein) || 0),
+        carbs: acc.carbs + (parseInt(meal.carbs) || 0),
+        fat: acc.fat + (parseInt(meal.fat) || 0)
+      }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+
+      return {
+        day: day,
+        ...totals,
+        mealCount: dayMeals.length
+      };
+    });
+
+    // Calculate weekly averages
+    const daysWithMeals = weeklyData.filter(d => d.mealCount > 0).length || 1;
+    const weeklyTotals = weeklyData.reduce((acc, day) => ({
+      calories: acc.calories + day.calories,
+      protein: acc.protein + day.protein,
+      carbs: acc.carbs + day.carbs,
+      fat: acc.fat + day.fat
+    }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+
+    const dailyAverages = {
+      calories: Math.round(weeklyTotals.calories / daysWithMeals),
+      protein: Math.round(weeklyTotals.protein / daysWithMeals),
+      carbs: Math.round(weeklyTotals.carbs / daysWithMeals),
+      fat: Math.round(weeklyTotals.fat / daysWithMeals)
+    };
+
+    res.json({
+      weeklyData: weeklyData,
+      weeklyTotals: weeklyTotals,
+      dailyAverages: dailyAverages,
+      daysWithMeals: daysWithMeals
+    });
+  } catch (error) {
+    console.error('[NUTRITION] Error fetching weekly summary:', error);
+    res.status(500).json({ error: 'Failed to fetch weekly summary' });
+  }
+});
+
+/**
+ * Helper function to calculate nutrition summary from meals
+ */
+function calculateNutritionSummary(meals) {
+  if (!meals || meals.length === 0) {
+    return {
+      totalMeals: 0,
+      dailyAverages: { calories: 0, protein: 0, carbs: 0, fat: 0 },
+      weeklyTotals: []
+    };
+  }
+
+  // Group meals by day
+  const mealsByDay = {};
+  meals.forEach(meal => {
+    const day = meal.day || 'Unknown';
+    if (!mealsByDay[day]) {
+      mealsByDay[day] = [];
+    }
+    mealsByDay[day].push(meal);
+  });
+
+  // Calculate totals per day
+  const weeklyTotals = Object.entries(mealsByDay).map(([day, dayMeals]) => {
+    const totals = dayMeals.reduce((acc, meal) => ({
+      calories: acc.calories + (parseInt(meal.calories) || 0),
+      protein: acc.protein + (parseInt(meal.protein) || 0),
+      carbs: acc.carbs + (parseInt(meal.carbs) || 0),
+      fat: acc.fat + (parseInt(meal.fat) || 0)
+    }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+
+    return { day, ...totals };
+  });
+
+  // Calculate daily averages
+  const numDays = weeklyTotals.length || 1;
+  const totalNutrition = weeklyTotals.reduce((acc, day) => ({
+    calories: acc.calories + day.calories,
+    protein: acc.protein + day.protein,
+    carbs: acc.carbs + day.carbs,
+    fat: acc.fat + day.fat
+  }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+
+  const dailyAverages = {
+    calories: Math.round(totalNutrition.calories / numDays),
+    protein: Math.round(totalNutrition.protein / numDays),
+    carbs: Math.round(totalNutrition.carbs / numDays),
+    fat: Math.round(totalNutrition.fat / numDays)
+  };
+
+  return {
+    totalMeals: meals.length,
+    dailyAverages,
+    weeklyTotals
+  };
+}
+
 // Initialize database tables on startup
 async function initializeDatabase() {
   try {
