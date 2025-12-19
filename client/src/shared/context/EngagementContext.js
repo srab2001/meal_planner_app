@@ -14,7 +14,7 @@
 
 import React, { createContext, useContext, useEffect, useCallback } from 'react';
 import { useNotification, useAchievements, useStreak, useFeedback } from '../hooks';
-import { ToastContainer, AchievementPopup, FeedbackModal } from '../components';
+import { ToastContainer, AchievementPopup } from '../components';
 
 // Create context
 const EngagementContext = createContext(null);

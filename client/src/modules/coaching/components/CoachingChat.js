@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { API_BASE, fetchWithAuth } from '../../../shared/utils/api';
 import auditLogger from '../../../shared/services/AuditLogger';
 import './CoachingChat.css';
@@ -125,18 +125,8 @@ export default function CoachingChat({
     { icon: '😴', text: 'Tips for better sleep and recovery' }
   ];
 
-  // Load chat history on mount
-  useEffect(() => {
-    loadChatHistory();
-  }, []);
-
-  // Scroll to bottom when messages change
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
   // Load chat history from localStorage
-  const loadChatHistory = () => {
+  const loadChatHistory = useCallback(() => {
     try {
       const history = localStorage.getItem('coaching_chat_history');
       if (history) {
@@ -149,24 +139,35 @@ export default function CoachingChat({
         }
       } else {
         // Add welcome message
-        addWelcomeMessage();
+        const welcomeMessage = {
+          id: Date.now(),
+          role: 'coach',
+          content: `Hi${user?.name ? ` ${user.name.split(' ')[0]}` : ''}! 👋 I'm your AI Health Coach. I'm here to help you reach your wellness goals, answer nutrition questions, and provide personalized guidance. What would you like to work on today?`,
+          timestamp: new Date().toISOString()
+        };
+        setMessages([welcomeMessage]);
       }
     } catch (err) {
       console.error('Error loading chat history:', err);
-      addWelcomeMessage();
+      const welcomeMessage = {
+        id: Date.now(),
+        role: 'coach',
+        content: `Hi${user?.name ? ` ${user.name.split(' ')[0]}` : ''}! 👋 I'm your AI Health Coach. I'm here to help you reach your wellness goals, answer nutrition questions, and provide personalized guidance. What would you like to work on today?`,
+        timestamp: new Date().toISOString()
+      };
+      setMessages([welcomeMessage]);
     }
-  };
+  }, [user]);
 
-  // Add welcome message
-  const addWelcomeMessage = () => {
-    const welcomeMessage = {
-      id: Date.now(),
-      role: 'coach',
-      content: `Hi${user?.name ? ` ${user.name.split(' ')[0]}` : ''}! 👋 I'm your AI Health Coach. I'm here to help you reach your wellness goals, answer nutrition questions, and provide personalized guidance. What would you like to work on today?`,
-      timestamp: new Date().toISOString()
-    };
-    setMessages([welcomeMessage]);
-  };
+  // Load chat history on mount
+  useEffect(() => {
+    loadChatHistory();
+  }, [loadChatHistory]);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   // Save chat history to localStorage
   const saveChatHistory = (newMessages) => {
@@ -447,7 +448,14 @@ export default function CoachingChat({
   const handleClearChat = () => {
     if (window.confirm('Clear all chat history?')) {
       localStorage.removeItem('coaching_chat_history');
-      addWelcomeMessage();
+      // Reset to welcome message
+      const welcomeMessage = {
+        id: Date.now(),
+        role: 'coach',
+        content: `Hi${user?.name ? ` ${user.name.split(' ')[0]}` : ''}! 👋 I'm your AI Health Coach. I'm here to help you reach your wellness goals, answer nutrition questions, and provide personalized guidance. What would you like to work on today?`,
+        timestamp: new Date().toISOString()
+      };
+      setMessages([welcomeMessage]);
       setShowSuggestions(true);
     }
   };
