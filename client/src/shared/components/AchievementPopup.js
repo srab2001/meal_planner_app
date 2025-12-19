@@ -5,7 +5,7 @@
  * Uses ASR theme colors for styling.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAchievements } from '../hooks';
 import './AchievementPopup.css';
 
@@ -13,6 +13,15 @@ const AchievementPopup = ({ autoHide = true, duration = 5000 }) => {
   const { newAchievement, clearNewAchievement } = useAchievements();
   const [visible, setVisible] = useState(false);
   const [exiting, setExiting] = useState(false);
+
+  const handleClose = useCallback(() => {
+    setExiting(true);
+    setTimeout(() => {
+      setVisible(false);
+      setExiting(false);
+      clearNewAchievement();
+    }, 300);
+  }, [clearNewAchievement]);
 
   useEffect(() => {
     if (newAchievement) {
@@ -26,16 +35,7 @@ const AchievementPopup = ({ autoHide = true, duration = 5000 }) => {
         return () => clearTimeout(timer);
       }
     }
-  }, [newAchievement, autoHide, duration]);
-
-  const handleClose = () => {
-    setExiting(true);
-    setTimeout(() => {
-      setVisible(false);
-      setExiting(false);
-      clearNewAchievement();
-    }, 300);
-  };
+  }, [newAchievement, autoHide, duration, handleClose]);
 
   if (!visible || !newAchievement) {
     return null;

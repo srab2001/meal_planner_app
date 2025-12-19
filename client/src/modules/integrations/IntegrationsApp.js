@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { healthDataService, HEALTH_PROVIDERS, CONNECTION_STATUS } from './services/HealthDataService';
+import React, { useState, useEffect, useCallback } from 'react';
+import { healthDataService, CONNECTION_STATUS } from './services/HealthDataService';
 import featureFlags from '../../shared/services/FeatureFlags';
-import auditLogger from '../../shared/services/AuditLogger';
 import './styles/IntegrationsApp.css';
 
 /**
@@ -22,12 +21,7 @@ export default function IntegrationsApp({ user, onBack, onLogout }) {
   const [message, setMessage] = useState(null);
   const [isFeatureEnabled, setIsFeatureEnabled] = useState(true);
 
-  // Initialize on mount
-  useEffect(() => {
-    initializeService();
-  }, [user]);
-
-  const initializeService = async () => {
+  const initializeService = useCallback(async () => {
     setIsLoading(true);
     
     // Check feature flag
@@ -56,7 +50,12 @@ export default function IntegrationsApp({ user, onBack, onLogout }) {
     setImportedData(healthDataService.getImportedData());
     
     setIsLoading(false);
-  };
+  }, [user]);
+
+  // Initialize on mount
+  useEffect(() => {
+    initializeService();
+  }, [initializeService]);
 
   // Handle connect
   const handleConnect = async (providerId) => {
