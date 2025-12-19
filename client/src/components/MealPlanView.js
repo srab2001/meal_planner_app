@@ -149,7 +149,16 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
           console.log('✅ [Favorite] Received favorites:', data);
           console.log('✅ [Favorite] Favorites count:', data.favorites?.length || 0);
           console.log('✅ [Favorite] Favorite items:', data.favorites);
-          setFavorites(data.favorites || []);
+          // Filter out invalid favorites that have no meal data
+          const validFavorites = (data.favorites || []).filter(fav => {
+            const isValid = fav && (fav.meal?.name || fav.meal_name);
+            if (!isValid) {
+              console.warn('⚠️ [Favorite] Filtering out invalid favorite:', fav);
+            }
+            return isValid;
+          });
+          console.log('✅ [Favorite] Valid favorites count:', validFavorites.length);
+          setFavorites(validFavorites);
         } else {
           const errorData = await response.json().catch(() => ({}));
           console.error('❌ [Favorite] Failed to load favorites:', response.status, errorData.error);
@@ -272,6 +281,11 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   const allMealTypes = preferences?.selectedMeals || ['breakfast', 'lunch', 'dinner'];
 
   const handleMealClick = (meal, day, mealType) => {
+    if (!meal || !meal.name) {
+      console.error('❌ [MealClick] Invalid meal data:', meal);
+      alert('❌ This meal has incomplete data and cannot be viewed.');
+      return;
+    }
     setSelectedMeal(meal);
     setSelectedMealDay(day);
     setSelectedMealType(mealType);
@@ -655,6 +669,14 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   };
 
   const handleUseFavorite = async (favorite, day, mealType) => {
+    // Defensive check for meal data
+    const mealData = favorite?.meal;
+    if (!mealData || !mealData.name) {
+      console.error('❌ [UseFavorite] Invalid favorite meal data:', favorite);
+      alert('❌ This favorite has incomplete meal data and cannot be used.');
+      return;
+    }
+    
     // Replace current meal with favorite
     setLocalMealPlan(prevPlan => ({
       ...prevPlan,
@@ -662,11 +684,11 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
         ...prevPlan.mealPlan,
         [day]: {
           ...prevPlan.mealPlan[day],
-          [mealType]: favorite.meal
+          [mealType]: mealData
         }
       }
     }));
-    console.log(`✨ Applied favorite "${favorite.meal.name}" to ${day} ${mealType}`);
+    console.log(`✨ Applied favorite "${mealData.name}" to ${day} ${mealType}`);
   };
 
   // Ingredient operation handlers
