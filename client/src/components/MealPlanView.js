@@ -167,9 +167,11 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
           console.warn('⚠️ [Favorite] Backend unavailable - loading from localStorage');
           try {
             const localFavorites = JSON.parse(localStorage.getItem('local_favorites') || '[]');
-            if (localFavorites.length > 0) {
-              console.log('💾 [Favorite] Loaded', localFavorites.length, 'favorites from localStorage');
-              setFavorites(localFavorites);
+            // Filter out invalid favorites
+            const validLocalFavorites = localFavorites.filter(fav => fav && (fav.meal?.name || fav.meal_name));
+            if (validLocalFavorites.length > 0) {
+              console.log('💾 [Favorite] Loaded', validLocalFavorites.length, 'valid favorites from localStorage');
+              setFavorites(validLocalFavorites);
             }
           } catch (localError) {
             console.error('❌ [Favorite] Failed to load from localStorage:', localError);
@@ -187,9 +189,11 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
         console.warn('⚠️ [Favorite] Network error - loading from localStorage');
         try {
           const localFavorites = JSON.parse(localStorage.getItem('local_favorites') || '[]');
-          if (localFavorites.length > 0) {
-            console.log('💾 [Favorite] Loaded', localFavorites.length, 'favorites from localStorage');
-            setFavorites(localFavorites);
+          // Filter out invalid favorites
+          const validLocalFavorites = localFavorites.filter(fav => fav && (fav.meal?.name || fav.meal_name));
+          if (validLocalFavorites.length > 0) {
+            console.log('💾 [Favorite] Loaded', validLocalFavorites.length, 'valid favorites from localStorage');
+            setFavorites(validLocalFavorites);
           }
         } catch (localError) {
           console.error('❌ [Favorite] Failed to load from localStorage:', localError);
