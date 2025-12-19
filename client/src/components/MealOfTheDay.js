@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import './MealOfTheDay.css';
 
-const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
+// API Configuration - Always use production URLs (Vercel/Render)
+const PRODUCTION_API = 'https://meal-planner-app-mve2.onrender.com';
+const API_BASE = process.env.REACT_APP_API_URL || PRODUCTION_API;
 
 function MealOfTheDay() {
   const [meal, setMeal] = useState(null);

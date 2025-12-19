@@ -1,8 +1,122 @@
 /* ========================================
-   GLOBAL CSS CUSTOM PROPERTIES
+   ASR HEALTH PORTAL - CENTRALIZED THEME
+   Design System derived from ASR Logo
    ======================================== */
 :root {
-  /* Typography Scale */
+  /* ===== ASR BRAND COLORS ===== */
+  
+  /* Primary - Purple (ASR Brand Core) */
+  --asr-purple-50: #f5f3ff;   /* Lightest tint */
+  --asr-purple-100: #ede9fe;
+  --asr-purple-200: #ddd6fe;
+  --asr-purple-300: #c4b5fd;
+  --asr-purple-400: #a78bfa;
+  --asr-purple-500: #8b5cf6;  /* Base purple */
+  --asr-purple-600: #7c3aed;  /* Primary action */
+  --asr-purple-700: #6d28d9;  /* Hover state */
+  --asr-purple-800: #5b21b6;
+  --asr-purple-900: #4c1d95;  /* Darkest shade */
+  
+  /* Secondary - Red (ASR Accent) */
+  --asr-red-50: #fef2f2;
+  --asr-red-100: #fee2e2;
+  --asr-red-200: #fecaca;
+  --asr-red-300: #fca5a5;
+  --asr-red-400: #f87171;
+  --asr-red-500: #ef4444;     /* Base red */
+  --asr-red-600: #dc2626;     /* Secondary action */
+  --asr-red-700: #b91c1c;     /* Hover state */
+  --asr-red-800: #991b1b;
+  --asr-red-900: #7f1d1d;
+  
+  /* Accent - Orange (Energy & Vitality) */
+  --asr-orange-50: #fff7ed;
+  --asr-orange-100: #ffedd5;
+  --asr-orange-200: #fed7aa;
+  --asr-orange-300: #fdba74;
+  --asr-orange-400: #fb923c;
+  --asr-orange-500: #f97316;  /* Base orange */
+  --asr-orange-600: #ea580c;  /* Accent action */
+  --asr-orange-700: #c2410c;  /* Hover state */
+  --asr-orange-800: #9a3412;
+  --asr-orange-900: #7c2d12;
+  
+  /* Neutral - Gray Scale */
+  --asr-gray-50: #fafafa;     /* Background light */
+  --asr-gray-100: #f4f4f5;
+  --asr-gray-200: #e4e4e7;    /* Borders light */
+  --asr-gray-300: #d4d4d8;
+  --asr-gray-400: #a1a1aa;    /* Placeholder text */
+  --asr-gray-500: #71717a;    /* Muted text */
+  --asr-gray-600: #52525b;    /* Secondary text */
+  --asr-gray-700: #3f3f46;    /* Primary text dark */
+  --asr-gray-800: #27272a;
+  --asr-gray-900: #18181b;    /* Heading text */
+  
+  /* ===== SEMANTIC COLOR TOKENS ===== */
+  
+  /* Primary Actions */
+  --color-primary: var(--asr-purple-600);
+  --color-primary-hover: var(--asr-purple-700);
+  --color-primary-light: var(--asr-purple-100);
+  --color-primary-dark: var(--asr-purple-800);
+  
+  /* Secondary Actions */
+  --color-secondary: var(--asr-red-500);
+  --color-secondary-hover: var(--asr-red-600);
+  --color-secondary-light: var(--asr-red-100);
+  --color-secondary-dark: var(--asr-red-700);
+  
+  /* Accent Highlights */
+  --color-accent: var(--asr-orange-500);
+  --color-accent-hover: var(--asr-orange-600);
+  --color-accent-light: var(--asr-orange-100);
+  --color-accent-dark: var(--asr-orange-700);
+  
+  /* Status Colors */
+  --color-success: #22c55e;   /* Green - WCAG AA compliant */
+  --color-success-light: #dcfce7;
+  --color-warning: var(--asr-orange-500);
+  --color-warning-light: var(--asr-orange-100);
+  --color-error: var(--asr-red-500);
+  --color-error-light: var(--asr-red-100);
+  --color-info: var(--asr-purple-500);
+  --color-info-light: var(--asr-purple-100);
+  
+  /* Text Colors */
+  --color-text-primary: var(--asr-gray-900);
+  --color-text-secondary: var(--asr-gray-600);
+  --color-text-muted: var(--asr-gray-500);
+  --color-text-placeholder: var(--asr-gray-400);
+  --color-text-inverse: #ffffff;
+  
+  /* Background Colors */
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: var(--asr-gray-50);
+  --color-bg-tertiary: var(--asr-gray-100);
+  --color-bg-overlay: rgba(0, 0, 0, 0.5);
+  
+  /* Border Colors */
+  --color-border-light: var(--asr-gray-200);
+  --color-border-default: var(--asr-gray-300);
+  --color-border-dark: var(--asr-gray-400);
+  --color-border-focus: var(--asr-purple-500);
+  
+  /* ASR Brand Gradient */
+  --gradient-primary: linear-gradient(135deg, var(--asr-purple-500) 0%, var(--asr-purple-700) 100%);
+  --gradient-secondary: linear-gradient(135deg, var(--asr-red-500) 0%, var(--asr-red-700) 100%);
+  --gradient-accent: linear-gradient(135deg, var(--asr-orange-400) 0%, var(--asr-orange-600) 100%);
+  --gradient-brand: linear-gradient(135deg, var(--asr-purple-600) 0%, var(--asr-red-500) 50%, var(--asr-orange-500) 100%);
+  
+  /* Legacy compatibility (maps old tokens to new ASR theme) */
+  --primary: var(--color-primary);
+  --primary-dark: var(--color-primary-hover);
+  --secondary: var(--asr-purple-700);
+  --success: var(--color-success);
+  --error: var(--color-error);
+  --warning: var(--color-warning);
+  
+  /* ===== TYPOGRAPHY SCALE ===== */
   --font-xs: 0.75rem;    /* 12px */
   --font-sm: 0.875rem;   /* 14px */
   --font-base: 1rem;     /* 16px */
@@ -12,7 +126,7 @@
   --font-3xl: 1.875rem;  /* 30px */
   --font-4xl: 2.25rem;   /* 36px */
 
-  /* Spacing Scale */
+  /* ===== SPACING SCALE ===== */
   --spacing-xs: 0.5rem;  /* 8px */
   --spacing-sm: 0.75rem; /* 12px */
   --spacing-md: 1rem;    /* 16px */
@@ -20,26 +134,19 @@
   --spacing-xl: 2rem;    /* 32px */
   --spacing-2xl: 3rem;   /* 48px */
 
-  /* Colors */
-  --primary: #667eea;
-  --primary-dark: #5568d3;
-  --secondary: #764ba2;
-  --success: #4ade80;
-  --error: #ff4444;
-  --warning: #ff9800;
-
-  /* Shadows */
+  /* ===== SHADOWS ===== */
   --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.2);
+  --shadow-focus: 0 0 0 3px var(--asr-purple-200);
 
-  /* Border Radius */
+  /* ===== BORDER RADIUS ===== */
   --radius-sm: 6px;
   --radius-md: 12px;
   --radius-lg: 20px;
   --radius-full: 9999px;
 
-  /* Transitions */
+  /* ===== TRANSITIONS ===== */
   --transition-fast: 0.15s ease;
   --transition-base: 0.3s ease;
   --transition-slow: 0.5s ease;
@@ -64,7 +171,7 @@
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--gradient-primary);
   padding: 20px;
 }
 

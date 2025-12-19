@@ -1,0 +1,147 @@
+/* ========================================
+   CALORIE TRACKER - Circular Progress Ring
+   Uses ASR Theme tokens
+   ======================================== */
+
+.calorie-tracker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.tracker-title {
+  color: var(--color-text-primary);
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 20px;
+  text-align: center;
+}
+
+/* Ring Container */
+.calorie-ring-container {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  margin-bottom: 20px;
+}
+
+.calorie-ring {
+  width: 100%;
+  height: 100%;
+}
+
+.ring-background {
+  stroke: var(--color-border-light);
+}
+
+.ring-progress {
+  stroke: url(#calorieGradient);
+  stroke: var(--color-primary);
+  transition: stroke-dashoffset 0.5s ease;
+}
+
+.ring-progress.over {
+  stroke: var(--color-error);
+}
+
+/* Center Content */
+.ring-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.calories-consumed {
+  display: block;
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1;
+}
+
+.calories-label {
+  display: block;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
+/* Stats Row */
+.calorie-stats {
+  display: flex;
+  justify-content: space-around;
+  width: 100%;
+  padding: 16px 0;
+  border-top: 1px solid var(--color-border-light);
+  border-bottom: 1px solid var(--color-border-light);
+  margin-bottom: 16px;
+}
+
+.calorie-stats .stat {
+  text-align: center;
+}
+
+.stat-number {
+  display: block;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.stat.over .stat-number {
+  color: var(--color-error);
+}
+
+.stat-text {
+  display: block;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+}
+
+/* Status Message */
+.calorie-status {
+  padding: 10px 20px;
+  border-radius: var(--radius-full);
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.calorie-status.good {
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.calorie-status.close {
+  background: var(--color-warning-light);
+  color: var(--asr-orange-700);
+}
+
+.calorie-status.over {
+  background: var(--color-error-light);
+  color: var(--color-error);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .calorie-ring-container {
+    width: 160px;
+    height: 160px;
+  }
+
+  .calories-consumed {
+    font-size: 28px;
+  }
+
+  .stat-number {
+    font-size: 18px;
+  }
+}

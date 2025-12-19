@@ -1,0 +1,131 @@
+/**
+ * StreakBanner CSS
+ * 
+ * Uses ASR theme variables for consistent styling.
+ */
+
+.streak-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, var(--asr-gray-800, #1f2937) 0%, var(--asr-gray-900, #111827) 100%);
+  border-radius: 12px;
+  border: 1px solid var(--asr-gray-700, #374151);
+}
+
+.streak-banner-compact {
+  padding: 12px 16px;
+  gap: 12px;
+}
+
+/* Icon */
+.streak-banner-icon {
+  font-size: 36px;
+  flex-shrink: 0;
+}
+
+.streak-banner-compact .streak-banner-icon {
+  font-size: 28px;
+}
+
+.streak-banner-icon-pulse {
+  animation: streakPulse 1.5s ease-in-out infinite;
+}
+
+/* Content */
+.streak-banner-content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Main streak display */
+.streak-banner-main {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.streak-banner-count {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.streak-banner-compact .streak-banner-count {
+  font-size: 24px;
+}
+
+.streak-banner-label {
+  color: var(--asr-gray-400, #9ca3af);
+  font-size: 14px;
+}
+
+/* Title and message */
+.streak-banner-title {
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.streak-banner-message {
+  color: var(--asr-gray-500, #6b7280);
+  font-size: 12px;
+}
+
+/* Progress bar */
+.streak-banner-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.streak-banner-progress-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--asr-gray-700, #374151);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.streak-banner-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease-out;
+}
+
+.streak-banner-progress-text {
+  color: var(--asr-gray-500, #6b7280);
+  font-size: 12px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+/* Animations */
+@keyframes streakPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .streak-banner {
+    padding: 14px 16px;
+    gap: 12px;
+  }
+  
+  .streak-banner-icon {
+    font-size: 30px;
+  }
+  
+  .streak-banner-count {
+    font-size: 24px;
+  }
+}

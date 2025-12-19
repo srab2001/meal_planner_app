@@ -3,7 +3,12 @@ import './MealPlanView.css';
 import ShoppingList from './ShoppingList';
 import ProductRecommendations from './ProductRecommendations';
 
-const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
+// Engagement services
+import { useEngagement } from '../shared/context/EngagementContext';
+
+// API Configuration - Always use production URLs (Vercel/Render)
+const PRODUCTION_API = 'https://meal-planner-app-mve2.onrender.com';
+const API_BASE = process.env.REACT_APP_API_URL || PRODUCTION_API;
 
 // Helper function to shorten day names for mobile
 const shortenDayName = (day) => {
@@ -78,6 +83,9 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [historicalStores, setHistoricalStores] = useState(null);
   const [isViewingHistory, setIsViewingHistory] = useState(false);
+
+  // Engagement services hook
+  const engagement = useEngagement();
 
   // Recipe customization state
   const [customServings, setCustomServings] = useState(null);
@@ -226,6 +234,21 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount
 
+  // Trigger engagement achievements when viewing a meal plan
+  useEffect(() => {
+    if (localMealPlan && engagement) {
+      // First meal plan achievement
+      engagement.achievements.checkAndUnlock('FIRST_MEAL_PLAN', true);
+      
+      // Check if full week is planned
+      const daysPlanned = Object.keys(localMealPlan.mealPlan || {}).length;
+      engagement.achievements.checkAndUnlock('WEEK_PLANNER', daysPlanned >= 7);
+      
+      // Show success notification for meal plan view
+      engagement.showSuccess('Meal plan loaded successfully!', { duration: 2000 });
+    }
+  }, [localMealPlan]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Early return check must come after all hooks
   if (!localMealPlan) {
     return (
@@ -352,6 +375,14 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
         setFavorites(prev => {
           const updated = [...prev, data.favorite];
           console.log('✅ [Favorite] Updated favorites state. New total:', updated.length);
+          
+          // Trigger engagement achievements based on favorites count
+          if (engagement) {
+            engagement.achievements.checkAndUnlock('RECIPE_COLLECTOR', updated.length >= 10);
+            engagement.achievements.checkAndUnlock('RECIPE_MASTER', updated.length >= 50);
+            engagement.showSuccess('Recipe saved to favorites!', { icon: '⭐' });
+          }
+          
           return updated;
         });
         

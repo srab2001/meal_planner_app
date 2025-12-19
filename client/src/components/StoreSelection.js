@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import './StoreSelection.css';
 
-const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
+// API Configuration - Always use production URLs (Vercel/Render)
+const PRODUCTION_API = 'https://meal-planner-app-mve2.onrender.com';
+const API_BASE = process.env.REACT_APP_API_URL || PRODUCTION_API;
 
 function StoreSelection({ stores, zipCode, onSubmit, onBack, onRefreshStores }) {
   const [primaryStore, setPrimaryStore] = useState(null);
