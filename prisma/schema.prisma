@@ -1,0 +1,357 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model ad_clicks {
+  id                    String                  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id               String?                 @db.Uuid
+  impression_id         String?                 @db.Uuid
+  ad_type               String                  @db.VarChar(50)
+  ad_placement          String?                 @db.VarChar(100)
+  ad_id                 String?                 @db.VarChar(255)
+  destination_url       String?
+  session_id            String?                 @db.VarChar(255)
+  ip_address            String?                 @db.Inet
+  user_agent            String?
+  converted             Boolean?                @default(false)
+  conversion_value      Decimal?                @db.Decimal(10, 2)
+  conversion_date       DateTime?               @db.Timestamp(6)
+  created_at            DateTime?               @default(now()) @db.Timestamp(6)
+  ad_impressions        ad_impressions?         @relation(fields: [impression_id], references: [id], onUpdate: NoAction)
+  users                 users?                  @relation(fields: [user_id], references: [id], onUpdate: NoAction)
+  affiliate_conversions affiliate_conversions[]
+
+  @@index([ad_type], map: "idx_ad_clicks_ad_type")
+  @@index([created_at(sort: Desc)], map: "idx_ad_clicks_created_at")
+  @@index([impression_id], map: "idx_ad_clicks_impression_id")
+  @@index([user_id], map: "idx_ad_clicks_user_id")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model ad_impressions {
+  id           String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id      String?     @db.Uuid
+  ad_type      String      @db.VarChar(50)
+  ad_placement String?     @db.VarChar(100)
+  ad_id        String?     @db.VarChar(255)
+  ad_content   Json?
+  page_url     String?
+  referrer     String?
+  session_id   String?     @db.VarChar(255)
+  ip_address   String?     @db.Inet
+  user_agent   String?
+  created_at   DateTime?   @default(now()) @db.Timestamp(6)
+  ad_clicks    ad_clicks[]
+  users        users?      @relation(fields: [user_id], references: [id], onUpdate: NoAction)
+
+  @@index([ad_type], map: "idx_ad_impressions_ad_type")
+  @@index([created_at(sort: Desc)], map: "idx_ad_impressions_created_at")
+  @@index([session_id], map: "idx_ad_impressions_session")
+  @@index([user_id], map: "idx_ad_impressions_user_id")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model affiliate_conversions {
+  id                String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id           String?    @db.Uuid
+  click_id          String?    @db.Uuid
+  affiliate_network String     @db.VarChar(100)
+  affiliate_id      String?    @db.VarChar(255)
+  conversion_type   String?    @db.VarChar(50)
+  order_value       Decimal?   @db.Decimal(10, 2)
+  commission_value  Decimal?   @db.Decimal(10, 2)
+  commission_rate   Decimal?   @db.Decimal(5, 2)
+  status            String?    @default("pending") @db.VarChar(50)
+  conversion_date   DateTime?  @default(now()) @db.Timestamp(6)
+  confirmed_date    DateTime?  @db.Timestamp(6)
+  paid_date         DateTime?  @db.Timestamp(6)
+  notes             String?
+  ad_clicks         ad_clicks? @relation(fields: [click_id], references: [id], onUpdate: NoAction)
+  users             users?     @relation(fields: [user_id], references: [id], onUpdate: NoAction)
+
+  @@index([conversion_date(sort: Desc)], map: "idx_affiliate_conversions_date")
+  @@index([affiliate_network], map: "idx_affiliate_conversions_network")
+  @@index([status], map: "idx_affiliate_conversions_status")
+  @@index([user_id], map: "idx_affiliate_conversions_user_id")
+}
+
+model app_settings {
+  key         String    @id @db.VarChar(255)
+  value       String
+  description String?
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+  updated_at  DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model cuisine_options {
+  id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name          String    @unique @db.VarChar(100)
+  display_order Int?      @default(0)
+  active        Boolean?  @default(true)
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+  updated_at    DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([active], map: "idx_cuisine_active")
+  @@index([display_order], map: "idx_cuisine_display_order")
+}
+
+model dietary_options {
+  id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  key           String    @unique @db.VarChar(50)
+  label         String    @db.VarChar(100)
+  display_order Int?      @default(0)
+  active        Boolean?  @default(true)
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+  updated_at    DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([active], map: "idx_dietary_active")
+  @@index([display_order], map: "idx_dietary_display_order")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model discount_codes {
+  id                String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  code              String           @unique @db.VarChar(50)
+  description       String?
+  discount_type     String           @db.VarChar(20)
+  discount_value    Decimal          @db.Decimal(10, 2)
+  active            Boolean?         @default(true)
+  max_uses          Int?
+  uses_count        Int?             @default(0)
+  valid_from        DateTime?        @default(now()) @db.Timestamp(6)
+  valid_until       DateTime?        @db.Timestamp(6)
+  minimum_plan_type String?          @db.VarChar(50)
+  created_at        DateTime?        @default(now()) @db.Timestamp(6)
+  updated_at        DateTime?        @default(now()) @db.Timestamp(6)
+  discount_usage    discount_usage[]
+
+  @@index([code], map: "idx_discount_codes_code")
+}
+
+model discount_usage {
+  id               String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  discount_code_id String?         @db.Uuid
+  user_id          String?         @db.Uuid
+  subscription_id  String?         @db.Uuid
+  amount_saved     Decimal?        @db.Decimal(10, 2)
+  original_price   Decimal?        @db.Decimal(10, 2)
+  final_price      Decimal?        @db.Decimal(10, 2)
+  ip_address       String?         @db.Inet
+  user_agent       String?
+  used_at          DateTime?       @default(now()) @db.Timestamp(6)
+  discount_codes   discount_codes? @relation(fields: [discount_code_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  subscriptions    subscriptions?  @relation(fields: [subscription_id], references: [id], onUpdate: NoAction)
+  users            users?          @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([discount_code_id, user_id], map: "idx_discount_usage_unique")
+  @@index([discount_code_id], map: "idx_discount_usage_code")
+  @@index([used_at(sort: Desc)], map: "idx_discount_usage_used_at")
+  @@index([user_id], map: "idx_discount_usage_user")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model favorites {
+  id                  String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id             String    @db.Uuid
+  meal_type           String    @db.VarChar(20)
+  meal_data           Json
+  meal_name           String    @db.VarChar(255)
+  servings_adjustment Int?
+  user_notes          String?
+  created_at          DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime? @default(now()) @db.Timestamptz(6)
+  users               users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, meal_name, meal_type])
+  @@index([meal_name], map: "idx_favorites_meal_name")
+  @@index([meal_type], map: "idx_favorites_meal_type")
+  @@index([user_id], map: "idx_favorites_user_id")
+}
+
+model meal_of_day_shares {
+  id              String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  meal_id         String?          @db.Uuid
+  platform        String           @db.VarChar(50)
+  user_id         String?          @db.Uuid
+  shared_at       DateTime?        @default(now()) @db.Timestamp(6)
+  meal_of_the_day meal_of_the_day? @relation(fields: [meal_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users           users?           @relation(fields: [user_id], references: [id], onUpdate: NoAction)
+
+  @@index([meal_id], map: "idx_meal_shares_meal_id")
+  @@index([platform], map: "idx_meal_shares_platform")
+}
+
+model meal_of_the_day {
+  id                 String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  title              String               @db.VarChar(255)
+  description        String?
+  meal_type          String?              @db.VarChar(50)
+  cuisine            String?              @db.VarChar(100)
+  prep_time          String?              @db.VarChar(50)
+  cook_time          String?              @db.VarChar(50)
+  servings           Int?                 @default(2)
+  ingredients        Json
+  instructions       Json
+  image_url          String?
+  nutrition_info     Json?
+  tags               Json?                @default("[]")
+  featured_date      DateTime             @default(dbgenerated("CURRENT_DATE")) @db.Date
+  active             Boolean?             @default(true)
+  view_count         Int?                 @default(0)
+  share_count        Int?                 @default(0)
+  created_by         String?              @db.VarChar(100)
+  created_at         DateTime?            @default(now()) @db.Timestamp(6)
+  updated_at         DateTime?            @default(now()) @db.Timestamp(6)
+  published_at       DateTime?            @db.Timestamp(6)
+  meal_of_day_shares meal_of_day_shares[]
+
+  @@unique([featured_date, active])
+  @@index([active], map: "idx_meal_of_day_active")
+  @@index([featured_date(sort: Desc)], map: "idx_meal_of_day_featured_date")
+  @@index([meal_type], map: "idx_meal_of_day_meal_type")
+}
+
+model meal_plan_history {
+  id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id       String    @db.Uuid
+  preferences   Json?
+  meal_plan     Json
+  stores        Json?
+  shopping_list Json?
+  total_cost    Decimal?  @db.Decimal(10, 2)
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime? @default(now()) @db.Timestamptz(6)
+  users         users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([created_at(sort: Desc)], map: "idx_history_created_at")
+  @@index([meal_plan], map: "idx_history_meal_plan", type: Gin)
+  @@index([preferences], map: "idx_history_preferences", type: Gin)
+  @@index([user_id], map: "idx_history_user_id")
+  @@index([user_id, created_at(sort: Desc)], map: "idx_history_user_recent")
+}
+
+model session {
+  sid    String   @id @db.VarChar
+  sess   Json     @db.Json
+  expire DateTime @db.Timestamp(6)
+
+  @@index([expire], map: "IDX_session_expire")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model subscriptions {
+  id                     String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id                String?          @db.Uuid
+  stripe_customer_id     String?          @unique @db.VarChar(255)
+  stripe_subscription_id String?          @unique @db.VarChar(255)
+  plan_type              String           @default("free") @db.VarChar(50)
+  status                 String           @default("active") @db.VarChar(50)
+  current_period_start   DateTime?        @db.Timestamp(6)
+  current_period_end     DateTime?        @db.Timestamp(6)
+  trial_end              DateTime?        @db.Timestamp(6)
+  cancel_at_period_end   Boolean?         @default(false)
+  cancelled_at           DateTime?        @db.Timestamp(6)
+  created_at             DateTime?        @default(now()) @db.Timestamp(6)
+  updated_at             DateTime?        @default(now()) @db.Timestamp(6)
+  discount_usage         discount_usage[]
+  users                  users?           @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([status], map: "idx_subscriptions_status")
+  @@index([stripe_customer_id], map: "idx_subscriptions_stripe_customer")
+  @@index([user_id], map: "idx_subscriptions_user_id")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model usage_stats {
+  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id     String?   @db.Uuid
+  action_type String    @db.VarChar(100)
+  metadata    Json?
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+  users       users?    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([action_type], map: "idx_usage_action_type")
+  @@index([created_at(sort: Desc)], map: "idx_usage_created_at")
+  @@index([metadata], map: "idx_usage_metadata", type: Gin)
+  @@index([user_id], map: "idx_usage_user_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model user_activity {
+  id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id       String?   @db.Uuid
+  activity_type String    @db.VarChar(50)
+  activity_data Json?
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+  users         users?    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([created_at(sort: Desc)], map: "idx_user_activity_created")
+  @@index([activity_type], map: "idx_user_activity_type")
+  @@index([user_id], map: "idx_user_activity_user_id")
+  @@index([user_id, activity_type, created_at(sort: Desc)], map: "idx_user_activity_user_type")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model user_preferences {
+  id                  String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id             String?   @unique @db.Uuid
+  default_cuisines    Json?     @default("[]")
+  default_people      Int?      @default(2)
+  default_meals       Json?     @default("[\"breakfast\", \"lunch\", \"dinner\"]")
+  default_days        Json?     @default("[\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\", \"Saturday\", \"Sunday\"]")
+  default_dietary     Json?     @default("[]")
+  email_notifications Json?     @default("{\"promotions\": false, \"mealPlanReady\": true, \"weeklyReminder\": true, \"accountActivity\": true, \"favoriteRecipeDigest\": false}")
+  theme               String?   @default("light") @db.VarChar(20)
+  units               String?   @default("imperial") @db.VarChar(20)
+  language            String?   @default("en") @db.VarChar(10)
+  share_favorites     Boolean?  @default(false)
+  public_profile      Boolean?  @default(false)
+  created_at          DateTime? @default(now()) @db.Timestamp(6)
+  updated_at          DateTime? @default(now()) @db.Timestamp(6)
+  users               users?    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([default_cuisines], map: "idx_user_prefs_cuisines", type: Gin)
+  @@index([default_dietary], map: "idx_user_prefs_dietary", type: Gin)
+  @@index([user_id], map: "idx_user_prefs_user_id")
+}
+
+model users {
+  id                    String                  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  google_id             String                  @unique @db.VarChar(255)
+  email                 String                  @unique @db.VarChar(255)
+  display_name          String?                 @db.VarChar(255)
+  picture_url           String?
+  default_cuisine       String[]
+  default_people        Int?                    @default(2)
+  created_at            DateTime?               @default(now()) @db.Timestamp(6)
+  updated_at            DateTime?               @default(now()) @db.Timestamp(6)
+  last_login            DateTime?               @db.Timestamp(6)
+  deleted_at            DateTime?               @db.Timestamp(6)
+  phone_number          String?                 @db.VarChar(20)
+  timezone              String?                 @default("America/New_York") @db.VarChar(50)
+  meal_plans_generated  Int?                    @default(0)
+  bio                   String?
+  ad_clicks             ad_clicks[]
+  ad_impressions        ad_impressions[]
+  affiliate_conversions affiliate_conversions[]
+  discount_usage        discount_usage[]
+  favorites             favorites[]
+  meal_of_day_shares    meal_of_day_shares[]
+  meal_plan_history     meal_plan_history[]
+  subscriptions         subscriptions[]
+  usage_stats           usage_stats[]
+  user_activity         user_activity[]
+  user_preferences      user_preferences?
+
+  @@index([email], map: "idx_users_email")
+  @@index([google_id], map: "idx_users_google_id")
+  @@index([last_login(sort: Desc)], map: "idx_users_last_login")
+  @@index([timezone], map: "idx_users_timezone")
+}
