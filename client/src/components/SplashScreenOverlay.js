@@ -20,9 +20,12 @@ export default function SplashScreenOverlay({ onComplete }) {
   useEffect(() => {
     const seen = sessionStorage.getItem('asr_splash_shown');
     if (seen === 'true') {
+      console.log('🎬 Splash already seen this session, skipping');
       setHasSeenSplash(true);
-      // Immediately notify parent that splash is complete
-      if (onComplete) onComplete();
+      // Use setTimeout to ensure parent state is ready before calling onComplete
+      setTimeout(() => {
+        if (onComplete) onComplete();
+      }, 0);
     }
   }, [onComplete]);
 

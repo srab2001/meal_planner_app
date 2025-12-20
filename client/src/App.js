@@ -303,10 +303,12 @@ function App() {
 
   // Handler: Splash Complete - Route to App Switchboard
   const handleSplashComplete = () => {
+    console.log('🎬 handleSplashComplete called, currentView:', currentView);
     setShowSplash(false);
     // If there's a specific route (admin, meal-of-the-day, etc), don't override
     // Otherwise show switchboard
     if (!['admin', 'meal-of-the-day', 'recipe-card'].includes(currentView)) {
+      console.log('🎬 Setting currentView to switchboard');
       setCurrentView('switchboard');
       // Track switchboard view
       analyticsService.trackSwitchboardView();
@@ -398,6 +400,9 @@ function App() {
       setCurrentView('zip');
     }
   };
+
+  // Log current state for debugging
+  console.log('🔄 App render - showSplash:', showSplash, 'currentView:', currentView, 'user:', user?.email);
 
   return (
     <EngagementProvider toastPosition="top-right">
