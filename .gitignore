@@ -1,32 +1,24 @@
-node_modules
-.env
-.env.local
-client/.env
-client/.env.local
+# OS
+.DS_Store
 
-# Build directories
-client/build/
+# Env
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+**/node_modules/
+dist/
 build/
 
-# Production configuration with actual secrets
-PRODUCTION_CONFIG.md
+# Prisma / DB artifacts
+db_schema.sql
+generated/
 
-# Discount code usage tracking (contains user emails)
-discount-code-usage.json
+# Vercel local
+.vercel/
 
-# User data (favorites and history - contains personal data)
-user-data/
-.env
-.env.*
-#node
-node_modules/
-node_modules 2/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-
-# Local env
-.env
-.env.*
-.DS_Store
+# Temp / backups
+*.bak
+*.rtf
