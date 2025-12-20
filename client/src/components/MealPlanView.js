@@ -723,12 +723,41 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
 
       if (response.ok) {
         const data = await response.json();
+        console.log('🔧 Remove ingredient response:', data);
+        
+        // Ensure ingredients is an array (backend might return string)
+        let newIngredients = data.ingredients;
+        if (typeof newIngredients === 'string') {
+          try {
+            newIngredients = JSON.parse(newIngredients);
+          } catch {
+            newIngredients = newIngredients.split('\n').filter(i => i.trim());
+          }
+        }
+        if (!Array.isArray(newIngredients)) {
+          console.error('❌ Ingredients not an array, keeping original:', newIngredients);
+          newIngredients = selectedMeal?.ingredients || [];
+        }
+        
+        // Ensure instructions is an array
+        let newInstructions = data.instructions;
+        if (typeof newInstructions === 'string') {
+          try {
+            newInstructions = JSON.parse(newInstructions);
+          } catch {
+            newInstructions = newInstructions.split('\n').filter(i => i.trim());
+          }
+        }
+        if (!Array.isArray(newInstructions)) {
+          console.error('❌ Instructions not an array, keeping original:', newInstructions);
+          newInstructions = selectedMeal?.instructions || [];
+        }
         
         // Update the selected meal with the new ingredients and updated instructions from backend
         const updatedMeal = { 
           ...selectedMeal, 
-          ingredients: data.ingredients || selectedMeal.ingredients,
-          instructions: data.instructions || selectedMeal.instructions
+          ingredients: newIngredients,
+          instructions: newInstructions
         };
         setSelectedMeal(updatedMeal);
         
@@ -792,12 +821,41 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
 
       if (response.ok) {
         const data = await response.json();
+        console.log('🔧 Add ingredient response:', data);
+        
+        // Ensure ingredients is an array (backend might return string)
+        let newIngredients = data.ingredients;
+        if (typeof newIngredients === 'string') {
+          try {
+            newIngredients = JSON.parse(newIngredients);
+          } catch {
+            newIngredients = newIngredients.split('\n').filter(i => i.trim());
+          }
+        }
+        if (!Array.isArray(newIngredients)) {
+          console.error('❌ Ingredients not an array, keeping original:', newIngredients);
+          newIngredients = selectedMeal?.ingredients || [];
+        }
+        
+        // Ensure instructions is an array
+        let newInstructions = data.instructions;
+        if (typeof newInstructions === 'string') {
+          try {
+            newInstructions = JSON.parse(newInstructions);
+          } catch {
+            newInstructions = newInstructions.split('\n').filter(i => i.trim());
+          }
+        }
+        if (!Array.isArray(newInstructions)) {
+          console.error('❌ Instructions not an array, keeping original:', newInstructions);
+          newInstructions = selectedMeal?.instructions || [];
+        }
         
         // Update the selected meal with the new ingredients and updated instructions from backend
         const updatedMeal = { 
           ...selectedMeal, 
-          ingredients: data.ingredients || selectedMeal.ingredients,
-          instructions: data.instructions || selectedMeal.instructions
+          ingredients: newIngredients,
+          instructions: newInstructions
         };
         setSelectedMeal(updatedMeal);
         
@@ -862,12 +920,41 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
 
       if (response.ok) {
         const data = await response.json();
+        console.log('🔧 Substitute ingredient response:', data);
+        
+        // Ensure ingredients is an array (backend might return string)
+        let newIngredients = data.ingredients;
+        if (typeof newIngredients === 'string') {
+          try {
+            newIngredients = JSON.parse(newIngredients);
+          } catch {
+            newIngredients = newIngredients.split('\n').filter(i => i.trim());
+          }
+        }
+        if (!Array.isArray(newIngredients)) {
+          console.error('❌ Ingredients not an array, keeping original:', newIngredients);
+          newIngredients = selectedMeal?.ingredients || [];
+        }
+        
+        // Ensure instructions is an array
+        let newInstructions = data.instructions;
+        if (typeof newInstructions === 'string') {
+          try {
+            newInstructions = JSON.parse(newInstructions);
+          } catch {
+            newInstructions = newInstructions.split('\n').filter(i => i.trim());
+          }
+        }
+        if (!Array.isArray(newInstructions)) {
+          console.error('❌ Instructions not an array, keeping original:', newInstructions);
+          newInstructions = selectedMeal?.instructions || [];
+        }
         
         // Update the selected meal with the new ingredients and updated instructions from backend
         const updatedMeal = { 
           ...selectedMeal, 
-          ingredients: data.ingredients || selectedMeal.ingredients,
-          instructions: data.instructions || selectedMeal.instructions
+          ingredients: newIngredients,
+          instructions: newInstructions
         };
         setSelectedMeal(updatedMeal);
         
