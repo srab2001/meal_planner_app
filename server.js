@@ -3832,14 +3832,18 @@ const port = PORT || 5000;
 app.listen(port, async () => {
   console.log(`[SERVER] app.listen callback executed at ${new Date().toISOString()}`);
   console.log(`server listening on port ${port}`);
-<<<<<<< HEAD
   await initializeDatabase();
   console.log('[SERVER] initializeDatabase completed');
 });
-} // End of startExpressApp() function
-=======
-});
+
 process.on('SIGINT', async () => {
+  try {
+    await prisma.$disconnect();
+  } catch (_) {}
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
   try {
     await prisma.$disconnect();
   } catch (_) {}
@@ -3854,4 +3858,5 @@ app.get('/api/health/db', async (req, res) => {
     res.status(500).json({ ok: false });
   }
 });
->>>>>>> 69cfac5 (Fix Prisma client setup)
+
+} // End of startExpressApp() function
