@@ -497,6 +497,7 @@ function App() {
           onStartOver={handleStartOver}
           onLogout={handleLogout}
           onViewProfile={handleViewProfile}
+          onViewNutrition={() => setCurrentView('nutrition')}
         />
       )}
 
