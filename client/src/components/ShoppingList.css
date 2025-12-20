@@ -1,3 +1,4 @@
+HEAD
 .shopping-list-container {
   background: white;
   border-radius: 12px;
@@ -515,9 +516,9 @@
   }
 }
 
-/* ========================================
+
    MOBILE CARD LAYOUT FOR COMPARISON
-   ======================================== */
+  
 
 /* Hide mobile cards on desktop, show table */
 .mobile-only {
@@ -738,3 +739,4 @@
   color: #4caf50;
   font-weight: bold;
 }
+d55f58e (Fix ShoppingList CSS file names)
