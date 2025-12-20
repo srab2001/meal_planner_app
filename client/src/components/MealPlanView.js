@@ -1122,7 +1122,11 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
         }
         
         setOperationMessage(`✅ Recipe updated with your ingredient changes!`);
-        setTimeout(() => setOperationMessage(null), 3000);
+        // Close modal after brief delay to show success message
+        setTimeout(() => {
+          setOperationMessage(null);
+          closeModal();
+        }, 1500);
       } else {
         const errorData = await response.json().catch(() => ({}));
         console.error('❌ Recipe update failed:', response.status, errorData);
