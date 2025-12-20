@@ -16,3 +16,5 @@ discount-code-usage.json
 
 # User data (favorites and history - contains personal data)
 user-data/
+.env
+.env.*
