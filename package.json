@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Backend for AI-powered meal planning application",
   "main": "server.js",
+  "prisma": {
+    "schema": "prisma/schema.prisma"
+  },
   "scripts": {
     "prestart": "node scripts/run-migrations.js",
     "start": "echo '===== NPM START CALLED =====' && node server.js",
