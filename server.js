@@ -3524,6 +3524,189 @@ app.get('/api/nutrition/weekly', requireAuth, async (req, res) => {
 });
 
 /**
+ * GET /api/nutrition/saved-plans
+ * Returns list of all saved meal plans for the user (for selection)
+ */
+app.get('/api/nutrition/saved-plans', requireAuth, async (req, res) => {
+  try {
+    console.log(`[NUTRITION] Fetching saved plans for user ${req.user.email}`);
+
+    const result = await db.query(`
+      SELECT id, meal_plan, created_at
+      FROM meal_plan_history
+      WHERE user_id = $1
+      ORDER BY created_at DESC
+      LIMIT 20
+    `, [req.user.id]);
+
+    const plans = result.rows.map(row => {
+      const mealPlanData = row.meal_plan || {};
+      let mealCount = 0;
+      let previewMeals = [];
+      
+      if (mealPlanData.mealPlan) {
+        Object.entries(mealPlanData.mealPlan).forEach(([day, dayMeals]) => {
+          Object.entries(dayMeals || {}).forEach(([mealType, meal]) => {
+            if (meal && meal.name) {
+              mealCount++;
+              if (previewMeals.length < 3) {
+                previewMeals.push(`${day}: ${meal.name}`);
+              }
+            }
+          });
+        });
+      }
+
+      return {
+        id: row.id,
+        createdAt: row.created_at,
+        mealCount: mealCount,
+        previewMeals: previewMeals
+      };
+    });
+
+    console.log(`[NUTRITION] ✅ Found ${plans.length} saved plans`);
+    res.json({ plans });
+  } catch (error) {
+    console.error('[NUTRITION] Error fetching saved plans:', error);
+    res.status(500).json({ error: 'Failed to fetch saved plans' });
+  }
+});
+
+/**
+ * POST /api/nutrition/analyze-plan
+ * Analyzes a saved meal plan with GPT to get nutrition information
+ */
+app.post('/api/nutrition/analyze-plan', requireAuth, async (req, res) => {
+  try {
+    const { planId } = req.body;
+    console.log(`[NUTRITION] Analyzing plan ${planId} for user ${req.user.email}`);
+
+    if (!planId) {
+      return res.status(400).json({ error: 'Plan ID required' });
+    }
+
+    // Get the meal plan
+    const result = await db.query(`
+      SELECT id, meal_plan, created_at
+      FROM meal_plan_history
+      WHERE id = $1 AND user_id = $2
+    `, [planId, req.user.id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Meal plan not found' });
+    }
+
+    const mealPlanData = result.rows[0].meal_plan || {};
+    
+    // Extract meals from the meal plan structure
+    let meals = [];
+    if (mealPlanData.mealPlan) {
+      Object.entries(mealPlanData.mealPlan).forEach(([day, dayMeals]) => {
+        Object.entries(dayMeals || {}).forEach(([mealType, meal]) => {
+          if (meal && meal.name) {
+            meals.push({
+              name: meal.name,
+              day: day,
+              mealType: mealType,
+              ingredients: meal.ingredients || [],
+              servings: meal.servings || 2
+            });
+          }
+        });
+      });
+    }
+
+    if (meals.length === 0) {
+      return res.status(400).json({ error: 'No meals found in plan' });
+    }
+
+    console.log(`[NUTRITION] Sending ${meals.length} meals to GPT for nutrition analysis`);
+
+    // Call GPT to analyze nutrition for all meals
+    const prompt = `Analyze the nutritional content of these meals. For each meal, estimate calories, protein (g), carbs (g), fat (g), and fiber (g) based on the ingredients and typical serving sizes.
+
+Meals to analyze:
+${meals.map((m, i) => `${i + 1}. ${m.name} (${m.day} ${m.mealType}, ${m.servings} servings)
+   Ingredients: ${(m.ingredients || []).join(', ')}`).join('\n\n')}
+
+Return a JSON array with nutrition info for each meal in this exact format:
+[
+  {
+    "name": "Meal Name",
+    "day": "Day",
+    "mealType": "breakfast|lunch|dinner",
+    "calories": 450,
+    "protein": 25,
+    "carbs": 40,
+    "fat": 15,
+    "fiber": 5
+  }
+]
+
+Important: Return ONLY the JSON array, no other text. Estimate reasonable values based on typical home-cooked portions.`;
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'You are a nutrition expert. Provide accurate nutrition estimates in JSON format only.' },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.3
+    });
+
+    const responseText = completion.choices[0].message.content.trim();
+    console.log('[NUTRITION] GPT response received');
+
+    // Parse the JSON response
+    let nutritionData;
+    try {
+      // Extract JSON from response (handle markdown code blocks)
+      let jsonStr = responseText;
+      if (jsonStr.includes('```')) {
+        jsonStr = jsonStr.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
+      }
+      nutritionData = JSON.parse(jsonStr);
+    } catch (parseError) {
+      console.error('[NUTRITION] Failed to parse GPT response:', parseError);
+      console.error('[NUTRITION] Raw response:', responseText);
+      return res.status(500).json({ error: 'Failed to parse nutrition data from AI' });
+    }
+
+    // Merge nutrition data with original meal data
+    const enrichedMeals = meals.map(meal => {
+      const nutrition = nutritionData.find(n => 
+        n.name === meal.name && n.day === meal.day && n.mealType === meal.mealType
+      ) || nutritionData.find(n => n.name === meal.name) || {};
+      
+      return {
+        ...meal,
+        calories: nutrition.calories || 0,
+        protein: nutrition.protein || 0,
+        carbs: nutrition.carbs || 0,
+        fat: nutrition.fat || 0,
+        fiber: nutrition.fiber || 0
+      };
+    });
+
+    console.log(`[NUTRITION] ✅ Analyzed ${enrichedMeals.length} meals with nutrition data`);
+
+    res.json({
+      mealPlan: {
+        id: result.rows[0].id,
+        meals: enrichedMeals,
+        createdAt: result.rows[0].created_at
+      },
+      hasMealPlan: true,
+      analyzed: true
+    });
+  } catch (error) {
+    console.error('[NUTRITION] Error analyzing plan:', error);
+    res.status(500).json({ error: 'Failed to analyze meal plan' });
+  }
+});
+
+/**
  * Helper function to calculate nutrition summary from meals
  */
 function calculateNutritionSummary(meals) {

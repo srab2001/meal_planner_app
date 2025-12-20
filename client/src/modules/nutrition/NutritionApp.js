@@ -6,83 +6,103 @@ import './styles/NutritionApp.css';
 /**
  * NutritionApp - Main Nutrition Module Component
  * 
- * Provides READ-ONLY access to meal plan nutrition data:
+ * Provides access to meal plan nutrition data:
+ * - Select from saved meal plans
+ * - Analyze with GPT for nutrition information
  * - Weekly summary view
  * - Per-day breakdown view  
  * - Per-meal drill-down view
- * 
- * Uses snapshot caching for performance - avoids recomputing unless data changes
  */
 export default function NutritionApp({ user, onBack, onLogout }) {
-  const [currentView, setCurrentView] = useState('weekly');
+  const [currentView, setCurrentView] = useState('select'); // 'select', 'weekly', 'daily', 'meal'
   const [selectedDay, setSelectedDay] = useState(null);
   const [selectedMeal, setSelectedMeal] = useState(null);
   const [mealPlanData, setMealPlanData] = useState(null);
   const [snapshot, setSnapshot] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState(null);
   const [cacheHit, setCacheHit] = useState(false);
+  const [savedPlans, setSavedPlans] = useState([]);
+  const [selectedPlanId, setSelectedPlanId] = useState(null);
 
-  // Fetch meal plan data on mount (READ-ONLY)
+  // Fetch saved meal plans on mount
   useEffect(() => {
-    const loadNutritionData = async () => {
+    const loadSavedPlans = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        console.log('🥗 [Nutrition] Loading nutrition data...');
-        console.log('🥗 [Nutrition] API_BASE:', API_BASE);
+        console.log('🥗 [Nutrition] Loading saved meal plans...');
         
-        // Fetch user's meal plan (READ-ONLY access)
-        const response = await fetchWithAuth(`${API_BASE}/api/nutrition/meal-plan-summary`, {
+        const response = await fetchWithAuth(`${API_BASE}/api/nutrition/saved-plans`, {
           method: 'GET'
         });
 
-        console.log('🥗 [Nutrition] Response status:', response.status);
-
         if (!response.ok) {
-          if (response.status === 404) {
-            console.log('🥗 [Nutrition] No meal plan found (404)');
-            setMealPlanData(null);
-            setSnapshot(null);
-          } else if (response.status === 401 || response.status === 403) {
-            console.error('🥗 [Nutrition] Auth error:', response.status);
+          if (response.status === 401 || response.status === 403) {
             setError('Please log in to view nutrition data');
           } else {
             const errorData = await response.json().catch(() => ({}));
-            console.error('🥗 [Nutrition] Error response:', errorData);
-            throw new Error(errorData.error || 'Failed to load nutrition data');
+            throw new Error(errorData.error || 'Failed to load saved plans');
           }
         } else {
           const data = await response.json();
-          console.log('🥗 [Nutrition] Received data:', data);
-          setMealPlanData(data.mealPlan);
-          
-          // Check if we need to recompute or can use cache
-          const needsRecompute = nutritionSnapshotService.needsRecompute(
-            user?.id || 'anonymous', 
-            data.mealPlan
-          );
-          setCacheHit(!needsRecompute);
-          
-          // Get or compute snapshot
-          const nutritionSnapshot = nutritionSnapshotService.getSnapshot(
-            user?.id || 'anonymous',
-            data.mealPlan
-          );
-          setSnapshot(nutritionSnapshot);
-          console.log('🥗 [Nutrition] Snapshot created:', nutritionSnapshot);
+          console.log('🥗 [Nutrition] Found saved plans:', data.plans?.length);
+          setSavedPlans(data.plans || []);
         }
       } catch (err) {
-        console.error('🥗 [Nutrition] Error loading nutrition data:', err);
-        setError(err.message || 'Failed to load nutrition information');
+        console.error('🥗 [Nutrition] Error loading saved plans:', err);
+        setError(err.message || 'Failed to load saved meal plans');
       } finally {
         setLoading(false);
       }
     };
 
-    loadNutritionData();
-  }, [user?.id]);
+    loadSavedPlans();
+  }, []);
+
+  // Analyze selected meal plan with GPT
+  const handleAnalyzePlan = async (planId) => {
+    setAnalyzing(true);
+    setError(null);
+    setSelectedPlanId(planId);
+
+    try {
+      console.log('🥗 [Nutrition] Analyzing plan:', planId);
+      
+      const response = await fetchWithAuth(`${API_BASE}/api/nutrition/analyze-plan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to analyze meal plan');
+      }
+
+      const data = await response.json();
+      console.log('🥗 [Nutrition] Analysis complete:', data);
+      
+      setMealPlanData(data.mealPlan);
+      
+      // Compute snapshot from analyzed data
+      const nutritionSnapshot = nutritionSnapshotService.getSnapshot(
+        user?.id || 'anonymous',
+        data.mealPlan
+      );
+      setSnapshot(nutritionSnapshot);
+      setCacheHit(false);
+      setCurrentView('weekly');
+      
+    } catch (err) {
+      console.error('🥗 [Nutrition] Analysis error:', err);
+      setError(err.message || 'Failed to analyze meal plan');
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
   // Handle navigation
   const handleViewChange = (view, dayOrMeal = null) => {
@@ -95,6 +115,11 @@ export default function NutritionApp({ user, onBack, onLogout }) {
     } else if (view === 'weekly') {
       setSelectedDay(null);
       setSelectedMeal(null);
+    } else if (view === 'select') {
+      setSelectedDay(null);
+      setSelectedMeal(null);
+      setMealPlanData(null);
+      setSnapshot(null);
     }
   };
 
@@ -104,7 +129,7 @@ export default function NutritionApp({ user, onBack, onLogout }) {
       <div className="nutrition-app">
         <div className="nutrition-loading">
           <div className="nutrition-spinner"></div>
-          <p>Loading your nutrition data...</p>
+          <p>Loading your saved meal plans...</p>
         </div>
       </div>
     );
@@ -119,7 +144,7 @@ export default function NutritionApp({ user, onBack, onLogout }) {
         </button>
         <div className="header-title">
           <h1>🥗 Nutrition Tracker</h1>
-          <p>Track your calories and macros</p>
+          <p>Analyze nutrition from your meal plans</p>
         </div>
         <div className="header-actions">
           {user && (
@@ -134,11 +159,22 @@ export default function NutritionApp({ user, onBack, onLogout }) {
       {/* Navigation Breadcrumb */}
       <nav className="nutrition-breadcrumb">
         <button 
-          className={`breadcrumb-item ${currentView === 'weekly' ? 'active' : ''}`}
-          onClick={() => handleViewChange('weekly')}
+          className={`breadcrumb-item ${currentView === 'select' ? 'active' : ''}`}
+          onClick={() => handleViewChange('select')}
         >
-          📊 Weekly Summary
+          📋 Select Plan
         </button>
+        {mealPlanData && (
+          <>
+            <span className="breadcrumb-separator">›</span>
+            <button 
+              className={`breadcrumb-item ${currentView === 'weekly' ? 'active' : ''}`}
+              onClick={() => handleViewChange('weekly')}
+            >
+              📊 Weekly Summary
+            </button>
+          </>
+        )}
         {selectedDay && (
           <>
             <span className="breadcrumb-separator">›</span>
@@ -146,7 +182,7 @@ export default function NutritionApp({ user, onBack, onLogout }) {
               className={`breadcrumb-item ${currentView === 'daily' ? 'active' : ''}`}
               onClick={() => handleViewChange('daily', selectedDay)}
             >
-              � {selectedDay}
+              📅 {selectedDay}
             </button>
           </>
         )}
@@ -164,7 +200,7 @@ export default function NutritionApp({ user, onBack, onLogout }) {
       {snapshot && (
         <div className="cache-status">
           <small>
-            {cacheHit ? '✅ Using cached data' : '📊 Freshly computed'} 
+            {cacheHit ? '✅ Using cached data' : '🤖 AI analyzed'} 
             {' • '}{snapshot.totalMeals} meals
           </small>
         </div>
@@ -180,8 +216,14 @@ export default function NutritionApp({ user, onBack, onLogout }) {
           </div>
         )}
 
-        {!mealPlanData && !error && (
-          <NoMealPlanMessage />
+        {/* Plan Selection View */}
+        {currentView === 'select' && !error && (
+          <MealPlanSelector 
+            plans={savedPlans}
+            selectedPlanId={selectedPlanId}
+            onAnalyze={handleAnalyzePlan}
+            analyzing={analyzing}
+          />
         )}
 
         {mealPlanData && snapshot && currentView === 'weekly' && (
@@ -217,7 +259,70 @@ export default function NutritionApp({ user, onBack, onLogout }) {
 }
 
 /**
- * No Meal Plan Message
+ * Meal Plan Selector - Allows user to choose a saved meal plan to analyze
+ */
+function MealPlanSelector({ plans, selectedPlanId, onAnalyze, analyzing }) {
+  if (!plans || plans.length === 0) {
+    return (
+      <div className="no-data-message">
+        <span className="no-data-icon">📋</span>
+        <h3>No Meal Plans Found</h3>
+        <p>Create a meal plan in the Meal Planner app first, then return here to analyze nutrition.</p>
+        <p className="hint">Your nutrition data will be calculated using AI analysis.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="plan-selector">
+      <h2>📋 Select a Meal Plan to Analyze</h2>
+      <p className="section-hint">Choose a saved meal plan to get detailed nutrition information using AI analysis</p>
+      
+      <div className="plans-grid">
+        {plans.map((plan) => (
+          <div 
+            key={plan.id}
+            className={`plan-card ${selectedPlanId === plan.id ? 'selected' : ''} ${analyzing && selectedPlanId === plan.id ? 'analyzing' : ''}`}
+          >
+            <div className="plan-date">
+              📅 {new Date(plan.createdAt).toLocaleDateString('en-US', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+              })}
+            </div>
+            <div className="plan-meals">
+              🍽️ {plan.mealCount} meals
+            </div>
+            <div className="plan-preview">
+              {plan.previewMeals?.map((meal, i) => (
+                <div key={i} className="preview-meal">{meal}</div>
+              ))}
+            </div>
+            <button
+              className="analyze-btn"
+              onClick={() => onAnalyze(plan.id)}
+              disabled={analyzing}
+            >
+              {analyzing && selectedPlanId === plan.id ? (
+                <>
+                  <span className="spinner-small"></span>
+                  Analyzing with AI...
+                </>
+              ) : (
+                <>🤖 Analyze Nutrition</>
+              )}
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * No Meal Plan Message (legacy - kept for reference)
  */
 function NoMealPlanMessage() {
   return (
