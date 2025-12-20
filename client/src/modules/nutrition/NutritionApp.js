@@ -127,6 +127,9 @@ export default function NutritionApp({ user, onBack, onLogout }) {
     }
   };
 
+  // Debug: Log on every render
+  console.log('🥗 [Nutrition v2.1] RENDER - currentView:', currentView, 'savedPlans:', savedPlans.length, 'loading:', loading, 'error:', error);
+
   // Render loading state
   if (loading) {
     return (
