@@ -1,264 +1,525 @@
-# 🗂️ AI Meal Planner Installation - Master Index
+# 📚 Meal Planner App - Documentation Index# 🗂️ AI Meal Planner Installation - Master Index
 
-## 📦 Complete Installation Package - All Files
+
+
+> **Last Updated**: December 2025  ## 📦 Complete Installation Package - All Files
+
+> **Version**: 2.0
+
+---
 
 ---
 
 ## 🚀 START HERE
 
-**New to this? Start with:**
-1. [DOWNLOAD_ALL_FILES.md](computer:///mnt/user-data/outputs/DOWNLOAD_ALL_FILES.md) - Master download list
-2. [QUICKSTART.md](computer:///mnt/user-data/outputs/QUICKSTART.md) - 5-minute installation
+## 🏠 Production URLs
 
-**Want complete instructions?**
+**New to this? Start with:**
+
+| Service | URL |1. [DOWNLOAD_ALL_FILES.md](computer:///mnt/user-data/outputs/DOWNLOAD_ALL_FILES.md) - Master download list
+
+|---------|-----|2. [QUICKSTART.md](computer:///mnt/user-data/outputs/QUICKSTART.md) - 5-minute installation
+
+| **Frontend** | https://meal-planner-app-chi.vercel.app |
+
+| **Backend** | https://meal-planner-app-mve2.onrender.com |**Want complete instructions?**
+
 3. [README_INSTALLATION.md](computer:///mnt/user-data/outputs/README_INSTALLATION.md) - Full guide
 
 ---
 
+---
+
+## 🎯 Quick Navigation
+
 ## 📥 Installation Scripts (Download These)
 
-### Required Scripts:
+### 🚀 Getting Started
 
-1. **[complete-install.sh](computer:///mnt/user-data/outputs/complete-install.sh)** ⭐ **START HERE**
-   - Master installation script
-   - Runs all other scripts automatically
+| Document | Description |### Required Scripts:
+
+|----------|-------------|
+
+| **[README.md](./README.md)** | Main overview and quick start |1. **[complete-install.sh](computer:///mnt/user-data/outputs/complete-install.sh)** ⭐ **START HERE**
+
+| **[QUICKSTART.md](./QUICKSTART.md)** | 5-minute installation guide |   - Master installation script
+
+| **[README_INSTALLATION.md](./README_INSTALLATION.md)** | Complete installation guide |   - Runs all other scripts automatically
+
    - Creates backups
-   - Shows progress
-   - **Run this first!**
 
-2. **[create-backend-files.sh](computer:///mnt/user-data/outputs/create-backend-files.sh)**
-   - Creates backend scraper files
+### 📊 Architecture & Data Model   - Shows progress
+
+| Document | Description |   - **Run this first!**
+
+|----------|-------------|
+
+| **[DATA_MODEL.md](./DATA_MODEL.md)** | ⭐ Complete database schema with Mermaid diagrams |2. **[create-backend-files.sh](computer:///mnt/user-data/outputs/create-backend-files.sh)**
+
+| **[REQUIREMENTS_AND_FEATURES.md](./REQUIREMENTS_AND_FEATURES.md)** | Feature specifications |   - Creates backend scraper files
+
    - Generates price-cache.js
-   - Generates base-scraper.js
-   - Generates harris-teeter-scraper.js with mock data
-   - Generates pdf-parser.js
 
-3. **[create-frontend-files.sh](computer:///mnt/user-data/outputs/create-frontend-files.sh)**
-   - Creates React components
-   - Generates ZIPCodeInput.js + CSS
-   - Generates StoreSelection.js + CSS
+### 🚀 Deployment   - Generates base-scraper.js
+
+| Document | Description |   - Generates harris-teeter-scraper.js with mock data
+
+|----------|-------------|   - Generates pdf-parser.js
+
+| **[DEPLOY_TO_RENDER.md](./DEPLOY_TO_RENDER.md)** | Backend deployment to Render |
+
+| **[VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md)** | Frontend deployment to Vercel |3. **[create-frontend-files.sh](computer:///mnt/user-data/outputs/create-frontend-files.sh)**
+
+| **[PRODUCTION_CONFIG.md.example](./PRODUCTION_CONFIG.md.example)** | Environment configuration template |   - Creates React components
+
+| **[render.yaml](./render.yaml)** | Render infrastructure as code |   - Generates ZIPCodeInput.js + CSS
+
+| **[docker-compose.yml](./docker-compose.yml)** | Local Docker setup |   - Generates StoreSelection.js + CSS
+
    - Full working code included
 
+---
+
 4. **[update-server.sh](computer:///mnt/user-data/outputs/update-server.sh)**
-   - Updates server.js automatically
+
+## 🖥️ Application Modules   - Updates server.js automatically
+
    - Adds imports (priceCache, scrapers)
-   - Adds /api/find-stores endpoint
+
+### Core Modules   - Adds /api/find-stores endpoint
+
    - Adds /api/scrape-store-prices endpoint
 
----
+| Module | Location | Description | Status |
 
-## 📖 Documentation Files (Download These)
+|--------|----------|-------------|--------|---
 
-### Essential Guides:
+| 🍽️ **Meal Planner** | `client/src/components/` | AI meal plans, recipes, shopping lists | ✅ Core |
+
+| 🥗 **Nutrition** | `client/src/modules/nutrition/` | Read-only nutrition analysis | ✅ Active |## 📖 Documentation Files (Download These)
+
+| 💪 **Coaching** | `client/src/modules/coaching/` | AI health coaching | ✅ Active |
+
+| 📈 **Progress** | `client/src/modules/progress/` | Streaks, badges, referrals | ✅ Active |### Essential Guides:
+
+| 🔗 **Integrations** | `client/src/modules/integrations/` | Health data integrations | 🚧 Feature-flagged |
 
 5. **[UPDATE_APP_JS_GUIDE.md](computer:///mnt/user-data/outputs/UPDATE_APP_JS_GUIDE.md)** ⭐ **REQUIRED**
-   - Complete App.js update instructions
+
+### Module-Specific Documentation   - Complete App.js update instructions
+
    - Shows exact changes needed
-   - Includes full example code
-   - Checklist at the end
-   - **You must follow this after running scripts!**
+
+| Document | Module |   - Includes full example code
+
+|----------|--------|   - Checklist at the end
+
+| **[NUTRITION_MODULE_DESIGN.md](./NUTRITION_MODULE_DESIGN.md)** | Nutrition |   - **You must follow this after running scripts!**
+
+| **[COACHING_APP_DESIGN.md](./COACHING_APP_DESIGN.md)** | Coaching |
 
 6. **[README_INSTALLATION.md](computer:///mnt/user-data/outputs/README_INSTALLATION.md)**
-   - Complete installation guide
+
+---   - Complete installation guide
+
    - Step-by-step instructions
-   - Troubleshooting section
+
+## 🗄️ Database Schema   - Troubleshooting section
+
    - Verification commands
-   - Daily usage instructions
 
-7. **[QUICKSTART.md](computer:///mnt/user-data/outputs/QUICKSTART.md)**
-   - 5-minute quick start guide
-   - Minimal instructions
-   - Common fixes
-   - One-command installation
+### PostgreSQL Tables   - Daily usage instructions
 
-### Reference Documentation:
 
-8. **[DOWNLOAD_ALL_FILES.md](computer:///mnt/user-data/outputs/DOWNLOAD_ALL_FILES.md)**
-   - Master download list
-   - File descriptions
-   - Installation order
-   - Feature summary
 
-9. **[PHASE_1_IMPLEMENTATION.md](computer:///mnt/user-data/outputs/PHASE_1_IMPLEMENTATION.md)**
+| Table | Purpose | Key Fields |7. **[QUICKSTART.md](computer:///mnt/user-data/outputs/QUICKSTART.md)**
+
+|-------|---------|------------|   - 5-minute quick start guide
+
+| `users` | User accounts | id, google_id, email, display_name |   - Minimal instructions
+
+| `meal_plan_history` | Generated plans | user_id, meal_plan (JSONB), preferences |   - Common fixes
+
+| `favorites` | Saved meals | user_id, meal_type, meal_data (JSONB) |   - One-command installation
+
+| `shopping_list_states` | Shopping progress | user_id, checked_items (JSONB) |
+
+| `user_preferences` | User settings | default_cuisines, dietary, theme |### Reference Documentation:
+
+| `subscriptions` | Payment plans | stripe_customer_id, plan_type |
+
+| `usage_stats` | Analytics | action_type, metadata |8. **[DOWNLOAD_ALL_FILES.md](computer:///mnt/user-data/outputs/DOWNLOAD_ALL_FILES.md)**
+
+| `session` | Express sessions | sid, sess, expire |   - Master download list
+
+| `cuisine_options` | Available cuisines | name, display_order |   - File descriptions
+
+| `dietary_options` | Dietary restrictions | key, label |   - Installation order
+
+| `app_settings` | Global config | key, value |   - Feature summary
+
+
+
+**Full schema details**: [DATA_MODEL.md](./DATA_MODEL.md)9. **[PHASE_1_IMPLEMENTATION.md](computer:///mnt/user-data/outputs/PHASE_1_IMPLEMENTATION.md)**
+
    - Technical implementation details
-   - Full source code
+
+---   - Full source code
+
    - Architecture explanation
-   - Component specifications
 
-10. **[COMPLETE_INSTALLATION_README.md](computer:///mnt/user-data/outputs/COMPLETE_INSTALLATION_README.md)**
-    - Comprehensive reference
-    - All features explained
-    - Advanced configuration
-    - Future enhancements
+## 📁 Project Structure   - Component specifications
 
----
 
-## 🎯 Quick Reference
 
-### Installation Process:
+```10. **[COMPLETE_INSTALLATION_README.md](computer:///mnt/user-data/outputs/COMPLETE_INSTALLATION_README.md)**
 
-```
-1. Download all files above
-   ↓
-2. Run: ./complete-install.sh
-   ↓
-3. Follow: UPDATE_APP_JS_GUIDE.md
-   ↓
-4. Test: Start backend & frontend
-   ↓
-5. Success! 🎉
-```
+meal_planner_app/    - Comprehensive reference
 
-### File Categories:
+├── client/                    # React Frontend    - All features explained
 
-| Category | Files | Purpose |
-|----------|-------|---------|
-| **Scripts** | 4 files | Automate installation |
+│   ├── src/    - Advanced configuration
+
+│   │   ├── components/        # Core meal planner components    - Future enhancements
+
+│   │   │   ├── App.js         # Main application router
+
+│   │   │   ├── MealPlanView.js---
+
+│   │   │   ├── RecipeModal.js
+
+│   │   │   ├── ShoppingList.js## 🎯 Quick Reference
+
+│   │   │   └── AppSwitchboard.js
+
+│   │   ├── modules/           # Feature modules### Installation Process:
+
+│   │   │   ├── nutrition/     # Nutrition tracking
+
+│   │   │   ├── coaching/      # Health coaching```
+
+│   │   │   ├── progress/      # Gamification1. Download all files above
+
+│   │   │   └── integrations/  # Health data integrations   ↓
+
+│   │   └── shared/            # Shared utilities2. Run: ./complete-install.sh
+
+│   │       ├── services/      # Analytics, Feature flags   ↓
+
+│   │       ├── context/       # React contexts3. Follow: UPDATE_APP_JS_GUIDE.md
+
+│   │       └── utils/         # API utilities   ↓
+
+│   └── public/4. Test: Start backend & frontend
+
+├── migrations/                # SQL migrations   ↓
+
+│   ├── 001_initial_schema.sql5. Success! 🎉
+
+│   ├── 007_favorites.sql```
+
+│   ├── 007_shopping_list_states.sql
+
+│   └── 011_recreate_meal_plan_history.sql### File Categories:
+
+├── server.js                  # Express backend
+
+├── db.js                      # PostgreSQL connection| Category | Files | Purpose |
+
+└── package.json|----------|-------|---------|
+
+```| **Scripts** | 4 files | Automate installation |
+
 | **Guides** | 3 files | Step-by-step instructions |
-| **Reference** | 3 files | Technical documentation |
 
----
+---| **Reference** | 3 files | Technical documentation |
 
-## 📋 Installation Checklist
 
-### Pre-Installation:
-- [ ] Downloaded complete-install.sh
-- [ ] Downloaded create-backend-files.sh
-- [ ] Downloaded create-frontend-files.sh
-- [ ] Downloaded update-server.sh
-- [ ] Downloaded UPDATE_APP_JS_GUIDE.md
+
+## 🔧 Configuration Files---
+
+
+
+| File | Purpose |## 📋 Installation Checklist
+
+|------|---------|
+
+| `.env` | Backend environment variables |### Pre-Installation:
+
+| `client/.env` | Frontend environment variables |- [ ] Downloaded complete-install.sh
+
+| `render.yaml` | Render deployment config |- [ ] Downloaded create-backend-files.sh
+
+| `Dockerfile` | Container build |- [ ] Downloaded create-frontend-files.sh
+
+| `docker-compose.yml` | Local development |- [ ] Downloaded update-server.sh
+
+| `package.json` | Dependencies |- [ ] Downloaded UPDATE_APP_JS_GUIDE.md
+
 - [ ] All files in ~/Downloads
 
+---
+
 ### Run Installation:
-- [ ] Made scripts executable (`chmod +x *.sh`)
+
+## 🔐 Authentication- [ ] Made scripts executable (`chmod +x *.sh`)
+
 - [ ] Ran `./complete-install.sh`
-- [ ] Scripts completed successfully
-- [ ] Backups created
 
-### Manual Steps:
-- [ ] Opened UPDATE_APP_JS_GUIDE.md
-- [ ] Updated App.js with 5 changes
+| Component | Technology |- [ ] Scripts completed successfully
+
+|-----------|------------|- [ ] Backups created
+
+| OAuth Provider | Google OAuth 2.0 |
+
+| Backend Auth | Passport.js |### Manual Steps:
+
+| Session Store | PostgreSQL (connect-pg-simple) |- [ ] Opened UPDATE_APP_JS_GUIDE.md
+
+| Token Storage | JWT in localStorage |- [ ] Updated App.js with 5 changes
+
 - [ ] Verified .env has PORT=5000
-- [ ] Fixed any issues
 
-### Testing:
+---- [ ] Fixed any issues
+
+
+
+## 📡 API Reference### Testing:
+
 - [ ] Started backend (port 5000)
-- [ ] Started frontend (port 3000)
-- [ ] Logged in successfully
-- [ ] ZIP code page appears
-- [ ] Store selection works
-- [ ] Meal plan generates
 
----
+### Authentication Endpoints- [ ] Started frontend (port 3000)
 
-## 🗺️ Documentation Map
+```- [ ] Logged in successfully
+
+GET  /auth/google              - Initiate OAuth- [ ] ZIP code page appears
+
+GET  /auth/google/callback     - OAuth callback- [ ] Store selection works
+
+POST /auth/logout              - End session- [ ] Meal plan generates
+
+GET  /api/auth/status          - Check auth status
+
+```---
+
+
+
+### Meal Planning Endpoints## 🗺️ Documentation Map
 
 ```
-Start
-  │
-  ├─→ Quick Install? → QUICKSTART.md
-  │
+
+POST /api/meal-plan            - Generate meal plan```
+
+GET  /api/meal-plan            - Get current planStart
+
+POST /api/regenerate-meal      - Regenerate single meal  │
+
+POST /api/modify-recipe        - Modify ingredients  ├─→ Quick Install? → QUICKSTART.md
+
+```  │
+
   ├─→ Complete Guide? → README_INSTALLATION.md
+
+### Favorites Endpoints  │
+
+```  ├─→ Download List? → DOWNLOAD_ALL_FILES.md
+
+GET    /api/favorites          - Get user favorites  │
+
+POST   /api/favorites          - Add favorite  └─→ Technical Details? → PHASE_1_IMPLEMENTATION.md
+
+DELETE /api/favorites/:id      - Remove favorite
+
+```After Installation
+
   │
-  ├─→ Download List? → DOWNLOAD_ALL_FILES.md
-  │
-  └─→ Technical Details? → PHASE_1_IMPLEMENTATION.md
 
-After Installation
-  │
-  └─→ Update App.js → UPDATE_APP_JS_GUIDE.md
-```
+### Nutrition Endpoints  └─→ Update App.js → UPDATE_APP_JS_GUIDE.md
 
----
+``````
 
-## 🎓 What Each File Does
+GET  /api/nutrition/meal-plan-summary  - Nutrition summary
 
-### complete-install.sh
+GET  /api/nutrition/daily/:date        - Daily nutrition---
+
+GET  /api/nutrition/weekly             - Weekly nutrition
+
+```## 🎓 What Each File Does
+
+
+
+---### complete-install.sh
+
 - ✅ Auto-detects project directory
-- ✅ Confirms path with user
+
+## 🧪 Testing- ✅ Confirms path with user
+
 - ✅ Runs all sub-scripts
-- ✅ Creates backups
-- ✅ Shows progress
-- ✅ Lists next steps
+
+| Type | Location | Command |- ✅ Creates backups
+
+|------|----------|---------|- ✅ Shows progress
+
+| Unit Tests | `client/src/**/__tests__/` | `npm test` |- ✅ Lists next steps
+
+| CI Pipeline | GitHub Actions | Automatic on push |
 
 ### create-backend-files.sh
-- ✅ Creates scrapers/ directory
+
+---- ✅ Creates scrapers/ directory
+
 - ✅ Generates price-cache.js (caching system)
-- ✅ Generates base-scraper.js (base class)
+
+## 🚀 Deployment Checklist- ✅ Generates base-scraper.js (base class)
+
 - ✅ Generates harris-teeter-scraper.js (mock data)
-- ✅ Generates pdf-parser.js (PDF parsing)
 
-### create-frontend-files.sh
-- ✅ Creates ZIPCodeInput.js (ZIP entry page)
-- ✅ Creates ZIPCodeInput.css (styling)
+### Backend (Render)- ✅ Generates pdf-parser.js (PDF parsing)
+
+- [ ] PostgreSQL database created
+
+- [ ] Environment variables configured### create-frontend-files.sh
+
+- [ ] Docker build successful- ✅ Creates ZIPCodeInput.js (ZIP entry page)
+
+- [ ] Health check passing- ✅ Creates ZIPCodeInput.css (styling)
+
 - ✅ Creates StoreSelection.js (store picker)
-- ✅ Creates StoreSelection.css (styling)
-- ✅ Backups existing files
 
-### update-server.sh
-- ✅ Backs up server.js
+### Frontend (Vercel)- ✅ Creates StoreSelection.css (styling)
+
+- [ ] Connected to GitHub repo- ✅ Backups existing files
+
+- [ ] Environment variables set
+
+- [ ] Build successful### update-server.sh
+
+- [ ] Custom domain configured (optional)- ✅ Backs up server.js
+
 - ✅ Adds price scraping imports
-- ✅ Adds getScraper() function
-- ✅ Adds /api/find-stores endpoint
-- ✅ Adds /api/scrape-store-prices endpoint
-- ✅ Verifies changes
 
-### UPDATE_APP_JS_GUIDE.md
+### Google OAuth- ✅ Adds getScraper() function
+
+- [ ] Redirect URIs updated in Google Console- ✅ Adds /api/find-stores endpoint
+
+- [ ] Production callback URL added- ✅ Adds /api/scrape-store-prices endpoint
+
+- [ ] Test authentication flow- ✅ Verifies changes
+
+
+
+---### UPDATE_APP_JS_GUIDE.md
+
 - ✅ Shows required imports
-- ✅ Shows state variables to add
+
+## 📋 Strategy Documents- ✅ Shows state variables to add
+
 - ✅ Shows handler functions to add
-- ✅ Shows JSX sections to add
-- ✅ Includes complete example
-- ✅ Has verification checklist
 
----
+| Document | Purpose |- ✅ Shows JSX sections to add
 
-## 🚀 Installation Commands
+|----------|---------|- ✅ Includes complete example
 
-### One-Line Install:
+| **[HEALTH_PORTAL_EXPANSION_STRATEGY.md](./HEALTH_PORTAL_EXPANSION_STRATEGY.md)** | Health portal roadmap |- ✅ Has verification checklist
+
+| **[ADVERTISING_MONETIZATION_STRATEGY.md](./ADVERTISING_MONETIZATION_STRATEGY.md)** | Monetization strategy |
+
+| **[POSTGRESQL_MIGRATION_STRATEGY.md](./POSTGRESQL_MIGRATION_STRATEGY.md)** | Database migration |---
+
+| **[IMPLEMENTATION_ROADMAP.csv](./IMPLEMENTATION_ROADMAP.csv)** | Implementation timeline |
+
+| **[SECURITY_SCALABILITY_AUDIT.csv](./SECURITY_SCALABILITY_AUDIT.csv)** | Security audit |## 🚀 Installation Commands
+
+
+
+---### One-Line Install:
+
 ```bash
-cd ~/Downloads && chmod +x *.sh && ./complete-install.sh
+
+## 🐛 Troubleshooting Guidescd ~/Downloads && chmod +x *.sh && ./complete-install.sh
+
 ```
 
-### Step-by-Step:
-```bash
-# Step 1: Navigate
-cd ~/Downloads
+| Document | Issue Area |
 
-# Step 2: Make executable
+|----------|------------|### Step-by-Step:
+
+| **[DEBUGGING_401.md](./DEBUGGING_401.md)** | Authentication errors |```bash
+
+| **[FIX_SESSION_401.md](./FIX_SESSION_401.md)** | Session issues |# Step 1: Navigate
+
+| **[CORS_FIX_DEPLOYED.md](./CORS_FIX_DEPLOYED.md)** | CORS problems |cd ~/Downloads
+
+| **[FAVORITES_DEBUGGING_GUIDE.md](./FAVORITES_DEBUGGING_GUIDE.md)** | Favorites issues |
+
+| **[ERROR_DOCUMENTATION_MASTER_INDEX.md](./ERROR_DOCUMENTATION_MASTER_INDEX.md)** | All error docs |# Step 2: Make executable
+
 chmod +x complete-install.sh create-backend-files.sh create-frontend-files.sh update-server.sh
 
+---
+
 # Step 3: Run
-./complete-install.sh
 
-# Step 4: Update App.js (see UPDATE_APP_JS_GUIDE.md)
+## 📈 Shared Services./complete-install.sh
 
-# Step 5: Test
-cd ~/Library/Mobile\ Documents/com~apple~CloudDocs/mealsapp
-npm start  # Terminal 1
+
+
+| Service | File | Purpose |# Step 4: Update App.js (see UPDATE_APP_JS_GUIDE.md)
+
+|---------|------|---------|
+
+| **AnalyticsService** | `shared/services/AnalyticsService.js` | User action tracking |# Step 5: Test
+
+| **AuditLogger** | `shared/services/AuditLogger.js` | Comprehensive logging |cd ~/Library/Mobile\ Documents/com~apple~CloudDocs/mealsapp
+
+| **FeatureFlags** | `shared/services/FeatureFlags.js` | Feature flag management |npm start  # Terminal 1
+
+| **fetchWithAuth** | `shared/utils/api.js` | Authenticated API calls |
 
 cd ~/Library/Mobile\ Documents/com~apple~CloudDocs/mealsapp/client
-npm start  # Terminal 2
+
+---npm start  # Terminal 2
+
 ```
+
+## 🗓️ Version History
 
 ---
 
-## 🎯 Success Indicators
+| Version | Date | Changes |
 
-### Installation Successful:
+|---------|------|---------|## 🎯 Success Indicators
+
+| 2.0 | Dec 2025 | Added modules (Nutrition, Coaching, Progress, Integrations), PostgreSQL migration |
+
+| 1.0 | Nov 2025 | Initial release - Meal Planner core |### Installation Successful:
+
 - ✅ Scripts run without errors
-- ✅ 4 backend files created
+
+---- ✅ 4 backend files created
+
 - ✅ 4 frontend files created
-- ✅ server.js updated
+
+## 📞 Support- ✅ server.js updated
+
 - ✅ Backups created
 
-### App Running Successfully:
-- ✅ Backend: "Server running on port 5000"
-- ✅ Frontend: "Compiled successfully!"
+For issues:
+
+1. Check [Troubleshooting Guides](#-troubleshooting-guides)### App Running Successfully:
+
+2. Review [ERROR_DOCUMENTATION_MASTER_INDEX.md](./ERROR_DOCUMENTATION_MASTER_INDEX.md)- ✅ Backend: "Server running on port 5000"
+
+3. Check GitHub Issues- ✅ Frontend: "Compiled successfully!"
+
 - ✅ Browser: Opens to localhost:3000
-- ✅ Login works
+
+---- ✅ Login works
+
 - ✅ ZIP code page appears
-- ✅ Store selection works
+
+**Happy meal planning! 🍽️**- ✅ Store selection works
+
 - ✅ Meal plan generates
 
 ---

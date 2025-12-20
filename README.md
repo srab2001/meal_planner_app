@@ -1,8 +1,36 @@
 # Meal Planner App
 
-AI-powered meal planning application with Google OAuth authentication.
+> **AI-powered meal planning with integrated health modules**
 
-## Quick Start
+🌐 **Production**: https://meal-planner-app-chi.vercel.app  
+🔧 **Backend**: https://meal-planner-app-mve2.onrender.com
+
+---
+
+## 🎯 Overview
+
+A comprehensive meal planning platform featuring:
+- **AI Meal Planning** - Generate weekly plans with ChatGPT
+- **Nutrition Tracking** - Read-only nutrition analysis
+- **Health Coaching** - AI-powered wellness guidance
+- **Progress & Gamification** - Streaks, badges, referrals
+- **Health Integrations** - Connect fitness trackers
+
+---
+
+## 🖥️ Application Modules
+
+| Module | Description | Status |
+|--------|-------------|--------|
+| 🍽️ **Meal Planner** | AI meal plans, recipes, shopping lists, favorites | ✅ Core |
+| 🥗 **Nutrition** | Weekly/daily nutrition summary from meal plans | ✅ Active |
+| 💪 **Coaching** | AI health coaching, goals, habits, programs | ✅ Active |
+| 📈 **Progress** | Streaks, achievements, referral system | ✅ Active |
+| 🔗 **Integrations** | Apple Health, Google Fit, Fitbit | 🚧 Feature-flagged |
+
+---
+
+## 🚀 Quick Start
 
 ### Local Development
 
@@ -25,60 +53,120 @@ AI-powered meal planning application with Google OAuth authentication.
 
 3. Visit `http://localhost:3000`
 
-## Deployment
+---
 
-### Production Configuration (Quick Start)
+## 🏗️ Architecture
 
-**📋 For your production setup:**
-1. Copy the template: `cp PRODUCTION_CONFIG.md.example PRODUCTION_CONFIG.md`
-2. Edit `PRODUCTION_CONFIG.md` with your actual credentials
-3. Follow the configuration guide in that file
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Frontend (Vercel)                        │
+│  ┌─────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐ ┌───────┐│
+│  │ Meal    │ │ Nutrition│ │ Coaching │ │Progress│ │Integr.││
+│  │ Planner │ │  (R/O)   │ │          │ │        │ │       ││
+│  └────┬────┘ └────┬─────┘ └────┬─────┘ └───┬────┘ └───┬───┘│
+│       │           │            │           │          │     │
+│       └───────────┴────────────┴───────────┴──────────┘     │
+│                            │                                 │
+└────────────────────────────┼─────────────────────────────────┘
+                             │ HTTPS/REST
+┌────────────────────────────┼─────────────────────────────────┐
+│                    Backend (Render)                          │
+│  ┌─────────────────────────┴───────────────────────────┐    │
+│  │              Express.js + Passport.js               │    │
+│  └─────────────────────────┬───────────────────────────┘    │
+│                            │                                 │
+│  ┌───────────┬─────────────┼────────────┬──────────────┐    │
+│  │  OpenAI   │  Google     │  PostgreSQL│   Session    │    │
+│  │   API     │   OAuth     │  Database  │   Store      │    │
+│  └───────────┴─────────────┴────────────┴──────────────┘    │
+└──────────────────────────────────────────────────────────────┘
+```
 
-The actual `PRODUCTION_CONFIG.md` is git-ignored for security.
+### Tech Stack
 
-### Deploying to Vercel (Frontend) + Backend Service
+| Layer | Technology |
+|-------|------------|
+| Frontend | React 18, CSS Modules |
+| Backend | Express.js, Passport.js |
+| Database | PostgreSQL |
+| AI | OpenAI GPT-4 |
+| Auth | Google OAuth 2.0 + JWT |
+| Hosting | Vercel (frontend), Render (backend) |
 
-See **[VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md)** for complete deployment guide.
+---
 
-**Quick checklist**:
-- Backend: Deploy `server.js` to Render/Railway/etc
-- Frontend: Deploy `/client` folder to Vercel
-- Configure environment variables (see `.env.example` files)
-- Update Google OAuth redirect URIs in Google Cloud Console
+## 📚 Documentation
 
-## Documentation
-
-- **[PRODUCTION_CONFIG.md.example](./PRODUCTION_CONFIG.md.example)** - 🔧 **START HERE** - Production environment setup template
-- **[VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md)** - Complete Vercel deployment guide with Google OAuth
+### Getting Started
 - **[QUICKSTART.md](./QUICKSTART.md)** - Quick start guide
 - **[README_INSTALLATION.md](./README_INSTALLATION.md)** - Installation details
+- **[PRODUCTION_CONFIG.md.example](./PRODUCTION_CONFIG.md.example)** - Production environment template
+
+### Data & Architecture
+- **[DATA_MODEL.md](./DATA_MODEL.md)** - 📊 Complete database schema with Mermaid diagrams
+- **[MASTER_INDEX.md](./MASTER_INDEX.md)** - Complete documentation index
+
+### Deployment
+- **[VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md)** - Frontend deployment guide
+- **[DEPLOY_TO_RENDER.md](./DEPLOY_TO_RENDER.md)** - Backend deployment guide
+
+### Implementation
 - **[PHASE_1_IMPLEMENTATION.md](./PHASE_1_IMPLEMENTATION.md)** - Implementation details
+- **[REQUIREMENTS_AND_FEATURES.md](./REQUIREMENTS_AND_FEATURES.md)** - Feature specifications
 
-## Architecture
+---
 
-- **Frontend**: React app (port 3000 in dev)
-- **Backend**: Express.js with Passport.js for Google OAuth (port 5000 in dev)
-- **Authentication**: Google OAuth 2.0
-- **AI**: OpenAI integration for meal planning
-
-## Environment Variables
+## ⚙️ Environment Variables
 
 ### Backend (.env in root)
-```
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
+```bash
+# Google OAuth
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
 GOOGLE_CALLBACK_URL=https://your-backend.com/auth/google/callback
+
+# Frontend URL (for CORS)
 FRONTEND_BASE=https://your-app.vercel.app
-SESSION_SECRET=...
-OPENAI_API_KEY=...
+
+# Security
+SESSION_SECRET=your-secure-session-secret
+JWT_SECRET=your-jwt-secret
+
+# AI
+OPENAI_API_KEY=your-openai-api-key
+
+# Database
+DATABASE_URL=postgresql://user:pass@host:5432/dbname
 ```
 
 ### Frontend (client/.env or Vercel env vars)
-```
+```bash
 REACT_APP_API_URL=https://your-backend.com
 ```
 
-## Troubleshooting
+---
+
+## 🗄️ Database Tables
+
+| Table | Purpose |
+|-------|---------|
+| `users` | User accounts (Google OAuth) |
+| `meal_plan_history` | Generated meal plans |
+| `favorites` | Saved favorite meals |
+| `shopping_list_states` | Shopping list checkboxes |
+| `user_preferences` | User settings |
+| `subscriptions` | Payment plans (Stripe) |
+| `usage_stats` | Analytics tracking |
+| `session` | Express sessions |
+| `cuisine_options` | Available cuisines |
+| `dietary_options` | Dietary restrictions |
+| `app_settings` | Global configuration |
+
+See **[DATA_MODEL.md](./DATA_MODEL.md)** for complete schema and relationships.
+
+---
+
+## 🔧 Troubleshooting
 
 ### Google Auth not working on Vercel?
 
@@ -90,3 +178,17 @@ REACT_APP_API_URL=https://your-backend.com
 ### CORS errors?
 
 Ensure backend `FRONTEND_BASE` matches your Vercel URL exactly.
+
+### Nutrition module shows "No data"?
+
+The Nutrition module reads from `meal_plan_history`. Generate a meal plan first.
+
+### Login skipping to store selection?
+
+After login, users should land on the App Switchboard. Check `handleLogin` in `App.js`.
+
+---
+
+## 📄 License
+
+Private - All rights reserved
