@@ -149,8 +149,21 @@ function App() {
 
   // Handler: Login
   const handleLogin = (userData) => {
+    console.log('🔐 handleLogin called, user:', userData?.email);
     setUser(userData);
-    setCurrentView('zip');
+    
+    // Check if there's a redirect stored (user was trying to access specific app)
+    const redirectTo = localStorage.getItem('redirect_after_login');
+    if (redirectTo) {
+      console.log('🔐 Redirecting to stored destination:', redirectTo);
+      localStorage.removeItem('redirect_after_login');
+      setCurrentView(redirectTo);
+    } else {
+      // Default: go to switchboard after login
+      console.log('🔐 No redirect stored, going to switchboard');
+      setShowSplash(false); // Ensure splash is hidden
+      setCurrentView('switchboard');
+    }
   };
 
   // Handler: ZIP Code Submit
