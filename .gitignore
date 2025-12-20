@@ -18,3 +18,15 @@ discount-code-usage.json
 user-data/
 .env
 .env.*
+#node
+node_modules/
+node_modules 2/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local env
+.env
+.env.*
+.DS_Store
