@@ -560,7 +560,34 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
       }
 
       const data = await response.json();
-      console.log('✅ New meal generated:', data.meal.name);
+      console.log('✅ New meal generated:', data.meal?.name);
+      
+      // Normalize the meal data to ensure arrays
+      const newMeal = { ...data.meal };
+      
+      // Ensure ingredients is an array
+      if (typeof newMeal.ingredients === 'string') {
+        try {
+          newMeal.ingredients = JSON.parse(newMeal.ingredients);
+        } catch {
+          newMeal.ingredients = newMeal.ingredients.split('\n').filter(i => i.trim());
+        }
+      }
+      if (!Array.isArray(newMeal.ingredients)) {
+        newMeal.ingredients = [];
+      }
+      
+      // Ensure instructions is an array
+      if (typeof newMeal.instructions === 'string') {
+        try {
+          newMeal.instructions = JSON.parse(newMeal.instructions);
+        } catch {
+          newMeal.instructions = newMeal.instructions.split('\n').filter(i => i.trim());
+        }
+      }
+      if (!Array.isArray(newMeal.instructions)) {
+        newMeal.instructions = [];
+      }
 
       // Update the local meal plan with the new meal
       setLocalMealPlan(prevPlan => ({
@@ -569,7 +596,7 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
           ...prevPlan.mealPlan,
           [day]: {
             ...prevPlan.mealPlan[day],
-            [mealType]: data.meal
+            [mealType]: newMeal
           }
         }
       }));
@@ -1055,11 +1082,26 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
 
       if (response.ok) {
         const data = await response.json();
+        console.log('🔧 Regenerate recipe response:', data);
+        
+        // Ensure instructions is an array (backend might return string)
+        let newInstructions = data.instructions;
+        if (typeof newInstructions === 'string') {
+          try {
+            newInstructions = JSON.parse(newInstructions);
+          } catch {
+            newInstructions = newInstructions.split('\n').filter(i => i.trim());
+          }
+        }
+        if (!Array.isArray(newInstructions)) {
+          console.error('❌ Instructions not an array, keeping original:', newInstructions);
+          newInstructions = selectedMeal?.instructions || [];
+        }
         
         // Update the meal with the regenerated recipe
         const updatedMeal = {
           ...selectedMeal,
-          instructions: data.instructions || selectedMeal.instructions
+          instructions: newInstructions
         };
         setSelectedMeal(updatedMeal);
         
