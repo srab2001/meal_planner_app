@@ -33,11 +33,14 @@ export default function NutritionApp({ user, onBack, onLogout }) {
       setError(null);
 
       try {
-        console.log('🥗 [Nutrition] Loading saved meal plans...');
+        console.log('🥗 [Nutrition v2.0] Loading saved meal plans...');
+        console.log('🥗 [Nutrition] API_BASE:', API_BASE);
         
         const response = await fetchWithAuth(`${API_BASE}/api/nutrition/saved-plans`, {
           method: 'GET'
         });
+
+        console.log('🥗 [Nutrition] Response status:', response.status);
 
         if (!response.ok) {
           if (response.status === 401 || response.status === 403) {
@@ -48,6 +51,7 @@ export default function NutritionApp({ user, onBack, onLogout }) {
           }
         } else {
           const data = await response.json();
+          console.log('🥗 [Nutrition] Raw response data:', data);
           console.log('🥗 [Nutrition] Found saved plans:', data.plans?.length);
           setSavedPlans(data.plans || []);
         }
