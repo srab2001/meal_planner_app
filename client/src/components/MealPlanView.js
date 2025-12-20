@@ -1048,6 +1048,10 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   };
 
   const handleSubmitRecipeChanges = async (day, mealType) => {
+    console.log('🔧 [SubmitRecipeChanges] Starting with day:', day, 'mealType:', mealType);
+    console.log('🔧 [SubmitRecipeChanges] selectedMeal:', selectedMeal);
+    console.log('🔧 [SubmitRecipeChanges] selectedMealDay:', selectedMealDay, 'selectedMealType:', selectedMealType);
+    
     setOperationLoading(true);
     try {
       const token = localStorage.getItem('auth_token');
@@ -1055,11 +1059,17 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
       if (!token) {
         console.error('❌ No authentication token found');
         setOperationMessage('❌ Authentication required. Please log in again.');
+        setOperationLoading(false);
         return;
       }
       
+      // Use a placeholder ID if none exists - backend doesn't actually use it
+      const mealId = selectedMeal?.id || 'current';
+      const apiUrl = `${API_BASE}/api/meal/${mealId}/regenerate-recipe`;
+      console.log('🔧 [SubmitRecipeChanges] API URL:', apiUrl);
+      
       // Send a request to regenerate the full recipe with current ingredients
-      const response = await fetch(`${API_BASE}/api/meal/${selectedMeal?.id}/regenerate-recipe`, {
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1071,6 +1081,8 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
           currentInstructions: selectedMeal?.instructions
         }),
       });
+
+      console.log('🔧 [SubmitRecipeChanges] Response status:', response.status);
 
       // Handle authentication errors
       if (response.status === 401 || response.status === 403) {
@@ -1103,22 +1115,25 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
           ...selectedMeal,
           instructions: newInstructions
         };
-        setSelectedMeal(updatedMeal);
         
-        // Update the local meal plan
-        if (selectedMealDay && selectedMealType) {
+        // Update the local meal plan using the stored day/mealType
+        const actualDay = selectedMealDay || day;
+        const actualMealType = selectedMealType || mealType;
+        
+        if (actualDay && actualMealType && localMealPlan?.mealPlan?.[actualDay]) {
           const updatedPlan = {
             ...localMealPlan,
             mealPlan: {
               ...localMealPlan.mealPlan,
-              [selectedMealDay]: {
-                ...localMealPlan.mealPlan[selectedMealDay],
-                [selectedMealType]: updatedMeal
+              [actualDay]: {
+                ...localMealPlan.mealPlan[actualDay],
+                [actualMealType]: updatedMeal
               }
             }
           };
           
           setLocalMealPlan(updatedPlan);
+          console.log('✅ [SubmitRecipeChanges] Updated meal plan for', actualDay, actualMealType);
         }
         
         setOperationMessage(`✅ Recipe updated with your ingredient changes!`);
@@ -1760,7 +1775,7 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                 <p className="operation-note">Click to finalize all your ingredient modifications and regenerate the recipe</p>
                 {console.log('✅ BUTTON RENDERING - Submit Recipe Changes button is now visible on page')}
                 <button 
-                  onClick={() => handleSubmitRecipeChanges(selectedDay, Object.keys(localMealPlan.mealPlan[selectedDay])[0])}
+                  onClick={() => handleSubmitRecipeChanges(selectedMealDay, selectedMealType)}
                   className="operation-btn submit-changes-btn"
                   disabled={operationLoading}
                 >
