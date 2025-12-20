@@ -19,3 +19,8 @@ build/
 # SQL / docs
 db_schema.sql
 *.rtf
+generated/
+meal_planner_app/
+prisma/
+scripts/
+package.json.bak.*
