@@ -3304,33 +3304,53 @@ app.get('/api/nutrition/meal-plan-summary', requireAuth, async (req, res) => {
   try {
     console.log(`[NUTRITION] Fetching meal plan summary for user ${req.user.email}`);
 
-    // Get user's most recent meal plan (READ-ONLY)
+    // Get user's most recent meal plan from history (READ-ONLY)
     const result = await db.query(`
-      SELECT id, meals, shopping_list, total_cost, created_at
-      FROM meal_plans
+      SELECT id, meal_plan, shopping_list, total_cost, created_at
+      FROM meal_plan_history
       WHERE user_id = $1
       ORDER BY created_at DESC
       LIMIT 1
     `, [req.user.id]);
 
     if (result.rows.length === 0) {
+      console.log(`[NUTRITION] No meal plan found for user ${req.user.email}`);
       return res.status(404).json({ 
         error: 'No meal plan found',
         hasMealPlan: false 
       });
     }
 
-    const mealPlan = result.rows[0];
-    const meals = mealPlan.meals || [];
+    const mealPlanRecord = result.rows[0];
+    const mealPlanData = mealPlanRecord.meal_plan || {};
+    
+    // Extract meals from the meal plan structure
+    // The meal_plan is stored as { mealPlan: { Monday: { breakfast: {...}, lunch: {...} }, ... } }
+    let meals = [];
+    if (mealPlanData.mealPlan) {
+      Object.entries(mealPlanData.mealPlan).forEach(([day, dayMeals]) => {
+        Object.entries(dayMeals || {}).forEach(([mealType, meal]) => {
+          if (meal && meal.name) {
+            meals.push({
+              ...meal,
+              day: day,
+              mealType: mealType
+            });
+          }
+        });
+      });
+    }
+
+    console.log(`[NUTRITION] Extracted ${meals.length} meals from meal plan`);
 
     // Calculate nutrition summary from meals
     const summary = calculateNutritionSummary(meals);
 
     res.json({
       mealPlan: {
-        id: mealPlan.id,
+        id: mealPlanRecord.id,
         meals: meals,
-        createdAt: mealPlan.created_at
+        createdAt: mealPlanRecord.created_at
       },
       summary: summary,
       hasMealPlan: true
@@ -3353,9 +3373,9 @@ app.get('/api/nutrition/daily/:date', requireAuth, async (req, res) => {
     const { date } = req.params;
     console.log(`[NUTRITION] Fetching daily nutrition for ${date}, user ${req.user.email}`);
 
-    // Get user's meal plan
+    // Get user's meal plan from history
     const result = await db.query(`
-      SELECT meals FROM meal_plans
+      SELECT meal_plan FROM meal_plan_history
       WHERE user_id = $1
       ORDER BY created_at DESC
       LIMIT 1
@@ -3365,7 +3385,23 @@ app.get('/api/nutrition/daily/:date', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'No meal plan found' });
     }
 
-    const meals = result.rows[0].meals || [];
+    const mealPlanData = result.rows[0].meal_plan || {};
+    
+    // Extract meals from the meal plan structure
+    let meals = [];
+    if (mealPlanData.mealPlan) {
+      Object.entries(mealPlanData.mealPlan).forEach(([day, dayMeals]) => {
+        Object.entries(dayMeals || {}).forEach(([mealType, meal]) => {
+          if (meal && meal.name) {
+            meals.push({
+              ...meal,
+              day: day,
+              mealType: mealType
+            });
+          }
+        });
+      });
+    }
     
     // Parse the date to get day of week
     const dayOfWeek = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
@@ -3407,9 +3443,9 @@ app.get('/api/nutrition/weekly', requireAuth, async (req, res) => {
   try {
     console.log(`[NUTRITION] Fetching weekly summary for user ${req.user.email}`);
 
-    // Get user's meal plan
+    // Get user's meal plan from history
     const result = await db.query(`
-      SELECT meals FROM meal_plans
+      SELECT meal_plan FROM meal_plan_history
       WHERE user_id = $1
       ORDER BY created_at DESC
       LIMIT 1
@@ -3419,7 +3455,24 @@ app.get('/api/nutrition/weekly', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'No meal plan found' });
     }
 
-    const meals = result.rows[0].meals || [];
+    const mealPlanData = result.rows[0].meal_plan || {};
+    
+    // Extract meals from the meal plan structure
+    let meals = [];
+    if (mealPlanData.mealPlan) {
+      Object.entries(mealPlanData.mealPlan).forEach(([day, dayMeals]) => {
+        Object.entries(dayMeals || {}).forEach(([mealType, meal]) => {
+          if (meal && meal.name) {
+            meals.push({
+              ...meal,
+              day: day,
+              mealType: mealType
+            });
+          }
+        });
+      });
+    }
+    
     const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
     // Calculate daily totals for each day
