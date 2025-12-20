@@ -1,4 +1,3 @@
-# OS
 .DS_Store
 
 # Env
@@ -6,19 +5,28 @@
 .env.*
 !.env.example
 
-# Node
+# Vercel
+.vercel/
+
+# Node / build
 node_modules/
 **/node_modules/
+node_modules 2/
+node/
 dist/
 build/
 
-# Prisma / DB artifacts
+# SQL / docs
 db_schema.sql
-generated/
-
-# Vercel local
-.vercel/
-
-# Temp / backups
-*.bak
 *.rtf
+generated/
+meal_planner_app/
+prisma/
+scripts/
+package.json.bak.*
+# Local working folders
+generated/
+meal_planner_app/
+package.json.bak.*
+server.js.bak*
+scripts/scripts/
