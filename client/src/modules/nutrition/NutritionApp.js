@@ -30,20 +30,32 @@ export default function NutritionApp({ user, onBack, onLogout }) {
       setError(null);
 
       try {
+        console.log('🥗 [Nutrition] Loading nutrition data...');
+        console.log('🥗 [Nutrition] API_BASE:', API_BASE);
+        
         // Fetch user's meal plan (READ-ONLY access)
         const response = await fetchWithAuth(`${API_BASE}/api/nutrition/meal-plan-summary`, {
           method: 'GET'
         });
 
+        console.log('🥗 [Nutrition] Response status:', response.status);
+
         if (!response.ok) {
           if (response.status === 404) {
+            console.log('🥗 [Nutrition] No meal plan found (404)');
             setMealPlanData(null);
             setSnapshot(null);
+          } else if (response.status === 401 || response.status === 403) {
+            console.error('🥗 [Nutrition] Auth error:', response.status);
+            setError('Please log in to view nutrition data');
           } else {
-            throw new Error('Failed to load nutrition data');
+            const errorData = await response.json().catch(() => ({}));
+            console.error('🥗 [Nutrition] Error response:', errorData);
+            throw new Error(errorData.error || 'Failed to load nutrition data');
           }
         } else {
           const data = await response.json();
+          console.log('🥗 [Nutrition] Received data:', data);
           setMealPlanData(data.mealPlan);
           
           // Check if we need to recompute or can use cache
@@ -59,10 +71,11 @@ export default function NutritionApp({ user, onBack, onLogout }) {
             data.mealPlan
           );
           setSnapshot(nutritionSnapshot);
+          console.log('🥗 [Nutrition] Snapshot created:', nutritionSnapshot);
         }
       } catch (err) {
-        console.error('Error loading nutrition data:', err);
-        setError(err.message);
+        console.error('🥗 [Nutrition] Error loading nutrition data:', err);
+        setError(err.message || 'Failed to load nutrition information');
       } finally {
         setLoading(false);
       }
@@ -162,6 +175,7 @@ export default function NutritionApp({ user, onBack, onLogout }) {
         {error && (
           <div className="nutrition-error">
             <p>⚠️ {error}</p>
+            <p className="error-hint">Please generate a meal plan first from the Meal Planner app, then return here.</p>
             <button onClick={() => window.location.reload()}>Retry</button>
           </div>
         )}
