@@ -26,7 +26,6 @@ prisma/migrations/
 prisma/*.db
 prisma/*.db-journal
 prisma/generated/
-scripts/
 package.json.bak.*
 # Local working folders
 generated/
@@ -38,3 +37,7 @@ scripts/scripts/
 # env
 .env
 client/.env
+
+# allow repo scripts
+!scripts/
+!scripts/**
