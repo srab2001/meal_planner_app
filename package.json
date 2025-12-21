@@ -10,7 +10,7 @@
     "prestart": "node scripts/run-migrations.js",
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "postinstall": "prisma generate --schema prisma/schema.prisma",
+    "postinstall": "npx prisma generate --schema prisma/schema.prisma",
     "test": "echo 'Running tests...' && node --test || echo 'No tests defined yet'",
     "test:watch": "nodemon --exec npm test",
     "docker:up": "docker-compose up -d",
@@ -23,7 +23,7 @@
     "setup:test": "docker-compose up -d postgres-test && sleep 5 && npm run db:migrate"
   },
   "dependencies": {
-    "@prisma/client": "^7.2.0",
+    "@prisma/client": "5.22.0",
     "connect-pg-simple": "^10.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
@@ -40,6 +40,6 @@
   },
   "devDependencies": {
     "nodemon": "^3.0.1",
-    "prisma": "^7.2.0"
+    "prisma": "5.22.0"
   }
 }
