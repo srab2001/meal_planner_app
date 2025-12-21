@@ -34,3 +34,6 @@ meal_planner_app/
 package.json.bak.*
 server.js.bak*
 scripts/scripts/
+
+# local duplicate folder
+meal_planner_app/
