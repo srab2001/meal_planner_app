@@ -34,3 +34,7 @@ meal_planner_app/
 package.json.bak.*
 server.js.bak*
 scripts/scripts/
+
+# env
+.env
+client/.env
