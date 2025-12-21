@@ -328,19 +328,6 @@ function MealPlanSelector({ plans, selectedPlanId, onAnalyze, analyzing }) {
   );
 }
 
-/**
- * No Meal Plan Message (legacy - kept for reference)
- */
-function NoMealPlanMessage() {
-  return (
-    <div className="no-data-message">
-      <span className="no-data-icon">📋</span>
-      <h3>No Meal Plan Available</h3>
-      <p>Create a meal plan in the Meal Planner app to see nutrition details here.</p>
-      <p className="hint">Your nutrition data will be calculated automatically from your meal plan.</p>
-    </div>
-  );
-}
 
 /**
  * Weekly Summary View - Shows weekly totals, daily averages, and per-day cards
