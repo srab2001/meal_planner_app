@@ -163,6 +163,7 @@ const allowedOrigins = [
   'https://meal-planner-app-chi.vercel.app',  // Current Vercel deployment
   'https://meal-planner-rjyhqof89-stus-projects-458dd35a.vercel.app',  // Vercel preview
   'https://meal-planner.vercel.app',  // Production Vercel URL
+  'https://meal-planner-gold-one.vercel.app',  // Current production URL
   // Add your production Vercel URL here when deployed
 ].filter(Boolean); // Remove undefined values
 
