@@ -8,6 +8,8 @@
  * - POST /api/fitness/workouts - Create new workout (no duplicates per day)
  * - GET /api/fitness/goals - List user's fitness goals
  * - POST /api/fitness/goals - Create new fitness goal
+ * - POST /api/fitness/ai-interview - AI-powered workout planning via conversation
+
  * 
  * Security:
  * - All routes require authentication (requireAuth middleware)
