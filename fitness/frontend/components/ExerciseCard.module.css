@@ -1,0 +1,310 @@
+/**
+ * Fitness Module - Exercise Card Styles
+ */
+
+.card {
+  border: 1px solid #CCCCCC;
+  border-radius: 12px;
+  background-color: #FFFFFF;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: 300ms ease-in-out;
+}
+
+.card:hover {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* ============================================================================
+   CARD HEADER
+   ============================================================================ */
+
+.cardHeader {
+  width: 100%;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: none;
+  background-color: #FFFFFF;
+  cursor: pointer;
+  transition: 300ms ease-in-out;
+}
+
+.cardHeader:hover {
+  background-color: #F5F5F5;
+}
+
+.cardHeader:active {
+  background-color: #EEEEEE;
+}
+
+.headerContent {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex: 1;
+  text-align: left;
+}
+
+.exerciseNumber {
+  font-size: 14px;
+  font-weight: bold;
+  color: #666666;
+  min-width: 24px;
+  margin-top: 4px;
+}
+
+.exerciseInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.exerciseName {
+  font-size: 14px;
+  font-weight: bold;
+  color: #333333;
+  margin: 0;
+  text-align: left;
+}
+
+.summary {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: #666666;
+}
+
+.summaryItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.summaryItem strong {
+  color: #333333;
+  font-weight: 600;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 8px;
+}
+
+.menuButton {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background-color: transparent;
+  border: none;
+  font-size: 18px;
+  color: #666666;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: 300ms ease-in-out;
+}
+
+.menuButton:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: #333333;
+}
+
+.expandIcon {
+  font-size: 12px;
+  color: #999999;
+  min-width: 12px;
+  transition: 300ms ease-in-out;
+}
+
+/* ============================================================================
+   CARD CONTENT (Expanded)
+   ============================================================================ */
+
+.cardContent {
+  padding: 12px;
+  border-top: 1px solid #EEEEEE;
+  background-color: #FAFAFA;
+}
+
+.setsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.setItem {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: #666666;
+  background-color: #FFFFFF;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #F0F0F0;
+}
+
+.setNumber {
+  font-weight: 600;
+  color: #333333;
+  min-width: 50px;
+}
+
+.setDetails {
+  display: flex;
+  gap: 8px;
+  color: #666666;
+}
+
+.setDetails span {
+  display: inline-flex;
+}
+
+.setDetails span::after {
+  content: ' ';
+}
+
+.setDetails span:last-child::after {
+  content: '';
+}
+
+/* ============================================================================
+   CARD ACTIONS
+   ============================================================================ */
+
+.cardActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #EEEEEE;
+}
+
+.actionButton {
+  flex: 1;
+  height: 36px;
+  padding: 0 12px;
+  background-color: #0066CC;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 300ms ease-in-out;
+}
+
+.actionButton:hover {
+  background-color: #0052A3;
+}
+
+.actionButton:active {
+  background-color: #003D7A;
+}
+
+.deleteButton {
+  background-color: #FFFFFF;
+  color: #CC0000;
+  border: 1px solid #CC0000;
+}
+
+.deleteButton:hover {
+  background-color: rgba(204, 0, 0, 0.05);
+  border-color: #AA0000;
+  color: #AA0000;
+}
+
+/* ============================================================================
+   CONFIRMATION MODAL
+   ============================================================================ */
+
+.confirmationOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.confirmationModal {
+  background-color: #FFFFFF;
+  padding: 20px;
+  border-radius: 12px 12px 0 0;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.confirmationText {
+  font-size: 14px;
+  color: #333333;
+  margin: 0 0 20px 0;
+  text-align: center;
+}
+
+.confirmationActions {
+  display: flex;
+  gap: 12px;
+}
+
+.cancelButton,
+.confirmButton {
+  flex: 1;
+  height: 44px;
+  border-radius: 8px;
+  border: none;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 300ms ease-in-out;
+}
+
+.cancelButton {
+  background-color: #F5F5F5;
+  color: #333333;
+  border: 1px solid #CCCCCC;
+}
+
+.cancelButton:hover {
+  background-color: #EEEEEE;
+}
+
+.confirmButton {
+  background-color: #CC0000;
+  color: #FFFFFF;
+}
+
+.confirmButton:hover {
+  background-color: #AA0000;
+}
+
+/* ============================================================================
+   RESPONSIVE
+   ============================================================================ */
+
+@media (max-width: 768px) {
+  .summary {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .cardActions {
+    flex-direction: column;
+  }
+
+  .actionButton {
+    height: 40px;
+  }
+}
