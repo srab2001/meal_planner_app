@@ -174,6 +174,12 @@ app.use(
       // Allow requests with no origin (like mobile apps, Postman, curl)
       if (!origin) return callback(null, true);
 
+      // Allow any Vercel deployment in development/preview
+      if (origin && origin.includes('vercel.app')) {
+        return callback(null, true);
+      }
+
+      // Check whitelist
       if (allowedOrigins.indexOf(origin) === -1) {
         const msg = `The CORS policy for this site does not allow access from origin ${origin}`;
         console.warn('CORS blocked:', origin);
