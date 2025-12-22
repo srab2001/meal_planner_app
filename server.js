@@ -32,8 +32,25 @@ const fs = require('fs');
 const path = require('path');
 
 async function runMigrationsSync() {
+  // Validate DATABASE_URL exists and is valid
+  const dbUrl = process.env.DATABASE_URL;
+  
+  if (!dbUrl) {
+    console.error('[MIGRATIONS] ❌ DATABASE_URL is not set!');
+    throw new Error('DATABASE_URL environment variable is required');
+  }
+  
+  // Check for common issues with DATABASE_URL
+  if (dbUrl.includes('undefined') || dbUrl.includes('base"') || !dbUrl.includes('://')) {
+    console.error('[MIGRATIONS] ❌ DATABASE_URL appears to be malformed!');
+    console.error('[MIGRATIONS] Value:', dbUrl.substring(0, 50) + '...');
+    console.error('[MIGRATIONS] DATABASE_URL should be a complete PostgreSQL connection string');
+    console.error('[MIGRATIONS] Example: postgresql://user:password@host:5432/database');
+    throw new Error('Malformed DATABASE_URL - check Render environment variables');
+  }
+  
   const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: dbUrl,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   });
 
