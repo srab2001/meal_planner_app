@@ -722,9 +722,16 @@ Be friendly, encouraging, and professional. Keep responses concise.`;
     });
   } catch (error) {
     console.error('[AI Interview] Error:', error);
+    console.error('[AI Interview] Error details:', {
+      message: error.message,
+      code: error.code,
+      status: error.status,
+      type: error.type
+    });
+    
     res.status(500).json({
       error: 'ai_error',
-      message: 'Failed to process AI request',
+      message: 'Failed to process AI request. ' + (error.message || 'Unknown error'),
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }

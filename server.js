@@ -516,6 +516,8 @@ app.post('/auth/logout', (req, res) => {
 // ============================================================================
 // MOUNT FITNESS ROUTES
 // ============================================================================
+// Make OpenAI available to fitness routes
+app.locals.openai = openai;
 app.use('/api/fitness', fitnessRoutes);
 
 // ============================================================================
