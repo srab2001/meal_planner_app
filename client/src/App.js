@@ -78,6 +78,25 @@ function App() {
     return response;
   };
 
+  // Handler: Login - MUST be defined before useEffect that calls it
+  const handleLogin = (userData) => {
+    console.log('🔐 handleLogin called, user:', userData?.email);
+    setUser(userData);
+    
+    // Check if there's a redirect stored (user was trying to access specific app)
+    const redirectTo = localStorage.getItem('redirect_after_login');
+    if (redirectTo) {
+      console.log('🔐 Redirecting to stored destination:', redirectTo);
+      localStorage.removeItem('redirect_after_login');
+      setCurrentView(redirectTo);
+    } else {
+      // Default: go to switchboard after login
+      console.log('🔐 No redirect stored, going to switchboard');
+      setShowSplash(false); // Ensure splash is hidden
+      setCurrentView('switchboard');
+    }
+  };
+
   // Check for token in URL hash (from OAuth redirect) and authenticate
   useEffect(() => {
     // Check if accessing admin panel (public route - skip splash)
@@ -141,8 +160,25 @@ function App() {
           'Authorization': `Bearer ${token}`
         }
       })
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) {
+            console.warn(`Auth verification returned ${res.status}, still attempting login with token...`);
+            // Even if verification fails, if we have a token and redirect, proceed
+            const redirect = localStorage.getItem('redirect_after_login');
+            if (redirect) {
+              console.log('🔄 Have redirect info, proceeding despite auth verification issue');
+              setShowSplash(false);
+              localStorage.removeItem('redirect_after_login');
+              setCurrentView(redirect);
+              return null;
+            }
+            throw new Error(`Auth failed with status ${res.status}`);
+          }
+          return res.json();
+        })
         .then(data => {
+          if (!data) return; // Already handled above
+          
           if (data.user) {
             console.log('User authenticated:', data.user.email);
             // Call handleLogin to trigger redirect logic
@@ -154,29 +190,21 @@ function App() {
         })
         .catch(err => {
           console.error('Error checking auth:', err);
-          removeToken();
+          // On network/CORS errors, check if we have redirect info to proceed with
+          const redirect = localStorage.getItem('redirect_after_login');
+          if (redirect) {
+            console.log('🔄 Network error but have redirect, proceeding to:', redirect);
+            setShowSplash(false);
+            localStorage.removeItem('redirect_after_login');
+            setCurrentView(redirect);
+          } else {
+            // Only remove token if there's no redirect pending
+            removeToken();
+          }
         });
     }
-  }, []);
 
-  // Handler: Login
-  const handleLogin = (userData) => {
-    console.log('🔐 handleLogin called, user:', userData?.email);
-    setUser(userData);
-    
-    // Check if there's a redirect stored (user was trying to access specific app)
-    const redirectTo = localStorage.getItem('redirect_after_login');
-    if (redirectTo) {
-      console.log('🔐 Redirecting to stored destination:', redirectTo);
-      localStorage.removeItem('redirect_after_login');
-      setCurrentView(redirectTo);
-    } else {
-      // Default: go to switchboard after login
-      console.log('🔐 No redirect stored, going to switchboard');
-      setShowSplash(false); // Ensure splash is hidden
-      setCurrentView('switchboard');
-    }
-  };
+  }, []);
 
   // Handler: ZIP Code Submit
   const handleZIPSubmit = ({ zipCode: enteredZip, stores: foundStores }) => {
