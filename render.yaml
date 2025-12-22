@@ -1,0 +1,22 @@
+services:
+  # Backend API Service
+  - type: web
+    name: meal-planner-backend
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      # Add these manually in Render dashboard with actual values:
+      # - GOOGLE_CLIENT_ID
+      # - GOOGLE_CLIENT_SECRET
+      # - GOOGLE_CALLBACK_URL (format: https://your-app.onrender.com/auth/google/callback)
+      # - FRONTEND_BASE (your frontend URL)
+      # - SESSION_SECRET (generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
+      # - OPENAI_API_KEY

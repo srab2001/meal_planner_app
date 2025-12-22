@@ -45,7 +45,7 @@ app.set('trust proxy', 1);
 // CORS: allow frontend and cookies
 app.use(
   cors({
-    origin: true,
+    origin: FRONTEND_BASE || 'http://localhost:3000',
     credentials: true
   })
 );
@@ -119,7 +119,9 @@ function requireAuth(req, res, next) {
 
 // health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
+  const timestamp = new Date().toISOString();
+  console.log('Health check at', timestamp);
+  res.json({ status: 'ok', timestamp: Date.now() });
 });
 
 // Google login
@@ -183,6 +185,16 @@ app.post('/api/generate-meals', requireAuth, async (req, res) => {
   return res
     .status(501)
     .json({ error: 'generate-meals route not wired on this server build' });
+});
+
+// Global error handler - must be after all routes
+app.use((err, req, res, next) => {
+  console.error('Server error:', err);
+  const status = err.status || 500;
+  res.status(status).json({
+    error: err.message || 'Internal server error',
+    ...(NODE_ENV === 'development' && { stack: err.stack })
+  });
 });
 
 const port = PORT || 5000;

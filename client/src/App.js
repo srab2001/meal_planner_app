@@ -120,8 +120,20 @@ function App() {
   };
 
   // Handler: Logout
-  const handleLogout = () => {
-    window.location.href = `${API_BASE}/auth/logout`;
+  const handleLogout = async () => {
+    try {
+      await fetch(`${API_BASE}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+      setUser(null);
+      setCurrentView('login');
+    } catch (err) {
+      console.error('Logout error:', err);
+      // Still redirect to login even if logout fails
+      setUser(null);
+      setCurrentView('login');
+    }
   };
 
   return (
