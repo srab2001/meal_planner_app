@@ -86,9 +86,15 @@ export default function AIWorkoutInterview({ user, onWorkoutGenerated, onClose }
       }
     } catch (error) {
       console.error('Error in AI interview:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      console.error('Error message:', error.message);
+      
+      const errorMessage = error.response?.data?.message || error.message || 'Unknown error occurred';
+      
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: '❌ Sorry, I encountered an error. Please try again.'
+        content: `❌ Error: ${errorMessage}`
       }]);
     } finally {
       setLoading(false);

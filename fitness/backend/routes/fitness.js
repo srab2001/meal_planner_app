@@ -630,8 +630,12 @@ router.post('/ai-interview', requireAuth, async (req, res) => {
   try {
     const { messages, userProfile } = req.body;
     const userId = req.user.id;
+    
+    console.log('[AI Interview] Request received for user:', userId);
+    console.log('[AI Interview] Messages count:', messages?.length);
 
     if (!messages || !Array.isArray(messages)) {
+      console.error('[AI Interview] Invalid messages:', messages);
       return res.status(400).json({
         error: 'invalid_input',
         message: 'Messages array is required'
@@ -641,11 +645,15 @@ router.post('/ai-interview', requireAuth, async (req, res) => {
     // Check if OpenAI API is available
     const openai = req.app.locals.openai;
     if (!openai) {
+      console.error('[AI Interview] OpenAI client not available in req.app.locals');
+      console.error('[AI Interview] req.app.locals keys:', Object.keys(req.app?.locals || {}));
       return res.status(503).json({
         error: 'service_unavailable',
         message: 'AI service is not available'
       });
     }
+    
+    console.log('[AI Interview] OpenAI client found, making request...');
 
     // Build context for AI
     const systemPrompt = `You are a professional fitness coach. Your goal is to interview the user about their workout preferences and create a personalized workout plan.
@@ -670,6 +678,7 @@ When you have enough information (usually after 3-4 exchanges), generate a JSON 
 Be friendly, encouraging, and professional. Keep responses concise.`;
 
     // Call OpenAI
+    console.log('[AI Interview] Calling OpenAI API...');
     const response = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages: [
@@ -684,6 +693,8 @@ Be friendly, encouraging, and professional. Keep responses concise.`;
     });
 
     const aiMessage = response.choices[0].message.content;
+    console.log('[AI Interview] OpenAI response received');
+    console.log('[AI Interview] Message length:', aiMessage.length);
 
     // Check if workout was generated
     const workoutMatch = aiMessage.match(/<WORKOUT_JSON>([\s\S]*?)<\/WORKOUT_JSON>/);
@@ -692,11 +703,13 @@ Be friendly, encouraging, and professional. Keep responses concise.`;
     let cleanMessage = aiMessage;
 
     if (workoutMatch) {
+      console.log('[AI Interview] Workout JSON found in response');
       try {
         workout = JSON.parse(workoutMatch[1]);
         workoutGenerated = true;
         // Remove the JSON tags from the message
         cleanMessage = aiMessage.replace(/<WORKOUT_JSON>[\s\S]*?<\/WORKOUT_JSON>/, '').trim();
+        console.log('[AI Interview] Workout parsed successfully:', workout);
         
         // Save the workout to database
         await getDb().fitness_workouts.create({
@@ -710,11 +723,13 @@ Be friendly, encouraging, and professional. Keep responses concise.`;
             workout_date: new Date()
           }
         });
+        console.log('[AI Interview] Workout saved to database');
       } catch (parseError) {
-        console.error('Error parsing/saving workout:', parseError);
+        console.error('[AI Interview] Error parsing/saving workout:', parseError);
       }
     }
 
+    console.log('[AI Interview] Sending response - workoutGenerated:', workoutGenerated);
     res.json({
       message: cleanMessage || 'Workout plan created!',
       workoutGenerated,
