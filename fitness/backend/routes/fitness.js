@@ -19,13 +19,29 @@ const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 
 const router = express.Router();
-const fitnessDb = new PrismaClient({
-  datasources: {
-    db: {
-      url: process.env.FITNESS_DATABASE_URL,
-    },
-  },
-});
+
+// Lazy-initialize Prisma client on first use to avoid failures at module load time
+// Use main DATABASE_URL instead of separate FITNESS_DATABASE_URL
+let fitnessDb = null;
+
+function getDb() {
+  if (!fitnessDb) {
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error(
+        'DATABASE_URL environment variable is not set. ' +
+        'Fitness routes cannot operate without a database connection.'
+      );
+    }
+    
+    fitnessDb = new PrismaClient({
+      datasources: {
+        db: { url: dbUrl },
+      },
+    });
+  }
+  return fitnessDb;
+}
 
 /**
  * Authentication Middleware
@@ -56,7 +72,7 @@ router.get('/profile', requireAuth, async (req, res) => {
     const userId = req.user.id;
     console.log(`[GET /api/fitness/profile] Fetching profile for user: ${req.user.email}`);
 
-    const profile = await fitnessDb.fitness_profiles.findUnique({
+    const profile = await getDb().fitness_profiles.findUnique({
       where: { user_id: userId },
     });
 
@@ -146,7 +162,7 @@ router.post('/profile', requireAuth, async (req, res) => {
     }
 
     // Check if profile exists
-    const existingProfile = await fitnessDb.fitness_profiles.findUnique({
+    const existingProfile = await getDb().fitness_profiles.findUnique({
       where: { user_id: userId },
     });
 
@@ -154,7 +170,7 @@ router.post('/profile', requireAuth, async (req, res) => {
 
     if (existingProfile) {
       // Update existing profile
-      profile = await fitnessDb.fitness_profiles.update({
+      profile = await getDb().fitness_profiles.update({
         where: { user_id: userId },
         data: {
           height_cm: height_cm !== undefined ? height_cm : existingProfile.height_cm,
@@ -168,7 +184,7 @@ router.post('/profile', requireAuth, async (req, res) => {
       console.log(`📝 Profile updated for ${req.user.email}`);
     } else {
       // Create new profile
-      profile = await fitnessDb.fitness_profiles.create({
+      profile = await getDb().fitness_profiles.create({
         data: {
           user_id: userId,
           height_cm: height_cm || null,
@@ -251,7 +267,7 @@ router.get('/workouts', requireAuth, async (req, res) => {
       where.workout_type = type;
     }
 
-    const workouts = await fitnessDb.fitness_workouts.findMany({
+    const workouts = await getDb().fitness_workouts.findMany({
       where,
       include: {
         workout_exercises: {
@@ -363,7 +379,7 @@ router.post('/workouts', requireAuth, async (req, res) => {
     }
 
     // Check for duplicate workout on the same day for this user
-    const existingWorkout = await fitnessDb.fitness_workouts.findFirst({
+    const existingWorkout = await getDb().fitness_workouts.findFirst({
       where: {
         user_id: userId,
         workout_date: dateObj,
@@ -386,7 +402,7 @@ router.post('/workouts', requireAuth, async (req, res) => {
     }
 
     // Create the workout
-    const workout = await fitnessDb.fitness_workouts.create({
+    const workout = await getDb().fitness_workouts.create({
       data: {
         user_id: userId,
         workout_date: dateObj,
@@ -454,7 +470,7 @@ router.get('/goals', requireAuth, async (req, res) => {
       where.status = status;
     }
 
-    const goals = await fitnessDb.fitness_goals.findMany({
+    const goals = await getDb().fitness_goals.findMany({
       where,
       orderBy: { created_at: 'desc' },
     });
@@ -546,7 +562,7 @@ router.post('/goals', requireAuth, async (req, res) => {
     }
 
     // Create the goal
-    const goal = await fitnessDb.fitness_goals.create({
+    const goal = await getDb().fitness_goals.create({
       data: {
         user_id: userId,
         goal_type,
