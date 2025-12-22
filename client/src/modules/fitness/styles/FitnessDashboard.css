@@ -41,6 +41,20 @@
   border-bottom-color: #667eea;
 }
 
+/* AI Coach Button */
+.fitness-nav-btn.ai-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-bottom-color: #667eea;
+  margin-left: auto;
+  min-width: 140px;
+}
+
+.fitness-nav-btn.ai-btn:hover {
+  background: linear-gradient(135deg, #5568d3 0%, #6a3d91 100%);
+  color: white;
+}
+
 /* Main View */
 .fitness-view {
   padding: 2rem;

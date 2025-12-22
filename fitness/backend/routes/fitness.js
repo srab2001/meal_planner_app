@@ -618,6 +618,121 @@ router.use((req, res) => {
 /**
  * Handle unexpected errors
  */
+
+/**
+ * POST /api/fitness/ai-interview
+ * AI-powered workout planning conversation
+ * 
+ * Request: { messages: Array, userProfile: Object }
+ * Response: { message: string, workoutGenerated: boolean, workout?: Object }
+ */
+router.post('/ai-interview', requireAuth, async (req, res) => {
+  try {
+    const { messages, userProfile } = req.body;
+    const userId = req.user.id;
+
+    if (!messages || !Array.isArray(messages)) {
+      return res.status(400).json({
+        error: 'invalid_input',
+        message: 'Messages array is required'
+      });
+    }
+
+    // Check if OpenAI API is available
+    const openai = req.app.locals.openai;
+    if (!openai) {
+      return res.status(503).json({
+        error: 'service_unavailable',
+        message: 'AI service is not available'
+      });
+    }
+
+    // Build context for AI
+    const systemPrompt = `You are a professional fitness coach. Your goal is to interview the user about their workout preferences and create a personalized workout plan.
+
+Interview flow:
+1. Start by asking about their preferred exercise type
+2. Ask about duration/intensity preference
+3. Ask about any physical limitations or preferences
+4. After gathering info, generate a detailed workout plan
+
+When you have enough information (usually after 3-4 exchanges), generate a JSON workout object and include it in your response like this:
+<WORKOUT_JSON>
+{
+  "exercise_type": "string",
+  "duration_minutes": number,
+  "calories_burned": number,
+  "intensity": "low|medium|high",
+  "notes": "detailed workout description"
+}
+</WORKOUT_JSON>
+
+Be friendly, encouraging, and professional. Keep responses concise.`;
+
+    // Call OpenAI
+    const response = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...messages.map(msg => ({
+          role: msg.role === 'assistant' ? 'assistant' : 'user',
+          content: msg.content
+        }))
+      ],
+      temperature: 0.7,
+      max_tokens: 500
+    });
+
+    const aiMessage = response.choices[0].message.content;
+
+    // Check if workout was generated
+    const workoutMatch = aiMessage.match(/<WORKOUT_JSON>([\s\S]*?)<\/WORKOUT_JSON>/);
+    let workoutGenerated = false;
+    let workout = null;
+    let cleanMessage = aiMessage;
+
+    if (workoutMatch) {
+      try {
+        workout = JSON.parse(workoutMatch[1]);
+        workoutGenerated = true;
+        // Remove the JSON tags from the message
+        cleanMessage = aiMessage.replace(/<WORKOUT_JSON>[\s\S]*?<\/WORKOUT_JSON>/, '').trim();
+        
+        // Save the workout to database
+        await getDb().fitness_workouts.create({
+          data: {
+            user_id: userId,
+            exercise_type: workout.exercise_type,
+            duration_minutes: workout.duration_minutes,
+            calories_burned: workout.calories_burned,
+            intensity: workout.intensity,
+            notes: workout.notes,
+            workout_date: new Date()
+          }
+        });
+      } catch (parseError) {
+        console.error('Error parsing/saving workout:', parseError);
+      }
+    }
+
+    res.json({
+      message: cleanMessage || 'Workout plan created!',
+      workoutGenerated,
+      workout: workoutGenerated ? workout : undefined
+    });
+  } catch (error) {
+    console.error('[AI Interview] Error:', error);
+    res.status(500).json({
+      error: 'ai_error',
+      message: 'Failed to process AI request',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * Error handling middleware
+ */
 router.use((error, req, res, next) => {
   console.error('[Fitness Routes] Unhandled error:', error);
   res.status(500).json({
@@ -628,3 +743,4 @@ router.use((error, req, res, next) => {
 });
 
 module.exports = router;
+

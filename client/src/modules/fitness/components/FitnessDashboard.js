@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import '../styles/FitnessDashboard.css';
+import AIWorkoutInterview from './AIWorkoutInterview';
 
 /**
  * FitnessDashboard - Main dashboard for fitness tracking
@@ -9,6 +10,7 @@ import '../styles/FitnessDashboard.css';
  * - Recent workouts
  * - Fitness goals
  * - Progress tracking
+ * - AI Workout Coach
  */
 export default function FitnessDashboard({
   user,
@@ -23,6 +25,7 @@ export default function FitnessDashboard({
   const [currentView, setCurrentView] = useState('dashboard');
   const [logging, setLogging] = useState(false);
   const [showProfileForm, setShowProfileForm] = useState(false);
+  const [showAIInterview, setShowAIInterview] = useState(false);
 
   // Handle workout form submission
   const handleWorkoutSubmit = async (e) => {
@@ -98,6 +101,13 @@ export default function FitnessDashboard({
           onClick={() => setCurrentView('profile')}
         >
           👤 Profile
+        </button>
+        <button
+          className="fitness-nav-btn ai-btn"
+          onClick={() => setShowAIInterview(true)}
+          title="AI Workout Coach"
+        >
+          🤖 AI Coach
         </button>
       </nav>
 
@@ -392,6 +402,24 @@ export default function FitnessDashboard({
             </div>
           )}
         </div>
+      )}
+
+      {/* AI Workout Interview Modal */}
+      {showAIInterview && (
+        <AIWorkoutInterview
+          user={user}
+          onWorkoutGenerated={async (workout) => {
+            try {
+              await onLogWorkout(workout);
+              setShowAIInterview(false);
+              setCurrentView('dashboard');
+            } catch (error) {
+              console.error('Error logging AI-generated workout:', error);
+              alert('Failed to save workout. Please try again.');
+            }
+          }}
+          onClose={() => setShowAIInterview(false)}
+        />
       )}
     </div>
   );
