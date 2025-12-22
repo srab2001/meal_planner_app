@@ -5,11 +5,6 @@
 .env.*
 !.env.example
 
-# Fitness-specific envs (never commit)
-fitness/master.env
-fitness/backend/.env
-fitness/frontend/.env
-
 # Vercel
 .vercel/
 
@@ -31,6 +26,7 @@ prisma/migrations/
 prisma/*.db
 prisma/*.db-journal
 prisma/generated/
+scripts/
 package.json.bak.*
 # Local working folders
 generated/
@@ -42,7 +38,3 @@ scripts/scripts/
 # env
 .env
 client/.env
-
-# allow repo scripts
-!scripts/
-!scripts/**

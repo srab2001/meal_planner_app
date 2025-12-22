@@ -15,6 +15,12 @@ const db = require('./db');
 const jwt = require('jsonwebtoken');
 const pgSession = require('connect-pg-simple')(session);
 
+// Import fitness routes
+const fitnessRoutes = require('./fitness/backend/routes/fitness');
+
+// Import nutrition routes (read-only meal data for fitness module)
+const nutritionRoutes = require('./routes/nutrition');
+
 // ============================================================================
 // RUN MIGRATIONS FIRST - BEFORE ANY EXPRESS SETUP
 // ============================================================================
@@ -478,6 +484,16 @@ app.post('/auth/logout', (req, res) => {
   console.log('Logout request received');
   res.json({ success: true, message: 'Logged out successfully' });
 });
+
+// ============================================================================
+// MOUNT FITNESS ROUTES
+// ============================================================================
+app.use('/api/fitness', fitnessRoutes);
+
+// ============================================================================
+// MOUNT NUTRITION ROUTES (Read-only meal data for fitness module)
+// ============================================================================
+app.use('/api/nutrition', nutritionRoutes);
 
 // simple profile endpoint
 app.get('/api/profile', requireAuth, (req, res) => {

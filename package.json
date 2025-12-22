@@ -23,7 +23,7 @@
     "setup:test": "docker-compose up -d postgres-test && sleep 5 && npm run db:migrate"
   },
   "dependencies": {
-    "@prisma/client": "5.22.0",
+    "@prisma/client": "^5.22.0",
     "connect-pg-simple": "^10.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",

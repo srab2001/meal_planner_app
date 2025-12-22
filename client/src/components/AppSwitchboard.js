@@ -69,8 +69,8 @@ export default function AppSwitchboard({ onSelectApp, user }) {
       description: 'Workout tracking and exercise planning',
       icon: '💪',
       color: '#27ae60',
-      available: false,
-      comingSoon: true
+      available: true,
+      comingSoon: false
     }
   ];
 

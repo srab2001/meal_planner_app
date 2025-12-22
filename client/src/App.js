@@ -25,6 +25,9 @@ import { ProgressApp } from './modules/progress';
 // Integrations Module (health data connections)
 import { IntegrationsApp } from './modules/integrations';
 
+// Fitness Module
+import { FitnessApp } from './modules/fitness';
+
 // Analytics Service
 import analyticsService from './shared/services/AnalyticsService';
 
@@ -342,6 +345,8 @@ function App() {
         if (token && user) {
           setCurrentView('zip');
         } else {
+          // Remember where user wants to go after login
+          localStorage.setItem('redirect_after_login', 'zip');
           setCurrentView('login');
         }
         break;
@@ -390,9 +395,19 @@ function App() {
         }
         break;
       case 'health-tracker':
-      case 'fitness':
-        // Future apps - not yet implemented
+        // Future app - not yet implemented
         alert(`${appId} is coming soon!`);
+        break;
+      case 'fitness':
+        // Fitness module - requires authentication
+        const fitnessToken = getToken();
+        if (fitnessToken && user) {
+          setCurrentView('fitness');
+        } else {
+          // Remember where user wants to go after login
+          localStorage.setItem('redirect_after_login', 'fitness');
+          setCurrentView('login');
+        }
         break;
       default:
         setCurrentView('switchboard');
@@ -550,6 +565,15 @@ function App() {
       {/* Integrations Module (health data connections) */}
       {currentView === 'integrations' && (
         <IntegrationsApp
+          user={user}
+          onBack={() => setCurrentView('switchboard')}
+          onLogout={handleLogout}
+        />
+      )}
+
+      {/* Fitness Module */}
+      {currentView === 'fitness' && (
+        <FitnessApp
           user={user}
           onBack={() => setCurrentView('switchboard')}
           onLogout={handleLogout}
