@@ -15,7 +15,7 @@ services:
       - key: SESSION_SECRET
         generateValue: true
       - key: RENDER_CACHE_BUST
-        value: "2025-12-14-16-00-00Z"
+        value: "2025-12-22-14-00-00Z"
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
