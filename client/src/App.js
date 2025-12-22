@@ -119,6 +119,15 @@ function App() {
       const token = hash.split('token=')[1].split('&')[0];
       console.log('Token received from OAuth redirect');
       setToken(token);
+      
+      // Extract redirect destination if it exists in the hash
+      const redirectMatch = hash.match(/redirect=([^&]*)/);
+      if (redirectMatch && redirectMatch[1]) {
+        const redirect = decodeURIComponent(redirectMatch[1]);
+        console.log('🔄 Found redirect in OAuth response:', redirect);
+        localStorage.setItem('redirect_after_login', redirect);
+      }
+      
       // Clean up the URL
       window.history.replaceState(null, '', window.location.pathname);
     }
@@ -136,8 +145,8 @@ function App() {
         .then(data => {
           if (data.user) {
             console.log('User authenticated:', data.user.email);
-            setUser(data.user);
-            // Don't change view here - let splash complete first, then switchboard handles it
+            // Call handleLogin to trigger redirect logic
+            handleLogin(data.user);
           } else {
             console.log('Token invalid, removing');
             removeToken();

@@ -437,9 +437,13 @@ app.get(
       const token = generateToken(req.user);
       console.log('✅ JWT token generated for:', req.user.email);
 
+      // Get redirect destination from query params (if it exists)
+      const redirect = req.query.redirect ? `&redirect=${encodeURIComponent(req.query.redirect)}` : '';
+
       // Redirect to frontend with token in URL hash (more secure than query param)
+      // Also pass the redirect destination through the hash
       const frontend = FRONTEND_BASE || 'http://localhost:3000';
-      res.redirect(`${frontend}#token=${token}`);
+      res.redirect(`${frontend}#token=${token}${redirect}`);
     } catch (err) {
       console.error('❌ Error generating token:', err);
       res.redirect((FRONTEND_BASE || 'http://localhost:3000') + '/login?error=1');
