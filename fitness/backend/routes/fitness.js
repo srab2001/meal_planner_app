@@ -19,8 +19,12 @@
 
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
+const jwt = require('jsonwebtoken');
 
 const router = express.Router();
+
+// JWT Secret from environment
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 // Lazy-initialize Prisma client on first use to avoid failures at module load time
 // Use main DATABASE_URL instead of separate FITNESS_DATABASE_URL
@@ -46,16 +50,51 @@ function getDb() {
 }
 
 /**
+ * Verify JWT Token
+ */
+function verifyToken(token) {
+  try {
+    return jwt.verify(token, JWT_SECRET);
+  } catch (err) {
+    console.error('[Fitness Auth] Token verification failed:', err.message);
+    return null;
+  }
+}
+
+/**
  * Authentication Middleware
- * Verifies JWT token and attaches user context
+ * Verifies JWT token from Authorization header and attaches user context
  */
 function requireAuth(req, res, next) {
-  if (!req.user || !req.user.id) {
+  // Check for token in Authorization header or query parameter
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ')
+    ? authHeader.substring(7)
+    : req.query.token;
+
+  console.log('[Fitness Auth] Checking authorization');
+  console.log('[Fitness Auth] Authorization header:', authHeader ? 'present' : 'missing');
+  console.log('[Fitness Auth] Token found:', token ? 'yes' : 'no');
+
+  if (!token) {
+    console.error('[Fitness Auth] No token provided');
     return res.status(401).json({
       error: 'not_authenticated',
-      message: 'Authentication required',
+      message: 'No authentication token provided',
     });
   }
+
+  const decoded = verifyToken(token);
+  if (!decoded) {
+    console.error('[Fitness Auth] Invalid or expired token');
+    return res.status(401).json({
+      error: 'invalid_token',
+      message: 'Invalid or expired authentication token',
+    });
+  }
+
+  console.log('[Fitness Auth] Token verified for user:', decoded.email);
+  req.user = decoded;
   next();
 }
 

@@ -518,7 +518,8 @@ app.post('/auth/logout', (req, res) => {
 // ============================================================================
 // Make OpenAI available to fitness routes
 app.locals.openai = openai;
-app.use('/api/fitness', fitnessRoutes);
+// Protect all fitness routes with JWT authentication
+app.use('/api/fitness', requireAuth, fitnessRoutes);
 
 // ============================================================================
 // MOUNT NUTRITION ROUTES (Read-only meal data for fitness module)
