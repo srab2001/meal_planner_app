@@ -3875,6 +3875,20 @@ async function initializeDatabase() {
 }
 
 const port = PORT || 5000;
+
+// Set longer timeouts for AI operations
+app.use((req, res, next) => {
+  // AI endpoints need more time for OpenAI API calls
+  if (req.path.includes('/ai-') || req.path.includes('/interview')) {
+    req.setTimeout(120000); // 2 minutes for AI endpoints
+    res.setTimeout(120000);
+  } else {
+    req.setTimeout(30000); // 30 seconds for normal endpoints
+    res.setTimeout(30000);
+  }
+  next();
+});
+
 app.listen(port, async () => {
   console.log(`[SERVER] app.listen callback executed at ${new Date().toISOString()}`);
   console.log(`server listening on port ${port}`);

@@ -57,10 +57,15 @@ export default function AIWorkoutInterview({ user, onWorkoutGenerated, onClose }
         body: JSON.stringify({
           messages: [...messages, userMessage],
           userProfile: user
-        })
+        }),
+        // Increase timeout for OpenAI API calls (can be slow)
+        signal: AbortSignal.timeout(60000) // 60 second timeout
       });
 
-      if (!response.ok) throw new Error('Failed to get AI response');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`API error ${response.status}: ${errorData.message || 'Unknown error'}`);
+      }
 
       const data = await response.json();
 
@@ -127,7 +132,7 @@ export default function AIWorkoutInterview({ user, onWorkoutGenerated, onClose }
         {loading && (
           <div className="ai-message ai-message-assistant">
             <div className="ai-message-content">
-              <span className="ai-thinking">💭 Thinking...</span>
+              <span className="ai-thinking">💭 Thinking... (may take 10-15 seconds)</span>
             </div>
           </div>
         )}
