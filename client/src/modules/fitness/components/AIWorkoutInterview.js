@@ -41,7 +41,7 @@ export default function AIWorkoutInterview({ user, onWorkoutGenerated, onClose }
 
         // Fetch admin questions
         const token = localStorage.getItem('auth_token');
-        const response = await fetch(`${API_URL}/api/admin/questions/active`, {
+        const response = await fetch(`${API_URL}/api/fitness/admin/interview-questions?active=true`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'

@@ -966,11 +966,11 @@ router.get('/admin/interview-questions', requireAuth, async (req, res) => {
     res.json({
       questions: questions.map(q => ({
         id: q.id,
-        question: q.question,
-        type: q.type,
+        question_text: q.question,
+        question_type: q.type,
         options: q.options ? JSON.parse(q.options) : null,
-        order: q.order,
-        active: q.active,
+        order_position: q.order,
+        is_active: q.active,
         created_at: q.created_at,
         updated_at: q.updated_at,
       })),
