@@ -955,12 +955,12 @@ router.get('/admin/interview-questions', requireAuth, async (req, res) => {
     const where = {};
     
     if (active !== undefined) {
-      where.active = active === 'true' || active === true;
+      where.is_active = active === 'true' || active === true;
     }
     
     const questions = await getDb().admin_interview_questions.findMany({
       where,
-      orderBy: { order: 'asc' },
+      orderBy: { order_position: 'asc' },
     });
     
     console.log(`✅ Retrieved ${questions.length} interview questions`);
@@ -968,11 +968,11 @@ router.get('/admin/interview-questions', requireAuth, async (req, res) => {
     res.json({
       questions: questions.map(q => ({
         id: q.id,
-        question_text: q.question,
-        question_type: q.type,
-        options: q.options ? JSON.parse(q.options) : null,
-        order_position: q.order,
-        is_active: q.active,
+        question_text: q.question_text,
+        question_type: q.question_type,
+        options: q.options,
+        order_position: q.order_position,
+        is_active: q.is_active,
         created_at: q.created_at,
         updated_at: q.updated_at,
       })),
@@ -1036,11 +1036,11 @@ router.post('/admin/interview-questions', requireAuth, async (req, res) => {
     // Create the question
     const newQuestion = await getDb().admin_interview_questions.create({
       data: {
-        question: question.trim(),
-        type,
-        options: options ? JSON.stringify(options) : null,
-        order: typeof order === 'number' ? order : 0,
-        active: active !== false, // default to true
+        question_text: question.trim(),
+        question_type: type,
+        options: options ? options : null,
+        order_position: typeof order === 'number' ? order : 0,
+        is_active: active !== false, // default to true
       },
     });
     
@@ -1050,11 +1050,11 @@ router.post('/admin/interview-questions', requireAuth, async (req, res) => {
       success: true,
       question: {
         id: newQuestion.id,
-        question: newQuestion.question,
-        type: newQuestion.type,
-        options: newQuestion.options ? JSON.parse(newQuestion.options) : null,
-        order: newQuestion.order,
-        active: newQuestion.active,
+        question_text: newQuestion.question_text,
+        question_type: newQuestion.question_type,
+        options: newQuestion.options,
+        order_position: newQuestion.order_position,
+        is_active: newQuestion.is_active,
         created_at: newQuestion.created_at,
         updated_at: newQuestion.updated_at,
       },
@@ -1086,13 +1086,13 @@ router.post('/admin/interview-questions', requireAuth, async (req, res) => {
 router.put('/admin/interview-questions/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { question, type, options, order, active } = req.body;
+    const { question_text, question_type, options, order_position, is_active } = req.body;
     
     console.log(`[PUT /api/fitness/admin/interview-questions/:id] Updating question: ${id}`);
     
     // Check if question exists
     const existingQuestion = await getDb().admin_interview_questions.findUnique({
-      where: { id },
+      where: { id: parseInt(id) },
     });
     
     if (!existingQuestion) {
@@ -1103,14 +1103,14 @@ router.put('/admin/interview-questions/:id', requireAuth, async (req, res) => {
     }
     
     // Validate inputs if provided
-    if (type && !['text', 'multiple_choice', 'range', 'yes_no'].includes(type)) {
+    if (question_type && !['text', 'multiple_choice', 'range', 'yes_no'].includes(question_type)) {
       return res.status(400).json({
         error: 'invalid_type',
-        message: 'type must be one of: text, multiple_choice, range, yes_no',
+        message: 'question_type must be one of: text, multiple_choice, range, yes_no',
       });
     }
     
-    if (type === 'multiple_choice' && options) {
+    if (question_type === 'multiple_choice' && options) {
       if (!Array.isArray(options) || options.length < 2) {
         return res.status(400).json({
           error: 'invalid_options',
@@ -1121,16 +1121,16 @@ router.put('/admin/interview-questions/:id', requireAuth, async (req, res) => {
     
     // Build update object
     const updateData = {};
-    if (question !== undefined) updateData.question = question;
-    if (type !== undefined) updateData.type = type;
-    if (options !== undefined) updateData.options = options ? JSON.stringify(options) : null;
-    if (order !== undefined) updateData.order = order;
-    if (active !== undefined) updateData.active = active;
+    if (question_text !== undefined) updateData.question_text = question_text;
+    if (question_type !== undefined) updateData.question_type = question_type;
+    if (options !== undefined) updateData.options = options || null;
+    if (order_position !== undefined) updateData.order_position = order_position;
+    if (is_active !== undefined) updateData.is_active = is_active;
     updateData.updated_at = new Date();
     
     // Update the question
     const updatedQuestion = await getDb().admin_interview_questions.update({
-      where: { id },
+      where: { id: parseInt(id) },
       data: updateData,
     });
     
@@ -1140,11 +1140,11 @@ router.put('/admin/interview-questions/:id', requireAuth, async (req, res) => {
       success: true,
       question: {
         id: updatedQuestion.id,
-        question: updatedQuestion.question,
-        type: updatedQuestion.type,
-        options: updatedQuestion.options ? JSON.parse(updatedQuestion.options) : null,
-        order: updatedQuestion.order,
-        active: updatedQuestion.active,
+        question_text: updatedQuestion.question_text,
+        question_type: updatedQuestion.question_type,
+        options: updatedQuestion.options,
+        order_position: updatedQuestion.order_position,
+        is_active: updatedQuestion.is_active,
         created_at: updatedQuestion.created_at,
         updated_at: updatedQuestion.updated_at,
       },
@@ -1172,7 +1172,7 @@ router.delete('/admin/interview-questions/:id', requireAuth, async (req, res) =>
     
     // Check if question exists
     const existingQuestion = await getDb().admin_interview_questions.findUnique({
-      where: { id },
+      where: { id: parseInt(id) },
     });
     
     if (!existingQuestion) {
@@ -1184,7 +1184,7 @@ router.delete('/admin/interview-questions/:id', requireAuth, async (req, res) =>
     
     // Delete the question
     await getDb().admin_interview_questions.delete({
-      where: { id },
+      where: { id: parseInt(id) },
     });
     
     console.log(`🗑️ Question deleted: ${id}`);
@@ -1216,7 +1216,7 @@ router.patch('/admin/interview-questions/:id/toggle', requireAuth, async (req, r
     
     // Check if question exists
     const existingQuestion = await getDb().admin_interview_questions.findUnique({
-      where: { id },
+      where: { id: parseInt(id) },
     });
     
     if (!existingQuestion) {
@@ -1228,24 +1228,24 @@ router.patch('/admin/interview-questions/:id/toggle', requireAuth, async (req, r
     
     // Toggle the active status
     const updatedQuestion = await getDb().admin_interview_questions.update({
-      where: { id },
+      where: { id: parseInt(id) },
       data: {
-        active: !existingQuestion.active,
+        is_active: !existingQuestion.is_active,
         updated_at: new Date(),
       },
     });
     
-    console.log(`🔄 Question toggled: ${id} (active=${updatedQuestion.active})`);
+    console.log(`🔄 Question toggled: ${id} (is_active=${updatedQuestion.is_active})`);
     
     res.json({
       success: true,
       question: {
         id: updatedQuestion.id,
-        question: updatedQuestion.question,
-        type: updatedQuestion.type,
-        options: updatedQuestion.options ? JSON.parse(updatedQuestion.options) : null,
-        order: updatedQuestion.order,
-        active: updatedQuestion.active,
+        question_text: updatedQuestion.question_text,
+        question_type: updatedQuestion.question_type,
+        options: updatedQuestion.options,
+        order_position: updatedQuestion.order_position,
+        is_active: updatedQuestion.is_active,
         created_at: updatedQuestion.created_at,
         updated_at: updatedQuestion.updated_at,
       },
@@ -1266,7 +1266,7 @@ router.patch('/admin/interview-questions/:id/toggle', requireAuth, async (req, r
  * Request Body:
  * {
  *   questions: [
- *     { id: string, order: number },
+ *     { id: number, order_position: number },
  *     ...
  *   ]
  * }
@@ -1290,8 +1290,8 @@ router.patch('/admin/interview-questions-reorder', requireAuth, async (req, res)
     const updatedQuestions = await Promise.all(
       questions.map(q =>
         getDb().admin_interview_questions.update({
-          where: { id: q.id },
-          data: { order: q.order, updated_at: new Date() },
+          where: { id: parseInt(q.id) },
+          data: { order_position: q.order_position, updated_at: new Date() },
         })
       )
     );
@@ -1302,11 +1302,11 @@ router.patch('/admin/interview-questions-reorder', requireAuth, async (req, res)
       success: true,
       questions: updatedQuestions.map(q => ({
         id: q.id,
-        question: q.question,
-        type: q.type,
-        options: q.options ? JSON.parse(q.options) : null,
-        order: q.order,
-        active: q.active,
+        question_text: q.question_text,
+        question_type: q.question_type,
+        options: q.options,
+        order_position: q.order_position,
+        is_active: q.is_active,
         created_at: q.created_at,
         updated_at: q.updated_at,
       })),

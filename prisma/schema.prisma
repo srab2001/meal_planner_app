@@ -441,15 +441,16 @@ model fitness_workout_sets {
 }
 
 model admin_interview_questions {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  question  String
-  type      String   @db.VarChar(50)
-  options   String?
-  order     Int      @default(0)
-  active    Boolean  @default(true)
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-  updated_at DateTime @default(now()) @db.Timestamptz(6)
+  id              Int      @id @default(autoincrement())
+  question_text   String   @db.Text
+  question_type   String?  @db.VarChar(50)
+  options         Json?    @db.Jsonb
+  order_position  Int?     @default(0)
+  is_active       Boolean  @default(true)
+  created_at      DateTime @default(now()) @db.Timestamp(0)
+  updated_at      DateTime @default(now()) @db.Timestamp(0)
 
-  @@index([active], map: "idx_admin_interview_questions_active")
-  @@index([order], map: "idx_admin_interview_questions_order")
+  @@map("admin_interview_questions")
+  @@index([is_active], map: "idx_admin_questions_active")
+  @@index([order_position], map: "idx_admin_questions_position")
 }

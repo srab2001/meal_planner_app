@@ -87,16 +87,20 @@ model fitness_workout_sets {
 }
 
 /// Admin-managed interview questions for AI Coach
+/// NOTE: This table exists in the main meal_planner database (migration 006)
+/// Column names match migration 006: question_text, question_type, order_position, is_active
 model admin_interview_questions {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  question    String   @db.Text // The actual question text
-  type        String   // "text", "multiple_choice", "range", "yes_no"
-  options     String?  @db.Text // JSON array for multiple_choice type
-  order       Int      @default(0) // Display order
-  active      Boolean  @default(true) // Whether to show this question
-  created_at  DateTime @default(now()) @db.Timestamptz(6)
-  updated_at  DateTime @default(now()) @db.Timestamptz(6)
+  id               Int      @id @default(autoincrement())
+  question_text    String   @db.Text // The actual question text
+  question_type    String   @db.VarChar(50) // "text", "multiple_choice", "yes_no", "range"
+  options          Json?    @db.Jsonb // Array for multiple_choice type
+  option_range     Int? // For range type: max value
+  order_position   Int      @default(0) // Display order
+  is_active        Boolean  @default(true) // Whether to show this question
+  created_at       DateTime @default(now()) @db.Timestamp(0)
+  updated_at       DateTime @default(now()) @db.Timestamp(0)
 
-  @@index([active], map: "idx_admin_interview_questions_active")
-  @@index([order], map: "idx_admin_interview_questions_order")
+  @@map("admin_interview_questions")
+  @@index([is_active], map: "idx_admin_questions_active")
+  @@index([order_position], map: "idx_admin_questions_position")
 }
