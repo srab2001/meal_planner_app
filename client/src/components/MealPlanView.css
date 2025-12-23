@@ -600,6 +600,55 @@
   font-style: italic;
 }
 
+/* Servings Action Buttons */
+.servings-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.servings-save-btn,
+.servings-cancel-btn {
+  flex: 1;
+  min-width: 120px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-align: center;
+}
+
+.servings-save-btn {
+  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+}
+
+.servings-save-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+}
+
+.servings-save-btn:active {
+  transform: translateY(0);
+}
+
+.servings-cancel-btn {
+  background: #f0f0f0;
+  color: #333;
+  border: 2px solid #ddd;
+}
+
+.servings-cancel-btn:hover {
+  background: #e8e8e8;
+  border-color: #ccc;
+}
+
 /* Recipe Notes */
 .recipe-notes {
   width: 100%;

@@ -1745,6 +1745,16 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
                   (scaled from {selectedMeal.servings} servings)
                 </span>
               )}
+              {customServings !== selectedMeal.servings && (
+                <div className="servings-actions">
+                  <button className="servings-save-btn" onClick={closeModalWithSave}>
+                    ✅ Save Servings
+                  </button>
+                  <button className="servings-cancel-btn" onClick={closeModal}>
+                    ✕ Cancel
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="recipe-section">

@@ -749,11 +749,14 @@ function validateShoppingListCompleteness(mealPlanData, daysOfWeek) {
 // Meal plan generation endpoint (with AI rate limiter to prevent cost overruns)
 app.post('/api/generate-meals', aiLimiter, requireAuth, async (req, res) => {
   try {
-    const { zipCode, primaryStore, comparisonStore, selectedMeals, servingsByMeal, selectedDays, dietaryPreferences, leftovers, specialOccasion, ...preferences } = req.body;
+    const { zipCode, primaryStore, comparisonStore, selectedMeals, servingsByMeal, selectedDays, dietaryPreferences, leftovers, specialOccasion, specialMealChoice, specialIngredient, ...preferences } = req.body;
 
     console.log(`Generating meal plan for user: ${req.user.email}`);
     if (specialOccasion) {
       console.log('✨ Special occasion meal requested - will generate premium restaurant-quality meal');
+      if (specialMealChoice) {
+        console.log(`✨ User selected special meal: "${specialMealChoice}"`);
+      }
     }
 
     // Check if this is the test user (bypass all limits)
@@ -961,8 +964,8 @@ ${leftoversText}
 ${specialOccasion ? `
 **✨ SPECIAL OCCASION MEAL:**
 - The user requested ONE special occasion meal this week
-- This should be a premium, restaurant-quality dish
-- Inspire this meal from renowned chefs like Gordon Ramsay, Jamie Oliver, or publications like Bon Appétit, Saveur, or Food & Wine
+${specialMealChoice ? `- IMPORTANT: Use THIS EXACT MEAL the user selected: "${specialMealChoice}"` : `- This should be a premium, restaurant-quality dish
+- Inspire this meal from renowned chefs like Gordon Ramsay, Jamie Oliver, or publications like Bon Appétit, Saveur, or Food & Wine`}
 - Use elevated cooking techniques (sous vide, braising, reduction sauces, etc.)
 - Include gourmet ingredients from premium stores like Whole Foods, specialty butchers, or farmers markets
 - Add elegant presentation suggestions
