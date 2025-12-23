@@ -6,12 +6,129 @@ import analyticsService from '../shared/services/AnalyticsService';
 const PRODUCTION_API = 'https://meal-planner-app-mve2.onrender.com';
 const API_BASE = process.env.REACT_APP_API_URL || PRODUCTION_API;
 
+/**
+ * Consolidate shopping list by:
+ * 1. Normalizing ingredient names
+ * 2. Parsing quantities and units
+ * 3. Converting to base units
+ * 4. Summing quantities
+ * 5. Formatting back to readable units
+ */
+function consolidateShoppingList(shoppingList) {
+  if (!shoppingList || typeof shoppingList !== 'object') return shoppingList;
+
+  // Unit conversion map
+  const conversions = {
+    // Volume
+    'tsp': { to: 'tbsp', factor: 1/3 },
+    'tbsp': { to: 'cup', factor: 1/16 },
+    'oz': { to: 'cup', factor: 1/8 },
+    'cup': { to: 'gallon', factor: 1/16 },
+    'pint': { to: 'gallon', factor: 1/2 },
+    'quart': { to: 'gallon', factor: 1/4 },
+    // Weight
+    'oz': { to: 'lb', factor: 1/16, type: 'weight' },
+    'lb': { to: 'lb', factor: 1, type: 'weight' },
+    // Count
+    'each': { to: 'each', factor: 1, type: 'count' }
+  };
+
+  // Normalize and group by ingredient name and unit type
+  const grouped = {};
+
+  Object.entries(shoppingList).forEach(([category, items]) => {
+    if (!Array.isArray(items)) return;
+
+    items.forEach(item => {
+      if (!item || typeof item !== 'string') return;
+
+      // Parse: "2 cups milk" or "milk" or "1 lb butter"
+      const trimmed = item.trim().toLowerCase();
+      const match = trimmed.match(/^([\d.]+)\s*([a-z]+)?\s+(.+)$/) || 
+                    trimmed.match(/^([a-z\s]+)$/);
+
+      if (!match) return;
+
+      let quantity = 1;
+      let unit = 'each';
+      let name = '';
+
+      if (match[1] && !isNaN(match[1])) {
+        quantity = parseFloat(match[1]);
+        unit = (match[2] || 'each').toLowerCase();
+        name = (match[3] || '').trim();
+      } else {
+        name = trimmed;
+      }
+
+      // Normalize name: remove commas, trim, map synonyms
+      name = name.replace(/,/g, '').trim();
+      const synonyms = {
+        'milk': 'milk',
+        'butter': 'butter',
+        'eggs': 'eggs',
+        'flour': 'flour',
+        'sugar': 'sugar',
+        'salt': 'salt',
+        'pepper': 'pepper'
+      };
+      name = synonyms[name] || name;
+
+      if (!name) return;
+
+      // Create key for grouping
+      const key = `${name}|${unit}`;
+
+      if (!grouped[key]) {
+        grouped[key] = { name, unit, quantity: 0 };
+      }
+      grouped[key].quantity += quantity;
+    });
+  });
+
+  // Convert and format back
+  const consolidated = {};
+
+  Object.entries(grouped).forEach(([, { name, unit, quantity }]) => {
+    let displayQuantity = quantity;
+    let displayUnit = unit;
+
+    // Convert to larger units if beneficial
+    if (unit === 'quart' && quantity >= 4) {
+      displayQuantity = Math.round((quantity / 4) * 10) / 10;
+      displayUnit = 'gallon';
+    } else if (unit === 'cup' && quantity >= 16) {
+      displayQuantity = Math.round((quantity / 16) * 10) / 10;
+      displayUnit = 'gallon';
+    } else if (unit === 'tbsp' && quantity >= 16) {
+      displayQuantity = Math.round((quantity / 16) * 10) / 10;
+      displayUnit = 'cup';
+    } else if (unit === 'oz' && quantity >= 16) {
+      displayQuantity = Math.round((quantity / 16) * 10) / 10;
+      displayUnit = 'lb';
+    }
+
+    // Format display
+    const categoryKey = consolidated[name] ? 'Consolidated' : 'Produce'; // Default category
+    if (!consolidated[categoryKey]) consolidated[categoryKey] = [];
+
+    const formatted = displayQuantity % 1 === 0 
+      ? `${Math.round(displayQuantity)} ${displayUnit} ${name}`
+      : `${displayQuantity.toFixed(2)} ${displayUnit} ${name}`;
+
+    consolidated[categoryKey].push(formatted);
+  });
+
+  return consolidated;
+}
+
 function ShoppingList({ shoppingList, totalCost, priceComparison, selectedStores }) {
   const [checkedItems, setCheckedItems] = useState({});
   const [customItems, setCustomItems] = useState(['']);
   const [addingCustomItems, setAddingCustomItems] = useState(false);
   const [customItemsWithPrices, setCustomItemsWithPrices] = useState([]);
   const [stateLoaded, setStateLoaded] = useState(false);
+  const [isConsolidated, setIsConsolidated] = useState(false);
 
   // Load saved shopping list state on mount
   useEffect(() => {
@@ -504,9 +621,11 @@ function ShoppingList({ shoppingList, totalCost, priceComparison, selectedStores
     }
   };
 
-  const categories = Object.keys(shoppingList || {});
+  // Use consolidated list if user clicked consolidate button
+  const displayList = isConsolidated ? consolidateShoppingList(shoppingList) : shoppingList;
+  const categories = Object.keys(displayList || {});
 
-  if (!shoppingList || categories.length === 0) {
+  if (!displayList || categories.length === 0) {
     return (
       <div className="shopping-list-empty">
         <p>No shopping list available</p>
@@ -549,6 +668,13 @@ function ShoppingList({ shoppingList, totalCost, priceComparison, selectedStores
           </button>
           <button onClick={handleDownloadList} className="download-button">
             💾 Download
+          </button>
+          <button 
+            onClick={() => setIsConsolidated(!isConsolidated)}
+            className="consolidate-button"
+            title="Combine similar items and convert units (e.g., 4 quarts milk → 1 gallon milk)"
+          >
+            {isConsolidated ? '📋 Show Original' : '🔄 Consolidate'}
           </button>
         </div>
       </div>
@@ -690,7 +816,7 @@ function ShoppingList({ shoppingList, totalCost, priceComparison, selectedStores
                     </tr>
                   </thead>
                   <tbody>
-                    {shoppingList[category].map((item, index) => {
+                    {displayList[category].map((item, index) => {
                       const key = `${category}-${index}`;
                       const cheaperStore = getCheaperStore(item.primaryStorePrice, item.comparisonStorePrice);
 
@@ -723,7 +849,7 @@ function ShoppingList({ shoppingList, totalCost, priceComparison, selectedStores
 
                 {/* Mobile card view */}
                 <div className="mobile-comparison-cards mobile-only">
-                  {shoppingList[category].map((item, index) => {
+                  {displayList[category].map((item, index) => {
                     const key = `${category}-${index}`;
                     const cheaperStore = getCheaperStore(item.primaryStorePrice, item.comparisonStorePrice);
 
@@ -757,7 +883,7 @@ function ShoppingList({ shoppingList, totalCost, priceComparison, selectedStores
             ) : (
               // Standard list view
               <ul className="items-list">
-                {shoppingList[category].map((item, index) => {
+                {displayList[category].map((item, index) => {
                   const key = `${category}-${index}`;
                   return (
                     <li

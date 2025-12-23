@@ -13,6 +13,7 @@
     "postinstall": "npx prisma generate --schema prisma/schema.prisma",
     "test": "echo 'Running tests...' && node --test || echo 'No tests defined yet'",
     "test:watch": "nodemon --exec npm test",
+    "update-key": "node update-openai-key.js",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",

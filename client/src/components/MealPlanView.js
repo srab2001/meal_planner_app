@@ -530,11 +530,18 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   };
 
   const handleRegenerateMeal = async (day, mealType) => {
-    const mealKey = `${day}-${mealType}`;
+    // Capture day and mealType immediately to prevent state changes during async operation
+    const daySnapshot = day;
+    const mealTypeSnapshot = mealType;
+    const mealKey = `${daySnapshot}-${mealTypeSnapshot}`;
     setRegeneratingMeal(mealKey);
+    
+    // Immediately update selected day/meal to ensure UI stays on this day
+    setSelectedMealDay(daySnapshot);
+    setSelectedMealType(mealTypeSnapshot);
 
     try {
-      console.log('🔄 Regenerating meal:', day, mealType);
+      console.log('🔄 Regenerating meal:', daySnapshot, mealTypeSnapshot);
 
       // Get JWT token from localStorage
       const token = localStorage.getItem('auth_token');
@@ -548,9 +555,9 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
         body: JSON.stringify({
           cuisines: preferences?.cuisines || [],
           people: preferences?.people || 2,
-          mealType,
+          mealType: mealTypeSnapshot,
           groceryStore: selectedStores?.primaryStore,
-          currentMeal: localMealPlan.mealPlan[day][mealType].name,
+          currentMeal: localMealPlan.mealPlan[daySnapshot][mealTypeSnapshot].name,
           dietaryPreferences: preferences?.dietaryPreferences || []
         }),
       });
@@ -589,23 +596,30 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
         newMeal.instructions = [];
       }
 
-      // Update the local meal plan with the new meal
+      // Update the local meal plan with the new meal using snapshots
       setLocalMealPlan(prevPlan => ({
         ...prevPlan,
         mealPlan: {
           ...prevPlan.mealPlan,
-          [day]: {
-            ...prevPlan.mealPlan[day],
-            [mealType]: newMeal
+          [daySnapshot]: {
+            ...prevPlan.mealPlan[daySnapshot],
+            [mealTypeSnapshot]: newMeal
           }
         }
       }));
+      
+      // Restore the snapshot values after update to keep UI on same day/meal
+      setSelectedMealDay(daySnapshot);
+      setSelectedMealType(mealTypeSnapshot);
 
     } catch (error) {
       console.error('❌ Error regenerating meal:', error);
       alert('Failed to regenerate meal. Please try again.');
     } finally {
       setRegeneratingMeal(null);
+      // Ensure selected day/meal remain consistent after operation
+      setSelectedMealDay(daySnapshot);
+      setSelectedMealType(mealTypeSnapshot);
     }
   };
 
@@ -1048,7 +1062,11 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
   };
 
   const handleSubmitRecipeChanges = async (day, mealType) => {
-    console.log('🔧 [SubmitRecipeChanges] Starting with day:', day, 'mealType:', mealType);
+    // Capture snapshots immediately to prevent state changes during async operation
+    const daySnapshot = day || selectedMealDay;
+    const mealTypeSnapshot = mealType || selectedMealType;
+    
+    console.log('🔧 [SubmitRecipeChanges] Starting with day:', daySnapshot, 'mealType:', mealTypeSnapshot);
     console.log('🔧 [SubmitRecipeChanges] selectedMeal:', selectedMeal);
     console.log('🔧 [SubmitRecipeChanges] selectedMealDay:', selectedMealDay, 'selectedMealType:', selectedMealType);
     
@@ -1116,25 +1134,26 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
           instructions: newInstructions
         };
         
-        // Update the local meal plan using the stored day/mealType
-        const actualDay = selectedMealDay || day;
-        const actualMealType = selectedMealType || mealType;
-        
-        if (actualDay && actualMealType && localMealPlan?.mealPlan?.[actualDay]) {
+        // Update the local meal plan using snapshots
+        if (daySnapshot && mealTypeSnapshot && localMealPlan?.mealPlan?.[daySnapshot]) {
           const updatedPlan = {
             ...localMealPlan,
             mealPlan: {
               ...localMealPlan.mealPlan,
-              [actualDay]: {
-                ...localMealPlan.mealPlan[actualDay],
-                [actualMealType]: updatedMeal
+              [daySnapshot]: {
+                ...localMealPlan.mealPlan[daySnapshot],
+                [mealTypeSnapshot]: updatedMeal
               }
             }
           };
           
           setLocalMealPlan(updatedPlan);
-          console.log('✅ [SubmitRecipeChanges] Updated meal plan for', actualDay, actualMealType);
+          console.log('✅ [SubmitRecipeChanges] Updated meal plan for', daySnapshot, mealTypeSnapshot);
         }
+        
+        // Restore snapshot values to keep UI on same day/meal
+        setSelectedMealDay(daySnapshot);
+        setSelectedMealType(mealTypeSnapshot);
         
         setOperationMessage(`✅ Recipe updated with your ingredient changes!`);
         // Close modal after brief delay to show success message
@@ -1152,6 +1171,9 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
       setOperationMessage('❌ Error: ' + error.message);
     } finally {
       setOperationLoading(false);
+      // Ensure selected day/meal remain consistent after operation
+      setSelectedMealDay(daySnapshot);
+      setSelectedMealType(mealTypeSnapshot);
     }
   };
 

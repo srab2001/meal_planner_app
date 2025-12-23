@@ -63,6 +63,11 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
   const [dietaryPreferences, setDietaryPreferences] = useState({});
   const [leftovers, setLeftovers] = useState(['']);
   const [specialOccasion, setSpecialOccasion] = useState(false);
+  const [specialIngredient, setSpecialIngredient] = useState('');
+  const [specialOptions, setSpecialOptions] = useState([]);
+  const [specialLoading, setSpecialLoading] = useState(false);
+  const [specialError, setSpecialError] = useState('');
+  const [specialMealChoice, setSpecialMealChoice] = useState(null);
   const [errors, setErrors] = useState({});
 
   // Load cuisine and dietary options from API on mount
@@ -279,7 +284,9 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
         selectedDays: daysArray,  // Send array of days: ['Monday', 'Tuesday', etc.]
         dietaryPreferences: selectedDietaryPreferences,  // Send array: ['diabetic', 'dairyFree', etc.]
         leftovers: leftoverIngredients,  // Send array of leftover ingredients
-        specialOccasion: specialOccasion  // Include special occasion flag
+        specialOccasion: specialOccasion,  // Include special occasion flag
+        specialIngredient: specialOccasion ? specialIngredient.trim() : null,  // Primary ingredient
+        specialMealChoice: specialOccasion ? specialMealChoice : null  // Selected meal option
       });
     }
   };
@@ -505,7 +512,15 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
                 <input
                   type="checkbox"
                   checked={specialOccasion}
-                  onChange={() => setSpecialOccasion(!specialOccasion)}
+                  onChange={(e) => {
+                    setSpecialOccasion(e.target.checked);
+                    if (!e.target.checked) {
+                      setSpecialIngredient('');
+                      setSpecialOptions([]);
+                      setSpecialMealChoice(null);
+                      setSpecialError('');
+                    }
+                  }}
                 />
                 <div className="special-occasion-content">
                   <span className="special-occasion-icon">✨</span>
@@ -517,6 +532,113 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
                   </div>
                 </div>
               </label>
+
+              {/* Special Occasion Ingredient Input */}
+              {specialOccasion && (
+                <div className="special-occasion-details" style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f9f5f0', borderRadius: '8px' }}>
+                  <div style={{ marginBottom: '15px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                      Primary Ingredient
+                    </label>
+                    <input
+                      type="text"
+                      value={specialIngredient}
+                      onChange={(e) => setSpecialIngredient(e.target.value)}
+                      placeholder="e.g., lobster, steak, shrimp, truffle"
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        borderRadius: '4px',
+                        border: '1px solid #ddd',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+
+                  <button
+                    disabled={!specialIngredient.trim() || specialLoading}
+                    onClick={async () => {
+                      setSpecialLoading(true);
+                      setSpecialError('');
+                      try {
+                        const token = localStorage.getItem('auth_token');
+                        const res = await fetch(`${API_BASE}/api/special-occasion/options`, {
+                          method: 'POST',
+                          credentials: 'include',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': token ? `Bearer ${token}` : ''
+                          },
+                          body: JSON.stringify({ ingredient: specialIngredient.trim() })
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data?.error || data?.message || 'Request failed');
+                        setSpecialOptions(Array.isArray(data.options) ? data.options : []);
+                      } catch (e) {
+                        setSpecialError(String(e.message || e));
+                      } finally {
+                        setSpecialLoading(false);
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '10px 15px',
+                      backgroundColor: specialLoading ? '#ccc' : '#d4a574',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: specialLoading || !specialIngredient.trim() ? 'not-allowed' : 'pointer',
+                      fontWeight: '500',
+                      marginBottom: '15px'
+                    }}
+                  >
+                    {specialLoading ? 'Generating Options...' : 'Get Meal Options'}
+                  </button>
+
+                  {specialError && (
+                    <div style={{ color: '#d32f2f', marginBottom: '15px', fontSize: '14px' }}>
+                      ❌ {specialError}
+                    </div>
+                  )}
+
+                  {specialOptions.length > 0 && (
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '10px', fontWeight: '500' }}>
+                        Select Your Special Occasion Meal
+                      </label>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {specialOptions.map((opt, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => {
+                              setSpecialMealChoice(opt);
+                            }}
+                            style={{
+                              padding: '12px',
+                              backgroundColor: specialMealChoice === opt ? '#d4a574' : '#fff8f3',
+                              border: `2px solid ${specialMealChoice === opt ? '#d4a574' : '#e0cfc7'}`,
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              textAlign: 'left',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <div style={{ fontWeight: '500', marginBottom: '4px' }}>
+                              {specialMealChoice === opt && '✓ '}
+                              {opt.title || opt.name || `Option ${idx + 1}`}
+                            </div>
+                            {opt.notes && (
+                              <div style={{ fontSize: '13px', color: '#666' }}>
+                                {opt.notes}
+                              </div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {errors.meals && <p className="error">{errors.meals}</p>}

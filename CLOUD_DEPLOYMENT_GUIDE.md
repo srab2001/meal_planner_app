@@ -1,4 +1,4 @@
-# 🚀 CLOUD DEPLOYMENT GUIDE - Fitness App
+postgresql://meal_planner_user:VJaFF2BeiisVJm7Fip4IHwL4q5gObQ40@dpg-d4nj6demcj7s73dfvie0-a/meal_planner_vo27?sslmode=require# 🚀 CLOUD DEPLOYMENT GUIDE - Fitness App
 
 ## Architecture: Vercel + Render + Neon
 
@@ -269,3 +269,68 @@ Database:  Connected to Neon automatically
 ---
 
 **Next: Push to GitHub and deploy! 🚀**
+
+---
+
+# API Endpoints
+
+## Public Routes
+
+### Health Check
+
+- **GET** `/health`
+- Response: `{ "status": "ok", "service": "fitness-backend", "node_env": "production" }`
+
+## Protected Routes (Require JWT)
+
+### User Profile
+
+- **GET** `/api/fitness/profile`
+- Auth: `Bearer {token}`
+- Response: User profile data
+
+### Create User Profile
+
+- **POST** `/api/fitness/profile`
+- Auth: `Bearer {token}`
+- Body: `{ "height_cm": 180, "weight_kg": 75, "age": 30, "gender": "male", "activity_level": "active" }`
+- Response: Created profile data
+
+### Update User Profile
+
+- **PUT** `/api/fitness/profile`
+- Auth: `Bearer {token}`
+- Body: `{ "height_cm": 185, "weight_kg": 80 }`
+- Response: Updated profile data
+
+### Delete User Profile
+
+- **DELETE** `/api/fitness/profile`
+- Auth: `Bearer {token}`
+- Response: `{ "status": "success" }`
+
+## Admin Routes (Require JWT, Admin role)
+
+### Interview Questions
+
+- **GET** `/api/fitness/admin/interview-questions`
+- Auth: `Bearer {token}`
+- Response: List of interview questions
+
+- **POST** `/api/fitness/admin/interview-questions`
+- Auth: `Bearer {token}`
+- Body: `{ "question": "Test?", "type": "text" }`
+- Response: Created question data
+
+- **PUT** `/api/fitness/admin/interview-questions/{id}`
+- Auth: `Bearer {token}`
+- Body: `{ "question": "Updated?" }`
+- Response: Updated question data
+
+- **DELETE** `/api/fitness/admin/interview-questions/{id}`
+- Auth: `Bearer {token}`
+- Response: `{ "status": "success" }`
+
+- **PATCH** `/api/fitness/admin/interview-questions/{id}/toggle`
+- Auth: `Bearer {token}`
+- Response: Updated question data

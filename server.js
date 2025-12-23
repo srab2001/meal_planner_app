@@ -1746,6 +1746,128 @@ app.get('/api/shopping-list-state', requireAuth, async (req, res) => {
   }
 });
 
+// ============================================================================
+// SPECIAL OCCASION FEATURE
+// ============================================================================
+
+/**
+ * POST /api/special-occasion/options
+ * Generate 6 dinner options for a special occasion based on primary ingredient
+ * 
+ * Request Body:
+ * {
+ *   "ingredient": "lobster" | "steak" | "shrimp" | etc.
+ * }
+ * 
+ * Response:
+ * {
+ *   "options": [
+ *     {
+ *       "title": "Lobster Tail Dinner",
+ *       "side": "Roasted asparagus with garlic",
+ *       "summary": "Maine lobster tails with compound butter..."
+ *     },
+ *     ...
+ *   ]
+ * }
+ */
+app.post('/api/special-occasion/options', aiLimiter, requireAuth, async (req, res) => {
+  try {
+    const { ingredient } = req.body;
+
+    if (!ingredient || typeof ingredient !== 'string' || !ingredient.trim()) {
+      return res.status(400).json({
+        error: 'missing_ingredient',
+        message: 'ingredient is required and must be a non-empty string'
+      });
+    }
+
+    const cleanIngredient = ingredient.trim();
+    console.log(`[Special Occasion] Generating 6 options for ingredient: ${cleanIngredient}`);
+
+    // Use OpenAI to generate special occasion meal options
+    const openai = req.app.locals.openai;
+    if (!openai) {
+      console.error('[Special Occasion] OpenAI client not available');
+      return res.status(503).json({
+        error: 'service_unavailable',
+        message: 'AI service is not available'
+      });
+    }
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        {
+          role: 'system',
+          content: `You are a professional chef. Generate exactly 6 unique dinner options featuring a primary ingredient.
+
+CRITICAL RULES:
+1. Return ONLY valid JSON, no other text
+2. Each option must have: title, side (side dish), summary
+3. Each option must include a different side dish
+4. No repeated options
+5. All titles and descriptions must be unique
+6. Keep summary to one short sentence
+
+Format EXACTLY:
+{
+  "options": [
+    {"title": "...", "side": "...", "summary": "..."},
+    ...6 total...
+  ]
+}`
+        },
+        {
+          role: 'user',
+          content: `Generate exactly 6 unique dinner options using ${cleanIngredient} as the primary ingredient. Each must have a different side dish.`
+        }
+      ],
+      temperature: 0.8,
+      max_tokens: 800
+    });
+
+    const content = response.choices[0].message.content.trim();
+    console.log(`[Special Occasion] Raw response: ${content}`);
+
+    let parsed = { options: [] };
+    try {
+      parsed = JSON.parse(content);
+      if (!parsed.options || !Array.isArray(parsed.options)) {
+        parsed = { options: [] };
+      }
+    } catch (parseError) {
+      console.error('[Special Occasion] Failed to parse response as JSON:', parseError.message);
+      console.error('[Special Occasion] Content was:', content);
+      parsed = { options: [] };
+    }
+
+    // Validate options format and count
+    const validOptions = parsed.options.filter(opt =>
+      opt && typeof opt === 'object' && opt.title && opt.side && opt.summary
+    ).slice(0, 6); // Ensure max 6
+
+    console.log(`✅ Generated ${validOptions.length} special occasion options for ${cleanIngredient}`);
+
+    res.json({
+      options: validOptions.length >= 6 ? validOptions : validOptions.concat(
+        Array(6 - validOptions.length).fill(null).map((_, i) => ({
+          title: `${cleanIngredient.charAt(0).toUpperCase() + cleanIngredient.slice(1)} Dish ${validOptions.length + i + 1}`,
+          side: 'Seasonal vegetables',
+          summary: 'A delicious special preparation'
+        }))
+      )
+    });
+  } catch (error) {
+    console.error('[Special Occasion] Error generating options:', error.message);
+    res.status(500).json({
+      error: 'failed_to_generate_options',
+      message: 'Failed to generate special occasion meal options',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
 // Save meal plan to history
 app.post('/api/save-meal-plan', requireAuth, async (req, res) => {
   try {

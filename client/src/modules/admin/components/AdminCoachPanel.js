@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import './AdminCoachPanel.css';
+import '../styles/AdminCoachPanel.css';
 import QuestionList from './QuestionList';
 import QuestionForm from './QuestionForm';
 import QuestionPreview from './QuestionPreview';
