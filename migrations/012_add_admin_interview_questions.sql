@@ -1,20 +1,36 @@
 -- Create admin_interview_questions table for AI Workout Coach
 -- This table stores interview questions used by the fitness module to gather user fitness information
 
-CREATE TABLE IF NOT EXISTS admin_interview_questions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    question TEXT NOT NULL,
-    type VARCHAR(50) NOT NULL,
-    options TEXT,
-    "order" INTEGER DEFAULT 0,
-    active BOOLEAN DEFAULT true,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
+DO $$ 
+BEGIN
+    CREATE TABLE IF NOT EXISTS admin_interview_questions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        question TEXT NOT NULL,
+        type VARCHAR(50) NOT NULL,
+        options TEXT,
+        "order" INTEGER DEFAULT 0,
+        active BOOLEAN DEFAULT true,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    );
+EXCEPTION WHEN duplicate_table THEN
+    NULL;
+END $$;
 
--- Create indexes for efficient querying
-CREATE INDEX IF NOT EXISTS idx_admin_interview_questions_active ON admin_interview_questions(active);
-CREATE INDEX IF NOT EXISTS idx_admin_interview_questions_order ON admin_interview_questions("order");
+-- Create indexes for efficient querying (if they don't exist)
+DO $$
+BEGIN
+    CREATE INDEX idx_admin_interview_questions_active ON admin_interview_questions(active);
+EXCEPTION WHEN duplicate_object THEN
+    NULL;
+END $$;
+
+DO $$
+BEGIN
+    CREATE INDEX idx_admin_interview_questions_order ON admin_interview_questions("order");
+EXCEPTION WHEN duplicate_object THEN
+    NULL;
+END $$;
 
 -- Insert sample interview questions for the AI Workout Coach
 INSERT INTO admin_interview_questions (id, question, type, "order", active) VALUES
