@@ -751,11 +751,14 @@ app.post('/api/generate-meals', aiLimiter, requireAuth, async (req, res) => {
   try {
     const { zipCode, primaryStore, comparisonStore, selectedMeals, servingsByMeal, selectedDays, dietaryPreferences, leftovers, specialOccasion, specialMealChoice, specialIngredient, ...preferences } = req.body;
 
+    // Extract title from specialMealChoice if it's an object
+    const specialMealTitle = specialMealChoice?.title || specialMealChoice;
+
     console.log(`Generating meal plan for user: ${req.user.email}`);
     if (specialOccasion) {
       console.log('✨ Special occasion meal requested - will generate premium restaurant-quality meal');
-      if (specialMealChoice) {
-        console.log(`✨ User selected special meal: "${specialMealChoice}"`);
+      if (specialMealTitle) {
+        console.log(`✨ User selected special meal: "${specialMealTitle}"`);
       }
     }
 
@@ -964,7 +967,7 @@ ${leftoversText}
 ${specialOccasion ? `
 **✨ SPECIAL OCCASION MEAL:**
 - The user requested ONE special occasion meal this week
-${specialMealChoice ? `- IMPORTANT: Use THIS EXACT MEAL the user selected: "${specialMealChoice}"` : `- This should be a premium, restaurant-quality dish
+${specialMealTitle ? `- IMPORTANT: Use THIS EXACT MEAL the user selected: "${specialMealTitle}"` : `- This should be a premium, restaurant-quality dish
 - Inspire this meal from renowned chefs like Gordon Ramsay, Jamie Oliver, or publications like Bon Appétit, Saveur, or Food & Wine`}
 - Use elevated cooking techniques (sous vide, braising, reduction sauces, etc.)
 - Include gourmet ingredients from premium stores like Whole Foods, specialty butchers, or farmers markets
