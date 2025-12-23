@@ -93,7 +93,7 @@ model admin_interview_questions {
   id               Int      @id @default(autoincrement())
   question_text    String   @db.Text // The actual question text
   question_type    String   @db.VarChar(50) // "text", "multiple_choice", "yes_no", "range"
-  options          Json?    @db.Jsonb // Array for multiple_choice type
+  options          Json? // Array for multiple_choice type
   option_range     Int? // For range type: max value
   order_position   Int      @default(0) // Display order
   is_active        Boolean  @default(true) // Whether to show this question
