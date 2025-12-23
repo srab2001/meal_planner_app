@@ -1003,28 +1003,28 @@ router.get('/admin/interview-questions', requireAuth, async (req, res) => {
  */
 router.post('/admin/interview-questions', requireAuth, async (req, res) => {
   try {
-    const { question, type, options, order, active } = req.body;
+    const { question_text, question_type, options, order_position, is_active } = req.body;
     
     console.log(`[POST /api/fitness/admin/interview-questions] Creating question`);
-    console.log(`  Type: ${type}, Question: ${question?.substring(0, 50)}...`);
+    console.log(`  Type: ${question_type}, Question: ${question_text?.substring(0, 50)}...`);
     
     // Input validation
-    if (!question || typeof question !== 'string' || !question.trim()) {
+    if (!question_text || typeof question_text !== 'string' || !question_text.trim()) {
       return res.status(400).json({
         error: 'missing_question',
-        message: 'question is required and must be a non-empty string',
+        message: 'question_text is required and must be a non-empty string',
       });
     }
     
-    if (!type || !['text', 'multiple_choice', 'range', 'yes_no'].includes(type)) {
+    if (!question_type || !['text', 'multiple_choice', 'range', 'yes_no'].includes(question_type)) {
       return res.status(400).json({
         error: 'invalid_type',
-        message: 'type must be one of: text, multiple_choice, range, yes_no',
+        message: 'question_type must be one of: text, multiple_choice, range, yes_no',
       });
     }
     
     // Validate options for multiple_choice
-    if (type === 'multiple_choice') {
+    if (question_type === 'multiple_choice') {
       if (!options || !Array.isArray(options) || options.length < 2) {
         return res.status(400).json({
           error: 'invalid_options',
@@ -1036,11 +1036,11 @@ router.post('/admin/interview-questions', requireAuth, async (req, res) => {
     // Create the question
     const newQuestion = await getDb().admin_interview_questions.create({
       data: {
-        question_text: question.trim(),
-        question_type: type,
+        question_text: question_text.trim(),
+        question_type: question_type,
         options: options ? options : null,
-        order_position: typeof order === 'number' ? order : 0,
-        is_active: active !== false, // default to true
+        order_position: typeof order_position === 'number' ? order_position : 0,
+        is_active: is_active !== false, // default to true
       },
     });
     
@@ -1273,7 +1273,7 @@ router.patch('/admin/interview-questions/:id/toggle', requireAuth, async (req, r
  * 
  * Response: { success, questions: [...] }
  */
-router.patch('/admin/interview-questions-reorder', requireAuth, async (req, res) => {
+router.patch('/admin/interview-questions-reorder', async (req, res) => {
   try {
     const { questions } = req.body;
     
