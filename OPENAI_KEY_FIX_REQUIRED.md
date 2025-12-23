@@ -23,10 +23,7 @@ https://dashboard.render.com
 3. Scroll to **Environment** section
 4. Find the row with `OPENAI_API_KEY`
 5. Click on it to edit
-6. **Replace the entire value with:**
-```
-[REDACTED]
-```
+6. **Replace the entire value with your new OpenAI API key** (starts with `sk-proj-` or `sk-svcacct-`)
 7. Click **Save Changes**
 
 ### Step 3: Render Auto-Deploys

@@ -41,8 +41,8 @@ These scripts update keys automatically - no action needed:
 ### Update `.env` file:
 
 ```bash
-# Current (old key)
-OPENAI_API_KEY=[REDACTED]
+# Current (old key - redacted)
+OPENAI_API_KEY=sk-svcacct-[REDACTED_OLD_KEY]
 
 # Update to (new key)
 OPENAI_API_KEY=<YOUR_NEW_KEY_HERE>
