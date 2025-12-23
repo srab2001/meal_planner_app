@@ -143,3 +143,6 @@ module.exports = {
   apiRequest,
   healthCheck,
 };
+
+// Also export as ES modules
+export { API_BASE, GOOGLE_CLIENT_ID, ENDPOINTS, buildURL, apiRequest, healthCheck };
