@@ -23,8 +23,15 @@ const jwt = require('jsonwebtoken');
 
 const router = express.Router();
 
-// JWT Secret from environment
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+// JWT Secret from environment - MUST match main server's SESSION_SECRET
+// Main server uses: const JWT_SECRET = SESSION_SECRET
+// So fitness routes must use the same secret for token verification to work
+const JWT_SECRET = process.env.SESSION_SECRET || process.env.JWT_SECRET || 'your-secret-key';
+
+if (!process.env.SESSION_SECRET && !process.env.JWT_SECRET) {
+  console.warn('[Fitness Auth] ⚠️  WARNING: Neither SESSION_SECRET nor JWT_SECRET is set!');
+  console.warn('[Fitness Auth] Tokens will fail verification. Set SESSION_SECRET in your environment.');
+}
 
 // Lazy-initialize Prisma client on first use to avoid failures at module load time
 // NOTE: admin_interview_questions table is in the main Render database, not the Neon fitness database
