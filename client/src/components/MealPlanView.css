@@ -123,6 +123,17 @@
   transform: translateY(-2px);
 }
 
+.btn-stores {
+  background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+  color: white;
+  font-weight: 600;
+}
+
+.btn-stores:hover {
+  background: linear-gradient(135deg, #e4475d 0%, #e084ec 100%);
+  transform: translateY(-2px);
+}
+
 .btn-logout {
   background: #f44336;
   color: white;

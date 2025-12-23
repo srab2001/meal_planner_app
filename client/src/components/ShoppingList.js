@@ -89,9 +89,12 @@ function consolidateShoppingList(shoppingList) {
 
       const trimmed = item.trim();
       
+      console.log(`📦 Consolidating item: "${trimmed}"`);
+      
       // Parse: "2 1/4 cups milk" or "1/2 cup butter" or "milk" or "2 lbs chicken"
       // Match: (optional quantity with fractions) (optional unit) (ingredient name)
-      const quantityUnitMatch = trimmed.match(/^([\d\s/]+?)\s+([a-z]+)\s+(.+)$/i);
+      // More flexible regex that handles various formats
+      const quantityUnitMatch = trimmed.match(/^([\d.\/\s]+?)\s+([a-z]+)\s+(.+)$/i);
       const unitOnlyMatch = trimmed.match(/^([a-z]+)\s+(.+)$/i);
 
       let quantity = 1;
@@ -100,17 +103,28 @@ function consolidateShoppingList(shoppingList) {
 
       if (quantityUnitMatch) {
         // Has quantity and unit: "2 1/4 cups milk" or "1/2 cup butter"
-        quantity = parseQuantity(quantityUnitMatch[1]);
-        unit = quantityUnitMatch[2].toLowerCase();
-        name = quantityUnitMatch[3].toLowerCase().trim();
+        try {
+          quantity = parseQuantity(quantityUnitMatch[1]);
+          unit = quantityUnitMatch[2].toLowerCase();
+          name = quantityUnitMatch[3].toLowerCase().trim();
+          console.log(`  ✓ Parsed as quantity=${quantity} unit=${unit} name=${name}`);
+        } catch (e) {
+          // If parsing fails, treat as just ingredient name
+          console.log(`  ✗ Parse error, treating as ingredient name`);
+          name = trimmed.toLowerCase();
+          unit = 'each';
+          quantity = 1;
+        }
       } else if (unitOnlyMatch && getConversion(unitOnlyMatch[1])) {
         // Has unit but might be counted as quantity: "cups flour"
         unit = unitOnlyMatch[1].toLowerCase();
         name = unitOnlyMatch[2].toLowerCase().trim();
+        console.log(`  ✓ Parsed as unit=${unit} name=${name}`);
       } else {
         // Just ingredient name
         name = trimmed.toLowerCase();
         unit = 'each';
+        console.log(`  → Treating as ingredient name only: ${name}`);
       }
 
       // Normalize name

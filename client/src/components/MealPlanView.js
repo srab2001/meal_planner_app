@@ -1417,6 +1417,11 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
               ⬅️ Back to Current Plan
             </button>
           )}
+          {onGoToHistoryMenu && (
+            <button onClick={onGoToHistoryMenu} className="btn-stores">
+              🛒 Go to Store Locator
+            </button>
+          )}
           <button onClick={handleFeedback} className="btn-feedback">
             💬 Send Feedback
           </button>
@@ -1439,11 +1444,6 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
           <button onClick={onStartOver} className="btn-secondary">
             🔄 Start Over
           </button>
-          {onGoToHistoryMenu && (
-            <button onClick={onGoToHistoryMenu} className="btn-stores">
-              🛒 Go to Store Locator
-            </button>
-          )}
           <button onClick={onLogout} className="btn-logout">
             🚪 Logout
           </button>
