@@ -609,7 +609,13 @@ Return ONLY valid JSON in this exact format:
 }`;
     }
 
-    console.log(`Finding stores within 10 miles of ZIP: ${zipCode}${storeName ? `, prioritizing: ${storeName}` : ''}`);
+    console.log(`\n🔍 Finding stores within 10 miles of ZIP: ${zipCode}${storeName ? `, prioritizing: ${storeName}` : ''}`);
+    console.log(`📝 Prompt length: ${prompt.length} chars`);
+
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('❌ OPENAI_API_KEY not set!');
+      return res.status(500).json({ error: 'Server configuration error: OpenAI API key not configured' });
+    }
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -628,17 +634,42 @@ Return ONLY valid JSON in this exact format:
 
     let responseText = completion.choices[0].message.content.trim();
 
+    console.log(`📍 Raw OpenAI response: ${responseText.substring(0, 200)}...`);
+
     // Clean up response - remove markdown code blocks if present
     responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
-    const storeData = JSON.parse(responseText);
+    let storeData;
+    try {
+      storeData = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('❌ JSON parse error:', parseError.message);
+      console.error('Response text:', responseText);
+      return res.status(500).json({ error: 'Invalid response from AI service' });
+    }
 
-    console.log(`Found ${storeData.stores?.length || 0} stores`);
+    // Validate stores array exists
+    if (!storeData.stores || !Array.isArray(storeData.stores)) {
+      console.error('❌ Response missing stores array:', storeData);
+      return res.status(500).json({ error: 'Invalid stores response format' });
+    }
+
+    if (storeData.stores.length === 0) {
+      console.warn('⚠️  No stores found for ZIP:', zipCode);
+    }
+
+    console.log(`✅ Found ${storeData.stores.length} stores for ZIP ${zipCode}`);
     res.json(storeData);
 
   } catch (error) {
-    console.error('Error finding stores:', error);
-    res.status(500).json({ error: 'Failed to find stores' });
+    console.error('❌ Error finding stores:', error.message || error);
+    if (error.response?.status === 429) {
+      res.status(429).json({ error: 'Rate limited. Please try again in a moment.' });
+    } else if (error.status === 401 || error.message?.includes('API key')) {
+      res.status(401).json({ error: 'API authentication error' });
+    } else {
+      res.status(500).json({ error: 'Failed to find stores' });
+    }
   }
 });
 

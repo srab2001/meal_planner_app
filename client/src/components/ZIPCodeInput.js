@@ -58,7 +58,18 @@ function ZIPCodeInput({ onSubmit, user }) {
 
     } catch (error) {
       console.error('Error finding stores:', error);
-      setError('Unable to find stores. Please try again.');
+      // Provide more specific error message
+      let errorMsg = 'Unable to find stores. ';
+      if (error.message) {
+        errorMsg += error.message;
+      } else if (error.response?.status === 429) {
+        errorMsg = 'Too many requests. Please wait a moment and try again.';
+      } else if (error.response?.status === 401) {
+        errorMsg = 'Authentication error. Please sign in again.';
+      } else {
+        errorMsg += 'Please try again or use a different ZIP code.';
+      }
+      setError(errorMsg);
     } finally {
       setIsLoading(false);
     }
