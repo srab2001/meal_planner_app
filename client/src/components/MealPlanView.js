@@ -305,6 +305,11 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
     setRecipeNotes('');
   };
 
+  const closeModalWithSave = () => {
+    // Save servings adjustment before closing
+    handleConfirmServingsAdjustment();
+  };
+
   const adjustServings = (change) => {
     setCustomServings(prev => Math.max(1, (prev || 2) + change));
   };
@@ -330,6 +335,73 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
         return Math.round(scaled * 4) / 4; // Round to nearest quarter
       }
     });
+  };
+
+  const handleConfirmServingsAdjustment = () => {
+    // Only save if servings have been adjusted
+    if (!selectedMeal || !customServings || customServings === selectedMeal.servings) {
+      closeModal();
+      return;
+    }
+
+    console.log('👥 [Servings] Persisting servings adjustment...');
+    console.log('👥 [Servings] Original servings:', selectedMeal.servings);
+    console.log('👥 [Servings] New servings:', customServings);
+
+    try {
+      // Scale all ingredients based on new servings
+      const scaledIngredients = selectedMeal.ingredients.map(ingredient => {
+        const scaledIngredient = calculateScaledIngredient(
+          ingredient,
+          selectedMeal.servings,
+          customServings
+        );
+        console.log(`👥 [Servings] Scaled: "${ingredient}" → "${scaledIngredient}"`);
+        return scaledIngredient;
+      });
+
+      // Create updated meal with new servings and scaled ingredients
+      const updatedMeal = {
+        ...selectedMeal,
+        servings: customServings,
+        ingredients: scaledIngredients
+      };
+
+      console.log('👥 [Servings] Updated meal:', updatedMeal);
+
+      // Update the local meal plan with the new meal
+      if (selectedMealDay && selectedMealType) {
+        const updatedPlan = {
+          ...localMealPlan,
+          mealPlan: {
+            ...localMealPlan.mealPlan,
+            [selectedMealDay]: {
+              ...localMealPlan.mealPlan[selectedMealDay],
+              [selectedMealType]: updatedMeal
+            }
+          }
+        };
+
+        // Regenerate shopping list from updated meal plan
+        updatedPlan.shoppingList = regenerateShoppingList(updatedPlan);
+
+        console.log('👥 [Servings] Updated local meal plan');
+        console.log('👥 [Servings] New shopping list:', updatedPlan.shoppingList);
+
+        setLocalMealPlan(updatedPlan);
+
+        // Trigger engagement achievement for recipe scaling
+        if (engagement) {
+          engagement.achievements.checkAndUnlock('RECIPE_CUSTOMIZER', true);
+        }
+      }
+
+      console.log('✅ [Servings] Servings adjustment saved successfully');
+    } catch (error) {
+      console.error('❌ [Servings] Error persisting servings adjustment:', error);
+    }
+
+    closeModal();
   };
 
   const handleSaveCustomizedFavorite = async () => {
@@ -1635,9 +1707,9 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
 
       {/* Recipe Modal */}
       {selectedMeal && (
-        <div className="modal-overlay" onClick={closeModal}>
+        <div className="modal-overlay" onClick={closeModalWithSave}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={closeModal}>✕</button>
+            <button className="modal-close" onClick={closeModalWithSave}>✕</button>
             {console.log('🎯 Recipe Modal opened - Submit Recipe Changes button should be visible below')}
 
 
