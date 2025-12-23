@@ -20,12 +20,12 @@ function consolidateShoppingList(shoppingList) {
   // Unit conversion map
   const conversions = {
     // Volume
-    'tsp': { to: 'tbsp', factor: 1/3 },
-    'tbsp': { to: 'cup', factor: 1/16 },
-    'oz': { to: 'cup', factor: 1/8 },
-    'cup': { to: 'gallon', factor: 1/16 },
-    'pint': { to: 'gallon', factor: 1/2 },
-    'quart': { to: 'gallon', factor: 1/4 },
+    'tsp': { to: 'tbsp', factor: 1/3, type: 'volume' },
+    'tbsp': { to: 'cup', factor: 1/16, type: 'volume' },
+    'fl_oz': { to: 'cup', factor: 1/8, type: 'volume' },
+    'cup': { to: 'gallon', factor: 1/16, type: 'volume' },
+    'pint': { to: 'gallon', factor: 1/2, type: 'volume' },
+    'quart': { to: 'gallon', factor: 1/4, type: 'volume' },
     // Weight
     'oz': { to: 'lb', factor: 1/16, type: 'weight' },
     'lb': { to: 'lb', factor: 1, type: 'weight' },
@@ -109,7 +109,7 @@ function consolidateShoppingList(shoppingList) {
     }
 
     // Format display
-    const categoryKey = consolidated[name] ? 'Consolidated' : 'Produce'; // Default category
+    const categoryKey = 'Consolidated';
     if (!consolidated[categoryKey]) consolidated[categoryKey] = [];
 
     const formatted = displayQuantity % 1 === 0 
