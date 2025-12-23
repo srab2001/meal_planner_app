@@ -69,7 +69,7 @@ const regenerateShoppingList = (mealPlan) => {
   return shoppingList;
 };
 
-function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver, onLogout, onViewProfile, onViewNutrition }) {
+function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver, onLogout, onViewProfile, onViewNutrition, onGoToHistoryMenu }) {
   const [selectedDay, setSelectedDay] = useState('Monday');
   const [selectedMeal, setSelectedMeal] = useState(null);
   const [selectedMealDay, setSelectedMealDay] = useState(null);  // Track which day the selected meal came from
@@ -1439,6 +1439,11 @@ function MealPlanView({ mealPlan, preferences, user, selectedStores, onStartOver
           <button onClick={onStartOver} className="btn-secondary">
             🔄 Start Over
           </button>
+          {onGoToHistoryMenu && (
+            <button onClick={onGoToHistoryMenu} className="btn-stores">
+              🛒 Go to Store Locator
+            </button>
+          )}
           <button onClick={onLogout} className="btn-logout">
             🚪 Logout
           </button>

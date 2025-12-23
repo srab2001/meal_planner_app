@@ -8,6 +8,7 @@ import StoreSelection from './components/StoreSelection';
 import Questionnaire from './components/Questionnaire';
 import PaymentPage from './components/PaymentPage';
 import MealPlanView from './components/MealPlanView';
+import HistoryMenu from './components/HistoryMenu';
 import Profile from './components/Profile';
 import Admin from './components/Admin';
 import MealOfTheDay from './components/MealOfTheDay';
@@ -227,6 +228,32 @@ function App() {
     setCurrentView('zip');
     setStores([]);
     setSelectedStores({ primaryStore: null, comparisonStore: null });
+  };
+
+  // Handler: Go to History Menu (before store selection)
+  const handleGoToHistoryMenu = () => {
+    setCurrentView('history-menu');
+  };
+
+  // Handler: Load Previous Meal Plan
+  const handleLoadHistoricalPlan = (entry) => {
+    console.log('📋 Loading historical meal plan:', entry);
+    if (entry.meal_plan) {
+      setMealPlan(entry.meal_plan);
+      setPreferences(entry.preferences);
+      setSelectedStores(entry.stores || { primaryStore: null, comparisonStore: null });
+      // Go directly to meal plan view (skip store selection)
+      setCurrentView('mealplan');
+    }
+  };
+
+  // Handler: Create New Plan (from history menu)
+  const handleCreateNewPlan = () => {
+    // Reset meal plan data and go to store selection
+    setMealPlan(null);
+    setPreferences(null);
+    setSelectedStores({ primaryStore: null, comparisonStore: null });
+    setCurrentView('store');
   };
 
   // Handler: Refresh Stores
@@ -511,6 +538,15 @@ function App() {
         />
       )}
 
+      {currentView === 'history-menu' && (
+        <HistoryMenu
+          user={user}
+          onNewPlan={handleCreateNewPlan}
+          onLoadPlan={handleLoadHistoricalPlan}
+          onLogout={handleLogout}
+        />
+      )}
+
       {currentView === 'store' && (
         <StoreSelection
           stores={stores}
@@ -563,6 +599,7 @@ function App() {
           onLogout={handleLogout}
           onViewProfile={handleViewProfile}
           onViewNutrition={() => setCurrentView('nutrition')}
+          onGoToHistoryMenu={handleGoToHistoryMenu}
         />
       )}
 
