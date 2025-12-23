@@ -9,31 +9,76 @@ const API_BASE = process.env.REACT_APP_API_URL || PRODUCTION_API;
 /**
  * Consolidate shopping list by:
  * 1. Normalizing ingredient names
- * 2. Parsing quantities and units
- * 3. Converting to base units
+ * 2. Parsing quantities and units (including fractions like 1/4)
+ * 3. Converting to a base unit system
  * 4. Summing quantities
- * 5. Formatting back to readable units
+ * 5. Converting back to the largest practical unit
+ * 6. Formatting back to readable format
  */
 function consolidateShoppingList(shoppingList) {
   if (!shoppingList || typeof shoppingList !== 'object') return shoppingList;
 
-  // Unit conversion map
+  // Unit conversion to base units (milliliters for volume, grams for weight, each for count)
   const conversions = {
-    // Volume
-    'tsp': { to: 'tbsp', factor: 1/3, type: 'volume' },
-    'tbsp': { to: 'cup', factor: 1/16, type: 'volume' },
-    'fl_oz': { to: 'cup', factor: 1/8, type: 'volume' },
-    'cup': { to: 'gallon', factor: 1/16, type: 'volume' },
-    'pint': { to: 'gallon', factor: 1/2, type: 'volume' },
-    'quart': { to: 'gallon', factor: 1/4, type: 'volume' },
-    // Weight
-    'oz': { to: 'lb', factor: 1/16, type: 'weight' },
-    'lb': { to: 'lb', factor: 1, type: 'weight' },
-    // Count
-    'each': { to: 'each', factor: 1, type: 'count' }
+    // Volume conversions (all to ml)
+    'tsp': { toBase: (v) => v * 4.929, type: 'volume', display: 'tsp' },
+    'teaspoon': { toBase: (v) => v * 4.929, type: 'volume', display: 'tsp' },
+    'tbsp': { toBase: (v) => v * 14.787, type: 'volume', display: 'tbsp' },
+    'tablespoon': { toBase: (v) => v * 14.787, type: 'volume', display: 'tbsp' },
+    'fl_oz': { toBase: (v) => v * 29.574, type: 'volume', display: 'fl oz' },
+    'cup': { toBase: (v) => v * 236.588, type: 'volume', display: 'cup' },
+    'cups': { toBase: (v) => v * 236.588, type: 'volume', display: 'cup' },
+    'pint': { toBase: (v) => v * 473.176, type: 'volume', display: 'pint' },
+    'quart': { toBase: (v) => v * 946.353, type: 'volume', display: 'quart' },
+    'gallon': { toBase: (v) => v * 3785.411, type: 'volume', display: 'gallon' },
+    'ml': { toBase: (v) => v, type: 'volume', display: 'ml' },
+    'l': { toBase: (v) => v * 1000, type: 'volume', display: 'l' },
+    // Weight conversions (all to grams)
+    'oz': { toBase: (v) => v * 28.35, type: 'weight', display: 'oz' },
+    'lb': { toBase: (v) => v * 453.592, type: 'weight', display: 'lb' },
+    'lbs': { toBase: (v) => v * 453.592, type: 'weight', display: 'lb' },
+    'g': { toBase: (v) => v, type: 'weight', display: 'g' },
+    'kg': { toBase: (v) => v * 1000, type: 'weight', display: 'kg' },
+    // Count (units)
+    'each': { toBase: (v) => v, type: 'count', display: 'each' },
+    'piece': { toBase: (v) => v, type: 'count', display: 'piece' },
+    'item': { toBase: (v) => v, type: 'count', display: 'item' }
   };
 
-  // Normalize and group by ingredient name and unit type
+  // Helper function to parse fraction strings (e.g., "1/4" -> 0.25)
+  const parseFraction = (str) => {
+    str = str.trim();
+    if (str.includes('/')) {
+      const [num, denom] = str.split('/').map(Number);
+      return num / denom;
+    }
+    return parseFloat(str) || 0;
+  };
+
+  // Helper function to parse quantity which might include whole numbers and fractions (e.g., "2 1/4" -> 2.25)
+  const parseQuantity = (str) => {
+    str = str.trim();
+    const parts = str.split(/\s+/);
+    let total = 0;
+    
+    for (const part of parts) {
+      if (part.includes('/')) {
+        total += parseFraction(part);
+      } else if (!isNaN(part)) {
+        total += parseFloat(part);
+      }
+    }
+    
+    return total || 0;
+  };
+
+  // Helper to find base unit and conversion function
+  const getConversion = (unit) => {
+    const normalized = unit.toLowerCase().trim();
+    return conversions[normalized] || null;
+  };
+
+  // Normalize and group by ingredient name and type
   const grouped = {};
 
   Object.entries(shoppingList).forEach(([category, items]) => {
@@ -42,84 +87,127 @@ function consolidateShoppingList(shoppingList) {
     items.forEach(item => {
       if (!item || typeof item !== 'string') return;
 
-      // Parse: "2 cups milk" or "milk" or "1 lb butter"
-      const trimmed = item.trim().toLowerCase();
-      const match = trimmed.match(/^([\d.]+)\s*([a-z]+)?\s+(.+)$/) || 
-                    trimmed.match(/^([a-z\s]+)$/);
-
-      if (!match) return;
+      const trimmed = item.trim();
+      
+      // Parse: "2 1/4 cups milk" or "1/2 cup butter" or "milk" or "2 lbs chicken"
+      // Match: (optional quantity with fractions) (optional unit) (ingredient name)
+      const quantityUnitMatch = trimmed.match(/^([\d\s/]+?)\s+([a-z]+)\s+(.+)$/i);
+      const unitOnlyMatch = trimmed.match(/^([a-z]+)\s+(.+)$/i);
 
       let quantity = 1;
       let unit = 'each';
       let name = '';
 
-      if (match[1] && !isNaN(match[1])) {
-        quantity = parseFloat(match[1]);
-        unit = (match[2] || 'each').toLowerCase();
-        name = (match[3] || '').trim();
+      if (quantityUnitMatch) {
+        // Has quantity and unit: "2 1/4 cups milk" or "1/2 cup butter"
+        quantity = parseQuantity(quantityUnitMatch[1]);
+        unit = quantityUnitMatch[2].toLowerCase();
+        name = quantityUnitMatch[3].toLowerCase().trim();
+      } else if (unitOnlyMatch && getConversion(unitOnlyMatch[1])) {
+        // Has unit but might be counted as quantity: "cups flour"
+        unit = unitOnlyMatch[1].toLowerCase();
+        name = unitOnlyMatch[2].toLowerCase().trim();
       } else {
-        name = trimmed;
+        // Just ingredient name
+        name = trimmed.toLowerCase();
+        unit = 'each';
       }
 
-      // Normalize name: remove commas, trim, map synonyms
+      // Normalize name
       name = name.replace(/,/g, '').trim();
-      const synonyms = {
-        'milk': 'milk',
-        'butter': 'butter',
-        'eggs': 'eggs',
-        'flour': 'flour',
-        'sugar': 'sugar',
-        'salt': 'salt',
-        'pepper': 'pepper'
-      };
-      name = synonyms[name] || name;
-
       if (!name) return;
 
-      // Create key for grouping
-      const key = `${name}|${unit}`;
+      // Get conversion info
+      const conv = getConversion(unit);
+      if (!conv) {
+        console.warn(`⚠️ Unknown unit: "${unit}" for "${name}"`);
+        return;
+      }
+
+      // Convert to base units
+      const baseQuantity = conv.toBase(quantity);
+      const type = conv.type;
+
+      // Create key for grouping (ingredient name + type, NOT unit)
+      const key = `${name}|${type}`;
 
       if (!grouped[key]) {
-        grouped[key] = { name, unit, quantity: 0 };
+        grouped[key] = { name, type, baseQuantity: 0, originalUnit: unit };
       }
-      grouped[key].quantity += quantity;
+      grouped[key].baseQuantity += baseQuantity;
     });
   });
 
-  // Convert and format back
+  // Convert back to display units
   const consolidated = {};
 
-  Object.entries(grouped).forEach(([, { name, unit, quantity }]) => {
-    let displayQuantity = quantity;
-    let displayUnit = unit;
+  Object.entries(grouped).forEach(([, { name, type, baseQuantity }]) => {
+    let displayQuantity = baseQuantity;
+    let displayUnit = '';
 
-    // Convert to larger units if beneficial
-    if (unit === 'quart' && quantity >= 4) {
-      displayQuantity = Math.round((quantity / 4) * 10) / 10;
-      displayUnit = 'gallon';
-    } else if (unit === 'cup' && quantity >= 16) {
-      displayQuantity = Math.round((quantity / 16) * 10) / 10;
-      displayUnit = 'gallon';
-    } else if (unit === 'tbsp' && quantity >= 16) {
-      displayQuantity = Math.round((quantity / 16) * 10) / 10;
-      displayUnit = 'cup';
-    } else if (unit === 'oz' && quantity >= 16) {
-      displayQuantity = Math.round((quantity / 16) * 10) / 10;
-      displayUnit = 'lb';
+    if (type === 'volume') {
+      // Convert ml back to most readable unit
+      if (baseQuantity >= 3785.411) {
+        displayQuantity = baseQuantity / 3785.411;
+        displayUnit = baseQuantity >= 3785.411 * 2 ? 'gallons' : 'gallon';
+      } else if (baseQuantity >= 946.353) {
+        displayQuantity = baseQuantity / 946.353;
+        displayUnit = displayQuantity >= 1.5 ? 'quarts' : 'quart';
+      } else if (baseQuantity >= 473.176) {
+        displayQuantity = baseQuantity / 473.176;
+        displayUnit = displayQuantity >= 1.5 ? 'pints' : 'pint';
+      } else if (baseQuantity >= 236.588) {
+        displayQuantity = baseQuantity / 236.588;
+        displayUnit = displayQuantity >= 1.5 ? 'cups' : 'cup';
+      } else if (baseQuantity >= 14.787) {
+        displayQuantity = baseQuantity / 14.787;
+        displayUnit = displayQuantity >= 1.5 ? 'tbsp' : 'tbsp';
+      } else {
+        displayQuantity = baseQuantity / 4.929;
+        displayUnit = displayQuantity >= 1.5 ? 'tsp' : 'tsp';
+      }
+    } else if (type === 'weight') {
+      // Convert grams back to most readable unit
+      if (baseQuantity >= 453.592) {
+        displayQuantity = baseQuantity / 453.592;
+        displayUnit = displayQuantity >= 1.5 ? 'lbs' : 'lb';
+      } else {
+        displayQuantity = baseQuantity / 28.35;
+        displayUnit = displayQuantity >= 1.5 ? 'oz' : 'oz';
+      }
+    } else {
+      // Count (each)
+      displayQuantity = baseQuantity;
+      displayUnit = displayQuantity >= 1.5 ? 'items' : 'item';
     }
 
-    // Format display
+    // Format display - reduce decimal places
     const categoryKey = 'Consolidated';
     if (!consolidated[categoryKey]) consolidated[categoryKey] = [];
 
-    const formatted = displayQuantity % 1 === 0 
-      ? `${Math.round(displayQuantity)} ${displayUnit} ${name}`
-      : `${displayQuantity.toFixed(2)} ${displayUnit} ${name}`;
+    let formatted;
+    if (displayQuantity % 1 === 0) {
+      // Whole number
+      formatted = `${Math.round(displayQuantity)} ${displayUnit} ${name}`;
+    } else if (displayQuantity % 0.25 === 0) {
+      // Quarter measurements (common in recipes)
+      const quarters = Math.round(displayQuantity * 4);
+      if (quarters === 1) {
+        formatted = `1/4 ${displayUnit} ${name}`;
+      } else if (quarters % 4 === 0) {
+        formatted = `${quarters / 4} ${displayUnit} ${name}`;
+      } else {
+        formatted = `${quarters}/4 ${displayUnit} ${name}`;
+      }
+    } else {
+      // Decimal
+      formatted = `${displayQuantity.toFixed(2)} ${displayUnit} ${name}`;
+    }
 
     consolidated[categoryKey].push(formatted);
   });
 
-  return consolidated;
+  return Object.keys(consolidated).length > 0 ? consolidated : shoppingList;
 }
 
 function ShoppingList({ shoppingList, totalCost, priceComparison, selectedStores }) {
