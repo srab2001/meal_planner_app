@@ -7,6 +7,17 @@
 
 ---
 
+## 📦 Latest Deployment (Dec 23, 2025)
+
+✅ **Status:** Features deployed and fixes applied
+- ✨ Load/edit previous meal plans before store selection
+- 🔧 Shopping list consolidation fixed (handles fractions & units)
+- 🎨 Improved UI/UX with better button visibility
+
+**Documentation:** See `PRODUCTION_DEPLOYMENT.md` for details
+
+---
+
 ## 🎯 Overview
 
 A comprehensive meal planning platform featuring:
