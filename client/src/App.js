@@ -28,6 +28,9 @@ import { IntegrationsApp } from './modules/integrations';
 // Fitness Module
 import { FitnessApp } from './modules/fitness';
 
+// Admin Module (AI Coach question management)
+import { AdminCoachPanel } from './modules/admin';
+
 // Analytics Service
 import analyticsService from './shared/services/AnalyticsService';
 
@@ -466,6 +469,16 @@ function App() {
     }
   };
 
+  // Handler: View Admin Panel
+  const handleViewAdminPanel = () => {
+    setCurrentView('admin-coach');
+  };
+
+  // Handler: Back from Admin Panel
+  const handleBackFromAdminPanel = () => {
+    setCurrentView('switchboard');
+  };
+
   // Log current state for debugging
   console.log('🔄 App render - showSplash:', showSplash, 'currentView:', currentView, 'user:', user?.email);
 
@@ -562,6 +575,14 @@ function App() {
 
       {currentView === 'admin' && (
         <Admin />
+      )}
+
+      {/* Admin Coach Panel (question management) */}
+      {currentView === 'admin-coach' && (
+        <AdminCoachPanel
+          user={user}
+          onBack={handleBackFromAdminPanel}
+        />
       )}
 
       {currentView === 'meal-of-the-day' && (
