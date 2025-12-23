@@ -1,0 +1,134 @@
+.fitness-app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #f5f5f5;
+}
+
+.fitness-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 1.5rem 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
+}
+
+.fitness-header h1 {
+  margin: 0;
+  font-size: 1.8rem;
+  flex: 1;
+}
+
+.fitness-nav {
+  display: flex;
+  gap: 1rem;
+  flex: 2;
+}
+
+.nav-btn {
+  padding: 0.75rem 1.25rem;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.nav-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.nav-btn.active {
+  background: rgba(255, 255, 255, 0.95);
+  color: #667eea;
+  border-color: white;
+}
+
+.logout-btn {
+  padding: 0.75rem 1.5rem;
+  background: #ff6b6b;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.logout-btn:hover {
+  background: #ee5a52;
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+}
+
+.fitness-main {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 2rem;
+}
+
+.app-loading,
+.app-login-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  gap: 1rem;
+  text-align: center;
+}
+
+.app-loading {
+  font-size: 1.2rem;
+  color: #666;
+}
+
+.app-login-prompt {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.app-login-prompt h1 {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.app-login-prompt p {
+  font-size: 1.1rem;
+  margin: 0.5rem 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .fitness-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .fitness-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .fitness-nav {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .logout-btn {
+    width: 100%;
+  }
+
+  .nav-btn {
+    flex: 1;
+    min-width: 120px;
+  }
+}

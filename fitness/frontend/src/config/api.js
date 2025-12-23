@@ -51,6 +51,18 @@ const ENDPOINTS = {
   
   // Goals and targets
   GOALS: '/api/fitness/goals',
+  
+  // AI Workout Coach - Interview questions management
+  INTERVIEW_QUESTIONS: '/api/fitness/admin/interview-questions',
+  
+  // AI Workout Plan generation
+  AI_WORKOUT_PLAN: '/api/fitness/ai-interview',
+  
+  // Progress tracking
+  PROGRESS: '/api/fitness/progress',
+  
+  // Integrations (Apple Health, Google Fit, etc.)
+  INTEGRATIONS: '/api/fitness/integrations',
 };
 
 /**
