@@ -27,11 +27,13 @@ const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 // Lazy-initialize Prisma client on first use to avoid failures at module load time
-// Use main DATABASE_URL instead of separate FITNESS_DATABASE_URL
+// NOTE: admin_interview_questions table is in the main Render database, not the Neon fitness database
+// So we MUST use DATABASE_URL for this table. For fitness tables, can use either DATABASE_URL or FITNESS_DATABASE_URL
 let fitnessDb = null;
 
 function getDb() {
   if (!fitnessDb) {
+    // Use main DATABASE_URL since admin_interview_questions is in main schema
     const dbUrl = process.env.DATABASE_URL;
     if (!dbUrl) {
       throw new Error(
