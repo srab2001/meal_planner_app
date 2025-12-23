@@ -1,53 +1,147 @@
 import React, { useState, useRef, useEffect } from 'react';
 import '../styles/AIWorkoutInterview.css';
+import TextQuestionDisplay from './TextQuestionDisplay';
+import MultipleChoiceDisplay from './MultipleChoiceDisplay';
+import YesNoDisplay from './YesNoDisplay';
+import RangeDisplay from './RangeDisplay';
 
 /**
- * AIWorkoutInterview - AI-powered workout planning via conversation
+ * AIWorkoutInterview - AI-powered workout planning with admin-configured questions
  * 
  * Features:
- * - Conversational AI interview about workout preferences
- * - Real-time chat interface
- * - Generates custom workout based on responses
- * - Auto-populates workout into the log
+ * - Fetches questions from admin panel
+ * - Displays questions based on type
+ * - Collects structured answers
+ * - Sends to ChatGPT for workout generation
+ * - Supports 4 question types: text, multiple_choice, yes_no, range
  */
 export default function AIWorkoutInterview({ user, onWorkoutGenerated, onClose }) {
   const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [questions, setQuestions] = useState([]);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [loading, setLoading] = useState(true);
   const [workoutGenerated, setWorkoutGenerated] = useState(false);
+  const [error, setError] = useState(null);
   const messagesEndRef = useRef(null);
 
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  const API_URL = process.env.REACT_APP_API_URL || 'https://meal-planner-app-mve2.onrender.com';
 
   // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Start interview on mount
+  // Fetch questions and start interview on mount
   useEffect(() => {
-    startInterview();
+    const initializeInterview = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Fetch admin questions
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch(`${API_URL}/api/admin/questions/active`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch questions: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const fetchedQuestions = data.questions || [];
+
+        if (fetchedQuestions.length === 0) {
+          // Fallback to default question if none configured
+          setQuestions([{
+            id: 'default',
+            question_text: 'What type of workout are you interested in?',
+            question_type: 'text',
+            options: [],
+            order_position: 1
+          }]);
+        } else {
+          // Sort by order position
+          const sortedQuestions = fetchedQuestions.sort((a, b) => 
+            (a.order_position || 0) - (b.order_position || 0)
+          );
+          setQuestions(sortedQuestions);
+        }
+
+        // Start interview
+        const initialMessage = {
+          role: 'assistant',
+          content: "🏋️ Hi! I'm your AI Fitness Coach. I'll ask you a few questions to plan the perfect workout for you today!\n\nLet's get started →"
+        };
+        setMessages([initialMessage]);
+        setLoading(false);
+      } catch (err) {
+        console.error('Error initializing interview:', err);
+        setError(err.message);
+        setLoading(false);
+      }
+    };
+
+    initializeInterview();
   }, []);
 
-  const startInterview = async () => {
-    const initialMessage = {
-      role: 'assistant',
-      content: "🏋️ Hi! I'm your AI Fitness Coach. I'll help you plan the perfect workout today!\n\nLet's start: What type of workout are you in the mood for? (e.g., cardio, strength training, flexibility, sports, HIIT, or something else?)"
-    };
-    setMessages([initialMessage]);
-  };
+  /**
+   * Handle answer to current question
+   */
+  const handleAnswerQuestion = (answer) => {
+    const currentQuestion = questions[currentQuestionIndex];
+    if (!currentQuestion) return;
 
-  const handleSendMessage = async () => {
-    if (!input.trim()) return;
+    // Record answer
+    setAnswers(prev => ({
+      ...prev,
+      [currentQuestion.id]: answer
+    }));
 
     // Add user message
-    const userMessage = { role: 'user', content: input };
+    const userMessage = {
+      role: 'user',
+      content: typeof answer === 'string' ? answer : String(answer)
+    };
     setMessages(prev => [...prev, userMessage]);
-    setInput('');
+
+    // Move to next question or finish
+    if (currentQuestionIndex < questions.length - 1) {
+      // Show next question
+      setCurrentQuestionIndex(prev => prev + 1);
+    } else {
+      // All questions answered - send to ChatGPT
+      generateWorkout(answers);
+    }
+  };
+
+  /**
+   * Generate workout from interview answers
+   */
+  const generateWorkout = async (collectedAnswers) => {
     setLoading(true);
 
     try {
+      // Add thinking message
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: '💭 Creating your personalized workout...'
+      }]);
+
       const token = localStorage.getItem('auth_token');
+
+      // Build interview answers object with question text as key
+      const interviewAnswers = {};
+      questions.forEach((q, idx) => {
+        const questionKey = `q${idx + 1}_${q.question_text.toLowerCase().substring(0, 20).replace(/\s+/g, '_')}`;
+        interviewAnswers[questionKey] = collectedAnswers[q.id];
+      });
+
+      // Call AI interview endpoint with structured answers
       const response = await fetch(`${API_URL}/api/fitness/ai-interview`, {
         method: 'POST',
         headers: {
@@ -55,11 +149,12 @@ export default function AIWorkoutInterview({ user, onWorkoutGenerated, onClose }
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          messages: [...messages, userMessage],
-          userProfile: user
+          messages: messages.filter(m => m.role === 'user'),
+          userProfile: user,
+          interview_answers: interviewAnswers,
+          question_count: questions.length
         }),
-        // Increase timeout for OpenAI API calls (can be slow)
-        signal: AbortSignal.timeout(60000) // 60 second timeout
+        signal: AbortSignal.timeout(120000) // 120 second timeout
       });
 
       if (!response.ok) {
@@ -69,49 +164,130 @@ export default function AIWorkoutInterview({ user, onWorkoutGenerated, onClose }
 
       const data = await response.json();
 
-      // Check if workout was generated
-      if (data.workoutGenerated) {
+      // Update messages with response
+      setMessages(prev => prev.map((m, idx) => 
+        idx === prev.length - 1 ? { role: 'assistant', content: data.message } : m
+      ));
+
+      if (data.workoutGenerated && data.workout) {
         setWorkoutGenerated(true);
-        // Add final message
+        
+        // Show success message
         setMessages(prev => [...prev, {
           role: 'assistant',
-          content: data.message
+          content: '✅ Workout created! Closing in 3 seconds...'
         }]);
 
         // Call callback with generated workout
         setTimeout(() => {
           onWorkoutGenerated(data.workout);
-        }, 1500);
-      } else {
-        // Continue conversation
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: data.message
-        }]);
+        }, 3000);
       }
-    } catch (error) {
-      console.error('Error in AI interview:', error);
-      console.error('Error response:', error.response?.data);
-      console.error('Error status:', error.response?.status);
-      console.error('Error message:', error.message);
-      
-      const errorMessage = error.response?.data?.message || error.message || 'Unknown error occurred';
-      
+    } catch (err) {
+      console.error('Error generating workout:', err);
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: `❌ Error: ${errorMessage}`
+        content: `❌ Error: ${err.message}`
       }]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
+  /**
+   * Render current question based on type
+   */
+  const renderCurrentQuestion = () => {
+    if (currentQuestionIndex >= questions.length) {
+      return null;
+    }
+
+    const currentQuestion = questions[currentQuestionIndex];
+
+    switch (currentQuestion.question_type) {
+      case 'text':
+        return (
+          <TextQuestionDisplay
+            question={currentQuestion}
+            onAnswer={handleAnswerQuestion}
+            disabled={loading}
+          />
+        );
+      case 'multiple_choice':
+        return (
+          <MultipleChoiceDisplay
+            question={currentQuestion}
+            onAnswer={handleAnswerQuestion}
+            disabled={loading}
+          />
+        );
+      case 'yes_no':
+        return (
+          <YesNoDisplay
+            question={currentQuestion}
+            onAnswer={handleAnswerQuestion}
+            disabled={loading}
+          />
+        );
+      case 'range':
+        return (
+          <RangeDisplay
+            question={currentQuestion}
+            onAnswer={handleAnswerQuestion}
+            disabled={loading}
+          />
+        );
+      default:
+        return (
+          <TextQuestionDisplay
+            question={currentQuestion}
+            onAnswer={handleAnswerQuestion}
+            disabled={loading}
+          />
+        );
     }
   };
+
+  // Show loading state
+  if (loading && messages.length === 0) {
+    return (
+      <div className="ai-workout-interview">
+        <div className="ai-header">
+          <h2>🤖 AI Workout Coach</h2>
+          <button className="close-btn" onClick={onClose}>✕</button>
+        </div>
+        <div className="ai-messages">
+          <div className="ai-message ai-message-assistant">
+            <div className="ai-message-content">
+              <span className="ai-thinking">💭 Loading interview questions...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="ai-workout-interview">
+        <div className="ai-header">
+          <h2>🤖 AI Workout Coach</h2>
+          <button className="close-btn" onClick={onClose}>✕</button>
+        </div>
+        <div className="ai-messages">
+          <div className="ai-message ai-message-assistant">
+            <div className="ai-message-content">
+              <span className="ai-error">❌ Error: {error}</span>
+            </div>
+          </div>
+        </div>
+        <div className="ai-input-container">
+          <button className="send-btn" onClick={onClose}>Close</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="ai-workout-interview">
@@ -120,6 +296,14 @@ export default function AIWorkoutInterview({ user, onWorkoutGenerated, onClose }
         <button className="close-btn" onClick={onClose}>✕</button>
       </div>
 
+      {/* Question Progress */}
+      {questions.length > 0 && (
+        <div className="question-progress">
+          Question {Math.min(currentQuestionIndex + 1, questions.length)} of {questions.length}
+        </div>
+      )}
+
+      {/* Messages */}
       <div className="ai-messages">
         {messages.map((msg, idx) => (
           <div key={idx} className={`ai-message ai-message-${msg.role}`}>
@@ -129,39 +313,28 @@ export default function AIWorkoutInterview({ user, onWorkoutGenerated, onClose }
             </div>
           </div>
         ))}
-        {loading && (
-          <div className="ai-message ai-message-assistant">
-            <div className="ai-message-content">
-              <span className="ai-thinking">💭 Thinking... (may take 10-15 seconds)</span>
-            </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
+        {loading && <div ref={messagesEndRef} />}
       </div>
 
+      {/* Current Question Display */}
+      {!workoutGenerated && currentQuestionIndex < questions.length && (
+        <div className="ai-question-container">
+          {renderCurrentQuestion()}
+        </div>
+      )}
+
+      {/* Success Message */}
       {workoutGenerated && (
         <div className="ai-success">
           ✅ Workout created! Closing in 3 seconds...
         </div>
       )}
 
-      {!workoutGenerated && (
-        <div className="ai-input-container">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Tell me about your preferences..."
-            disabled={loading || workoutGenerated}
-            rows="2"
-          />
-          <button
-            onClick={handleSendMessage}
-            disabled={loading || !input.trim() || workoutGenerated}
-            className="send-btn"
-          >
-            📤 Send
-          </button>
+      {/* Thinking Indicator */}
+      {loading && currentQuestionIndex >= questions.length && (
+        <div className="ai-thinking-container">
+          <span className="spinner"></span>
+          <span className="ai-thinking">Creating your workout...</span>
         </div>
       )}
     </div>

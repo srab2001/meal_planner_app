@@ -85,3 +85,18 @@ model fitness_workout_sets {
 
   @@index([exercise_id], map: "idx_fitness_workout_sets_exercise_id")
 }
+
+/// Admin-managed interview questions for AI Coach
+model admin_interview_questions {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  question    String   @db.Text // The actual question text
+  type        String   // "text", "multiple_choice", "range", "yes_no"
+  options     String?  @db.Text // JSON array for multiple_choice type
+  order       Int      @default(0) // Display order
+  active      Boolean  @default(true) // Whether to show this question
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([active], map: "idx_admin_interview_questions_active")
+  @@index([order], map: "idx_admin_interview_questions_order")
+}

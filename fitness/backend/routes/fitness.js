@@ -713,27 +713,123 @@ router.post('/ai-interview', requireAuth, async (req, res) => {
     
     console.log('[AI Interview] OpenAI client found, making request...');
 
-    // Build context for AI
-    const systemPrompt = `You are a professional fitness coach. Your goal is to interview the user about their workout preferences and create a personalized workout plan.
+    // Build context for AI with interview answers if provided
+    const { interview_answers, question_count } = req.body;
+    
+    let systemPrompt = `You are a professional fitness coach AI. Your goal is to create personalized workout plans based on user information.`;
+    
+    // If interview answers are provided, use structured generation
+    if (interview_answers && Object.keys(interview_answers).length > 0) {
+      systemPrompt = `You are a professional fitness coach AI. You have received structured interview responses from a user. 
 
-Interview flow:
-1. Start by asking about their preferred exercise type
-2. Ask about duration/intensity preference
-3. Ask about any physical limitations or preferences
-4. After gathering info, generate a detailed workout plan
+Based on their responses, you MUST generate a detailed, personalized 6-section workout plan.
 
-When you have enough information (usually after 3-4 exchanges), generate a JSON workout object and include it in your response like this:
+The user provided these answers:
+${Object.entries(interview_answers).map(([key, value]) => `- ${key}: ${value}`).join('\n')}
+
+Generate a comprehensive workout with these 6 sections in this exact JSON format:
+
 <WORKOUT_JSON>
 {
-  "exercise_type": "string",
-  "duration_minutes": number,
-  "calories_burned": number,
-  "intensity": "low|medium|high",
-  "notes": "detailed workout description"
+  "warm_up": {
+    "name": "string (e.g., 'Dynamic Stretching')",
+    "duration": "string (e.g., '5 minutes')",
+    "exercises": ["exercise 1", "exercise 2", "exercise 3"]
+  },
+  "strength": {
+    "name": "string",
+    "duration": "string",
+    "exercises": ["exercise 1", "exercise 2", "exercise 3"],
+    "sets_reps": "string (e.g., '3 sets of 10 reps')"
+  },
+  "cardio": {
+    "name": "string",
+    "duration": "string",
+    "exercises": ["exercise 1", "exercise 2"],
+    "notes": "string"
+  },
+  "agility": {
+    "name": "string",
+    "duration": "string",
+    "exercises": ["exercise 1", "exercise 2"],
+    "notes": "string"
+  },
+  "recovery": {
+    "name": "string",
+    "duration": "string",
+    "exercises": ["stretch 1", "stretch 2", "stretch 3"]
+  },
+  "closeout": {
+    "name": "string",
+    "notes": "string (motivation and next steps)"
+  },
+  "summary": {
+    "total_duration": "string",
+    "intensity_level": "low|medium|high",
+    "calories_burned_estimate": number,
+    "difficulty_rating": "1-10"
+  }
+}
+</WORKOUT_JSON>
+
+IMPORTANT:
+- Personalize based on the user's responses
+- Make exercises progressively harder if intensity is high
+- Include specific form cues or modifications for each exercise
+- Keep the JSON valid and properly formatted
+- Include motivational language in the closeout section
+
+Be professional, encouraging, and specific with exercise recommendations.`;
+    } else {
+      // Fallback to conversation-based approach if no structured answers
+      systemPrompt += `
+
+When the user provides information about their fitness goals and preferences, generate a JSON workout object and include it in your response like this:
+<WORKOUT_JSON>
+{
+  "warm_up": {
+    "name": "string",
+    "duration": "string",
+    "exercises": ["exercise 1", "exercise 2", "exercise 3"]
+  },
+  "strength": {
+    "name": "string",
+    "duration": "string",
+    "exercises": ["exercise 1", "exercise 2", "exercise 3"],
+    "sets_reps": "string"
+  },
+  "cardio": {
+    "name": "string",
+    "duration": "string",
+    "exercises": ["exercise 1", "exercise 2"],
+    "notes": "string"
+  },
+  "agility": {
+    "name": "string",
+    "duration": "string",
+    "exercises": ["exercise 1", "exercise 2"],
+    "notes": "string"
+  },
+  "recovery": {
+    "name": "string",
+    "duration": "string",
+    "exercises": ["stretch 1", "stretch 2", "stretch 3"]
+  },
+  "closeout": {
+    "name": "string",
+    "notes": "string"
+  },
+  "summary": {
+    "total_duration": "string",
+    "intensity_level": "low|medium|high",
+    "calories_burned_estimate": number,
+    "difficulty_rating": "1-10"
+  }
 }
 </WORKOUT_JSON>
 
 Be friendly, encouraging, and professional. Keep responses concise.`;
+    }
 
     // Call OpenAI
     console.log('[AI Interview] Calling OpenAI API...');
@@ -767,7 +863,7 @@ Be friendly, encouraging, and professional. Keep responses concise.`;
         workoutGenerated = true;
         // Remove the JSON tags from the message
         cleanMessage = aiMessage.replace(/<WORKOUT_JSON>[\s\S]*?<\/WORKOUT_JSON>/, '').trim();
-        console.log('[AI Interview] Workout parsed successfully:', workout);
+        console.log('[AI Interview] Workout parsed successfully');
         
         // Save the workout to database with retry logic
         let savedWorkout = null;
@@ -779,14 +875,15 @@ Be friendly, encouraging, and professional. Keep responses concise.`;
             saveAttempts++;
             console.log(`[AI Interview] Saving workout to database (attempt ${saveAttempts}/${maxAttempts})`);
             
+            // Store the entire 6-section workout as JSON
             savedWorkout = await getDb().fitness_workouts.create({
               data: {
                 user_id: userId,
-                exercise_type: workout.exercise_type,
-                duration_minutes: workout.duration_minutes,
-                calories_burned: workout.calories_burned,
-                intensity: workout.intensity,
-                notes: workout.notes,
+                workout_data: JSON.stringify(workout), // Store full 6-section structure
+                intensity: workout.summary?.intensity_level || 'medium',
+                duration_minutes: parseInt(workout.summary?.total_duration) || 60,
+                calories_burned: workout.summary?.calories_burned_estimate || 0,
+                difficulty_rating: workout.summary?.difficulty_rating || 5,
                 workout_date: new Date()
               }
             });
@@ -829,6 +926,394 @@ Be friendly, encouraging, and professional. Keep responses concise.`;
       error: 'ai_error',
       message: 'Failed to process AI request. ' + (error.message || 'Unknown error'),
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// ============================================================================
+// ADMIN INTERVIEW QUESTIONS ENDPOINTS
+// ============================================================================
+
+/**
+ * GET /api/fitness/admin/interview-questions
+ * Get all admin-managed interview questions
+ * 
+ * Query Parameters:
+ * - ?active=true|false (optional) - Filter by active status
+ * 
+ * Response: { questions: [...] }
+ */
+router.get('/admin/interview-questions', requireAuth, async (req, res) => {
+  try {
+    const { active } = req.query;
+    
+    console.log(`[GET /api/fitness/admin/interview-questions] Fetching interview questions`);
+    if (active !== undefined) console.log(`  Filter: active=${active}`);
+    
+    const where = {};
+    
+    if (active !== undefined) {
+      where.active = active === 'true' || active === true;
+    }
+    
+    const questions = await getDb().admin_interview_questions.findMany({
+      where,
+      orderBy: { order: 'asc' },
+    });
+    
+    console.log(`✅ Retrieved ${questions.length} interview questions`);
+    
+    res.json({
+      questions: questions.map(q => ({
+        id: q.id,
+        question: q.question,
+        type: q.type,
+        options: q.options ? JSON.parse(q.options) : null,
+        order: q.order,
+        active: q.active,
+        created_at: q.created_at,
+        updated_at: q.updated_at,
+      })),
+    });
+  } catch (error) {
+    console.error('[GET /api/fitness/admin/interview-questions] Error:', error.message);
+    res.status(500).json({
+      error: 'Failed to retrieve interview questions',
+      details: error.message,
+    });
+  }
+});
+
+/**
+ * POST /api/fitness/admin/interview-questions
+ * Create a new interview question
+ * 
+ * Request Body:
+ * {
+ *   question: string (required),
+ *   type: "text" | "multiple_choice" | "range" | "yes_no" (required),
+ *   options: array (required for multiple_choice, optional for others),
+ *   order: number (optional, defaults to 0),
+ *   active: boolean (optional, defaults to true)
+ * }
+ * 
+ * Response: { success, question: {...} }
+ */
+router.post('/admin/interview-questions', requireAuth, async (req, res) => {
+  try {
+    const { question, type, options, order, active } = req.body;
+    
+    console.log(`[POST /api/fitness/admin/interview-questions] Creating question`);
+    console.log(`  Type: ${type}, Question: ${question?.substring(0, 50)}...`);
+    
+    // Input validation
+    if (!question || typeof question !== 'string' || !question.trim()) {
+      return res.status(400).json({
+        error: 'missing_question',
+        message: 'question is required and must be a non-empty string',
+      });
+    }
+    
+    if (!type || !['text', 'multiple_choice', 'range', 'yes_no'].includes(type)) {
+      return res.status(400).json({
+        error: 'invalid_type',
+        message: 'type must be one of: text, multiple_choice, range, yes_no',
+      });
+    }
+    
+    // Validate options for multiple_choice
+    if (type === 'multiple_choice') {
+      if (!options || !Array.isArray(options) || options.length < 2) {
+        return res.status(400).json({
+          error: 'invalid_options',
+          message: 'multiple_choice questions require at least 2 options',
+        });
+      }
+    }
+    
+    // Create the question
+    const newQuestion = await getDb().admin_interview_questions.create({
+      data: {
+        question: question.trim(),
+        type,
+        options: options ? JSON.stringify(options) : null,
+        order: typeof order === 'number' ? order : 0,
+        active: active !== false, // default to true
+      },
+    });
+    
+    console.log(`✨ Question created: ${newQuestion.id}`);
+    
+    res.json({
+      success: true,
+      question: {
+        id: newQuestion.id,
+        question: newQuestion.question,
+        type: newQuestion.type,
+        options: newQuestion.options ? JSON.parse(newQuestion.options) : null,
+        order: newQuestion.order,
+        active: newQuestion.active,
+        created_at: newQuestion.created_at,
+        updated_at: newQuestion.updated_at,
+      },
+    });
+  } catch (error) {
+    console.error('[POST /api/fitness/admin/interview-questions] Error:', error.message);
+    res.status(500).json({
+      error: 'Failed to create interview question',
+      details: error.message,
+    });
+  }
+});
+
+/**
+ * PUT /api/fitness/admin/interview-questions/:id
+ * Update an interview question
+ * 
+ * Request Body: (any of the following fields)
+ * {
+ *   question: string (optional),
+ *   type: string (optional),
+ *   options: array (optional),
+ *   order: number (optional),
+ *   active: boolean (optional)
+ * }
+ * 
+ * Response: { success, question: {...} }
+ */
+router.put('/admin/interview-questions/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { question, type, options, order, active } = req.body;
+    
+    console.log(`[PUT /api/fitness/admin/interview-questions/:id] Updating question: ${id}`);
+    
+    // Check if question exists
+    const existingQuestion = await getDb().admin_interview_questions.findUnique({
+      where: { id },
+    });
+    
+    if (!existingQuestion) {
+      return res.status(404).json({
+        error: 'not_found',
+        message: `Interview question with ID ${id} not found`,
+      });
+    }
+    
+    // Validate inputs if provided
+    if (type && !['text', 'multiple_choice', 'range', 'yes_no'].includes(type)) {
+      return res.status(400).json({
+        error: 'invalid_type',
+        message: 'type must be one of: text, multiple_choice, range, yes_no',
+      });
+    }
+    
+    if (type === 'multiple_choice' && options) {
+      if (!Array.isArray(options) || options.length < 2) {
+        return res.status(400).json({
+          error: 'invalid_options',
+          message: 'multiple_choice questions require at least 2 options',
+        });
+      }
+    }
+    
+    // Build update object
+    const updateData = {};
+    if (question !== undefined) updateData.question = question;
+    if (type !== undefined) updateData.type = type;
+    if (options !== undefined) updateData.options = options ? JSON.stringify(options) : null;
+    if (order !== undefined) updateData.order = order;
+    if (active !== undefined) updateData.active = active;
+    updateData.updated_at = new Date();
+    
+    // Update the question
+    const updatedQuestion = await getDb().admin_interview_questions.update({
+      where: { id },
+      data: updateData,
+    });
+    
+    console.log(`📝 Question updated: ${id}`);
+    
+    res.json({
+      success: true,
+      question: {
+        id: updatedQuestion.id,
+        question: updatedQuestion.question,
+        type: updatedQuestion.type,
+        options: updatedQuestion.options ? JSON.parse(updatedQuestion.options) : null,
+        order: updatedQuestion.order,
+        active: updatedQuestion.active,
+        created_at: updatedQuestion.created_at,
+        updated_at: updatedQuestion.updated_at,
+      },
+    });
+  } catch (error) {
+    console.error('[PUT /api/fitness/admin/interview-questions/:id] Error:', error.message);
+    res.status(500).json({
+      error: 'Failed to update interview question',
+      details: error.message,
+    });
+  }
+});
+
+/**
+ * DELETE /api/fitness/admin/interview-questions/:id
+ * Delete an interview question
+ * 
+ * Response: { success, message }
+ */
+router.delete('/admin/interview-questions/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log(`[DELETE /api/fitness/admin/interview-questions/:id] Deleting question: ${id}`);
+    
+    // Check if question exists
+    const existingQuestion = await getDb().admin_interview_questions.findUnique({
+      where: { id },
+    });
+    
+    if (!existingQuestion) {
+      return res.status(404).json({
+        error: 'not_found',
+        message: `Interview question with ID ${id} not found`,
+      });
+    }
+    
+    // Delete the question
+    await getDb().admin_interview_questions.delete({
+      where: { id },
+    });
+    
+    console.log(`🗑️ Question deleted: ${id}`);
+    
+    res.json({
+      success: true,
+      message: `Interview question ${id} deleted successfully`,
+    });
+  } catch (error) {
+    console.error('[DELETE /api/fitness/admin/interview-questions/:id] Error:', error.message);
+    res.status(500).json({
+      error: 'Failed to delete interview question',
+      details: error.message,
+    });
+  }
+});
+
+/**
+ * PATCH /api/fitness/admin/interview-questions/:id/toggle
+ * Toggle the active status of an interview question
+ * 
+ * Response: { success, question: {...} }
+ */
+router.patch('/admin/interview-questions/:id/toggle', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log(`[PATCH /api/fitness/admin/interview-questions/:id/toggle] Toggling question: ${id}`);
+    
+    // Check if question exists
+    const existingQuestion = await getDb().admin_interview_questions.findUnique({
+      where: { id },
+    });
+    
+    if (!existingQuestion) {
+      return res.status(404).json({
+        error: 'not_found',
+        message: `Interview question with ID ${id} not found`,
+      });
+    }
+    
+    // Toggle the active status
+    const updatedQuestion = await getDb().admin_interview_questions.update({
+      where: { id },
+      data: {
+        active: !existingQuestion.active,
+        updated_at: new Date(),
+      },
+    });
+    
+    console.log(`🔄 Question toggled: ${id} (active=${updatedQuestion.active})`);
+    
+    res.json({
+      success: true,
+      question: {
+        id: updatedQuestion.id,
+        question: updatedQuestion.question,
+        type: updatedQuestion.type,
+        options: updatedQuestion.options ? JSON.parse(updatedQuestion.options) : null,
+        order: updatedQuestion.order,
+        active: updatedQuestion.active,
+        created_at: updatedQuestion.created_at,
+        updated_at: updatedQuestion.updated_at,
+      },
+    });
+  } catch (error) {
+    console.error('[PATCH /api/fitness/admin/interview-questions/:id/toggle] Error:', error.message);
+    res.status(500).json({
+      error: 'Failed to toggle interview question',
+      details: error.message,
+    });
+  }
+});
+
+/**
+ * PATCH /api/fitness/admin/interview-questions/reorder
+ * Reorder interview questions
+ * 
+ * Request Body:
+ * {
+ *   questions: [
+ *     { id: string, order: number },
+ *     ...
+ *   ]
+ * }
+ * 
+ * Response: { success, questions: [...] }
+ */
+router.patch('/admin/interview-questions-reorder', requireAuth, async (req, res) => {
+  try {
+    const { questions } = req.body;
+    
+    console.log(`[PATCH /api/fitness/admin/interview-questions-reorder] Reordering questions`);
+    
+    if (!questions || !Array.isArray(questions)) {
+      return res.status(400).json({
+        error: 'invalid_input',
+        message: 'questions array is required',
+      });
+    }
+    
+    // Update each question's order
+    const updatedQuestions = await Promise.all(
+      questions.map(q =>
+        getDb().admin_interview_questions.update({
+          where: { id: q.id },
+          data: { order: q.order, updated_at: new Date() },
+        })
+      )
+    );
+    
+    console.log(`✅ Reordered ${updatedQuestions.length} questions`);
+    
+    res.json({
+      success: true,
+      questions: updatedQuestions.map(q => ({
+        id: q.id,
+        question: q.question,
+        type: q.type,
+        options: q.options ? JSON.parse(q.options) : null,
+        order: q.order,
+        active: q.active,
+        created_at: q.created_at,
+        updated_at: q.updated_at,
+      })),
+    });
+  } catch (error) {
+    console.error('[PATCH /api/fitness/admin/interview-questions-reorder] Error:', error.message);
+    res.status(500).json({
+      error: 'Failed to reorder questions',
+      details: error.message,
     });
   }
 });
