@@ -1,35 +1,19 @@
--- Create admin_interview_questions table for AI Workout Coach
--- This table stores interview questions used by the fitness module to gather user fitness information
+-- Add sample interview questions to the admin_interview_questions table
+-- Table was created by migration 006_create_admin_questions_and_structured_workouts.sql
+-- with these columns: id, question_text, question_type, options, option_range, order_position, is_active
 
--- Create table if it doesn't exist
-CREATE TABLE IF NOT EXISTS admin_interview_questions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    question TEXT NOT NULL,
-    type VARCHAR(50) NOT NULL,
-    options TEXT,
-    "order" INTEGER DEFAULT 0,
-    active BOOLEAN DEFAULT true,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
--- Add active column if it doesn't exist (for backwards compatibility)
+-- Ensure columns exist (for backwards compatibility)
 ALTER TABLE admin_interview_questions 
-ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT true;
+ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
 
--- Add order column if it doesn't exist (for backwards compatibility)
 ALTER TABLE admin_interview_questions 
-ADD COLUMN IF NOT EXISTS "order" INTEGER DEFAULT 0;
-
--- Create index only if table has the right structure and index doesn't exist
-CREATE INDEX IF NOT EXISTS idx_admin_interview_questions_active ON admin_interview_questions(active);
-CREATE INDEX IF NOT EXISTS idx_admin_interview_questions_order ON admin_interview_questions("order");
+ADD COLUMN IF NOT EXISTS order_position INTEGER DEFAULT 0;
 
 -- Insert sample interview questions for the AI Workout Coach
-INSERT INTO admin_interview_questions (id, question, type, "order", active) VALUES
-    ('550e8400-e29b-41d4-a716-446655440001'::UUID, 'What type of workout are you interested in?', 'text', 1, true),
-    ('550e8400-e29b-41d4-a716-446655440002'::UUID, 'How many days per week can you exercise?', 'multiple_choice', 2, true),
-    ('550e8400-e29b-41d4-a716-446655440003'::UUID, 'What is your current fitness level?', 'multiple_choice', 3, true),
-    ('550e8400-e29b-41d4-a716-446655440004'::UUID, 'Do you have access to gym equipment?', 'yes_no', 4, true),
-    ('550e8400-e29b-41d4-a716-446655440005'::UUID, 'How much time can you dedicate per workout?', 'range', 5, true)
+INSERT INTO admin_interview_questions (question_text, question_type, order_position, is_active) VALUES
+    ('What type of workout are you interested in?', 'text', 1, true),
+    ('How many days per week can you exercise?', 'multiple_choice', 2, true),
+    ('What is your current fitness level?', 'multiple_choice', 3, true),
+    ('Do you have access to gym equipment?', 'yes_no', 4, true),
+    ('How much time can you dedicate per workout?', 'range', 5, true)
 ON CONFLICT DO NOTHING;
