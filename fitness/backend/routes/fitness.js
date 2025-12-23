@@ -40,11 +40,28 @@ function getDb() {
       );
     }
     
+    console.log('[Fitness DB] Initializing Prisma client with connection pooling...');
+    
     fitnessDb = new PrismaClient({
       datasources: {
         db: { url: dbUrl },
       },
+      // Enable connection pooling and error recovery
+      log: ['warn', 'error'],
     });
+    
+    // Handle connection errors gracefully
+    fitnessDb.$on('error', (event) => {
+      console.error('[Fitness DB] Prisma error event:', event.message);
+    });
+    
+    // Reconnect on disconnect
+    fitnessDb.$on('disconnect', () => {
+      console.warn('[Fitness DB] Database disconnected - will reconnect on next query');
+      fitnessDb = null; // Reset to force reconnection
+    });
+    
+    console.log('[Fitness DB] ✅ Prisma client initialized');
   }
   return fitnessDb;
 }
@@ -752,19 +769,42 @@ Be friendly, encouraging, and professional. Keep responses concise.`;
         cleanMessage = aiMessage.replace(/<WORKOUT_JSON>[\s\S]*?<\/WORKOUT_JSON>/, '').trim();
         console.log('[AI Interview] Workout parsed successfully:', workout);
         
-        // Save the workout to database
-        await getDb().fitness_workouts.create({
-          data: {
-            user_id: userId,
-            exercise_type: workout.exercise_type,
-            duration_minutes: workout.duration_minutes,
-            calories_burned: workout.calories_burned,
-            intensity: workout.intensity,
-            notes: workout.notes,
-            workout_date: new Date()
+        // Save the workout to database with retry logic
+        let savedWorkout = null;
+        let saveAttempts = 0;
+        const maxAttempts = 3;
+        
+        while (saveAttempts < maxAttempts && !savedWorkout) {
+          try {
+            saveAttempts++;
+            console.log(`[AI Interview] Saving workout to database (attempt ${saveAttempts}/${maxAttempts})`);
+            
+            savedWorkout = await getDb().fitness_workouts.create({
+              data: {
+                user_id: userId,
+                exercise_type: workout.exercise_type,
+                duration_minutes: workout.duration_minutes,
+                calories_burned: workout.calories_burned,
+                intensity: workout.intensity,
+                notes: workout.notes,
+                workout_date: new Date()
+              }
+            });
+            
+            console.log('[AI Interview] ✅ Workout saved to database successfully:', savedWorkout.id);
+          } catch (dbError) {
+            console.error(`[AI Interview] Database save failed (attempt ${saveAttempts}):`, dbError.message);
+            
+            if (saveAttempts < maxAttempts) {
+              // Wait before retrying
+              await new Promise(resolve => setTimeout(resolve, 1000 * saveAttempts));
+              console.log('[AI Interview] Retrying database save...');
+            } else {
+              console.error('[AI Interview] ❌ Failed to save workout after all attempts');
+              throw dbError;
+            }
           }
-        });
-        console.log('[AI Interview] Workout saved to database');
+        }
       } catch (parseError) {
         console.error('[AI Interview] Error parsing/saving workout:', parseError);
       }
