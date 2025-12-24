@@ -52,11 +52,11 @@ export default function UsersAdmin({ user, onBack, onNavigate }) {
       // Load users and check admin status in one call
       const usersData = await adminListUsers();
       setIsAdmin(true);
-      setUsers(usersData);
+      setUsers(usersData.users);
 
       // Load invites
       const invitesData = await adminListInvites();
-      setInvites(invitesData);
+      setInvites(invitesData.invites);
     } catch (err) {
       console.error('Error loading admin data:', err);
       if (err.message.includes('403')) {
