@@ -11,6 +11,9 @@ import './AppSwitchboard.css';
 export default function AppSwitchboard({ onSelectApp, user }) {
   // Check feature flag for integrations
   const integrationsEnabled = featureFlags.isEnabled('health_integrations');
+  
+  // Check if user is admin
+  const isAdmin = user?.role === 'admin';
 
   const apps = [
     {
@@ -71,7 +74,17 @@ export default function AppSwitchboard({ onSelectApp, user }) {
       color: '#27ae60',
       available: true,
       comingSoon: false
-    }
+    },
+    // Admin panel - only shown to admins
+    ...(isAdmin ? [{
+      id: 'admin',
+      name: 'Admin',
+      description: 'User management and system administration',
+      icon: '🔐',
+      color: '#e91e63',
+      available: true,
+      comingSoon: false
+    }] : []),
   ];
 
   const handleAppClick = (app) => {
