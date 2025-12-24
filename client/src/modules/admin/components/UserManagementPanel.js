@@ -3,6 +3,9 @@ import '../styles/UserManagement.css';
 import UserTable from './UserTable';
 import InviteForm from './InviteForm';
 
+const PRODUCTION_API = 'https://meal-planner-app-mve2.onrender.com';
+const API_BASE = process.env.REACT_APP_API_URL || PRODUCTION_API;
+
 /**
  * UserManagementPanel - Main admin panel for managing users and invitations
  * Features:
@@ -37,7 +40,7 @@ export default function UserManagementPanel() {
     setError(null);
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/admin/users', {
+      const response = await fetch(`${API_BASE}/api/admin/users`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -74,7 +77,7 @@ export default function UserManagementPanel() {
     setError(null);
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/admin/invites', {
+      const response = await fetch(`${API_BASE}/api/admin/invites`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -109,7 +112,7 @@ export default function UserManagementPanel() {
   const handleUserUpdate = async (userId, updates) => {
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/admin/users/${userId}`, {
+      const response = await fetch(`${API_BASE}/api/admin/users/${userId}`, {
         method: 'PATCH',
         credentials: 'include',
         headers: {
@@ -150,7 +153,7 @@ export default function UserManagementPanel() {
   const handleResendInvite = async (inviteId) => {
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/admin/invites/${inviteId}/resend`, {
+      const response = await fetch(`${API_BASE}/api/admin/invites/${inviteId}/resend`, {
         method: 'POST',
         credentials: 'include',
         headers: {
