@@ -378,7 +378,9 @@ passport.use(
           googleId: user.google_id,
           email: user.email,
           displayName: user.display_name,
-          picture: user.picture_url
+          picture: user.picture_url,
+          role: user.role || 'user',
+          status: user.status || 'active'
         };
         console.log('✅ Returning user object to passport:', userObj.email);
         done(null, userObj);

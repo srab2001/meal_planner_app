@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './styles/FitnessApp.css';
 import FitnessDashboard from './components/FitnessDashboard';
+import { API_BASE } from '../../shared/utils/api';
 
 /**
  * FitnessApp - Main Fitness Module Component
@@ -19,7 +20,8 @@ export default function FitnessApp({ user, onBack, onLogout }) {
   const [workouts, setWorkouts] = useState([]);
   const [goals, setGoals] = useState([]);
 
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  // Use the same API_BASE as the main app to ensure consistency
+  const API_URL = API_BASE;
 
   // Load user fitness profile on mount
   useEffect(() => {
