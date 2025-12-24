@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/AdminPanel.css';
-
-const PRODUCTION_API = 'https://meal-planner-app-mve2.onrender.com';
-const API_BASE = process.env.REACT_APP_API_URL || PRODUCTION_API;
+import {
+  adminListUsers,
+  adminUpdateUser,
+  adminInviteUser,
+  adminApproveUser,
+  adminListInvites,
+  adminResendInvite,
+} from '../../../shared/utils/adminApi';
 
 /**
  * UsersAdmin - User management page
@@ -44,41 +49,21 @@ export default function UsersAdmin({ user, onBack, onNavigate }) {
 
   const checkAdminAndLoadData = async () => {
     try {
-      // Check admin status
-      const adminResponse = await fetch(`${API_BASE}/api/admin/users`, {
-        method: 'GET',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      if (adminResponse.status === 403) {
-        setIsAdmin(false);
-        setLoading(false);
-        return;
-      }
-
-      if (!adminResponse.ok) throw new Error('Failed to verify admin');
-
+      // Load users and check admin status in one call
+      const usersData = await adminListUsers();
       setIsAdmin(true);
-
-      // Load users
-      const usersData = await adminResponse.json();
       setUsers(usersData);
 
       // Load invites
-      const invitesResponse = await fetch(`${API_BASE}/api/admin/invites`, {
-        method: 'GET',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      if (invitesResponse.ok) {
-        const invitesData = await invitesResponse.json();
-        setInvites(invitesData);
-      }
+      const invitesData = await adminListInvites();
+      setInvites(invitesData);
     } catch (err) {
       console.error('Error loading admin data:', err);
-      setError('Failed to load admin data');
+      if (err.message.includes('403')) {
+        setIsAdmin(false);
+      } else {
+        setError('Failed to load admin data');
+      }
     } finally {
       setLoading(false);
     }
@@ -97,19 +82,7 @@ export default function UsersAdmin({ user, onBack, onNavigate }) {
   const handleSaveUser = async (userId) => {
     try {
       setError(null);
-      const response = await fetch(`${API_BASE}/api/admin/users/${userId}`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingUser),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update user');
-      }
-
-      const updatedUser = await response.json();
+      const updatedUser = await adminUpdateUser(userId, editingUser);
       setUsers(users.map(u => (u.id === userId ? updatedUser : u)));
       setEditingUserId(null);
       setSuccess('User updated successfully');
@@ -138,22 +111,10 @@ export default function UsersAdmin({ user, onBack, onNavigate }) {
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE}/api/admin/users/invite`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: inviteEmail,
-          role: inviteRole,
-        }),
+      const newInvite = await adminInviteUser({
+        email: inviteEmail,
+        role: inviteRole,
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to send invitation');
-      }
-
-      const newInvite = await response.json();
       setInvites([newInvite, ...invites]);
       setInviteEmail('');
       setInviteRole('user');
@@ -179,22 +140,10 @@ export default function UsersAdmin({ user, onBack, onNavigate }) {
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE}/api/admin/users/approve`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: approveEmail,
-          role: approveRole,
-        }),
+      const approvedUser = await adminApproveUser({
+        email: approveEmail,
+        role: approveRole,
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to approve user');
-      }
-
-      const approvedUser = await response.json();
       setUsers([approvedUser, ...users]);
       setApproveEmail('');
       setApproveRole('user');
@@ -212,18 +161,7 @@ export default function UsersAdmin({ user, onBack, onNavigate }) {
   const handleResendInvite = async (inviteId) => {
     try {
       setError(null);
-      const response = await fetch(`${API_BASE}/api/admin/invites/${inviteId}/resend`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to resend invitation');
-      }
-
-      const updatedInvite = await response.json();
+      const updatedInvite = await adminResendInvite(inviteId);
       setInvites(invites.map(i => (i.id === inviteId ? updatedInvite : i)));
       setSuccess('Invitation resent successfully');
       setTimeout(() => setSuccess(null), 3000);
