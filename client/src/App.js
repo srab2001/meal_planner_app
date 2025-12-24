@@ -30,7 +30,7 @@ import { IntegrationsApp } from './modules/integrations';
 import { FitnessApp } from './modules/fitness';
 
 // Admin Module (AI Coach question management)
-import { AdminCoachPanel } from './modules/admin';
+import { AdminCoachPanel, AdminSwitchboard, UsersAdmin } from './modules/admin';
 
 // Analytics Service
 import analyticsService from './shared/services/AnalyticsService';
@@ -476,6 +476,17 @@ function App() {
           setCurrentView('login');
         }
         break;
+      case 'admin':
+        // Admin panel - requires authentication and admin role
+        const adminToken = getToken();
+        if (adminToken && user && user.role === 'admin') {
+          setCurrentView('admin-panel');
+        } else {
+          // Not authorized
+          setCurrentView('switchboard');
+          alert('You do not have admin privileges');
+        }
+        break;
       default:
         setCurrentView('switchboard');
     }
@@ -672,6 +683,23 @@ function App() {
           user={user}
           onBack={() => setCurrentView('switchboard')}
           onLogout={handleLogout}
+        />
+      )}
+
+      {/* Admin Panel - User Management */}
+      {currentView === 'admin-panel' && (
+        <AdminSwitchboard
+          user={user}
+          onBack={() => setCurrentView('switchboard')}
+          onNavigate={(view) => setCurrentView(view)}
+        />
+      )}
+
+      {currentView === 'admin-users' && (
+        <UsersAdmin
+          user={user}
+          onBack={() => setCurrentView('admin-panel')}
+          onNavigate={(view) => setCurrentView(view)}
         />
       )}
       </div>
