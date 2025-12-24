@@ -75,8 +75,8 @@ export default function AppSwitchboard({ onSelectApp, user, onLogout }) {
       available: true,
       comingSoon: false
     },
-    // Admin panel - only shown to admins
-    ...(isAdmin ? [{
+    // Admin panel - always shown, but requires login + admin role
+    {
       id: 'admin',
       name: 'Admin',
       description: 'User management and system administration',
@@ -84,10 +84,29 @@ export default function AppSwitchboard({ onSelectApp, user, onLogout }) {
       color: '#e91e63',
       available: true,
       comingSoon: false
-    }] : []),
+    },
   ];
 
   const handleAppClick = (app) => {
+    // Special handling for admin tile
+    if (app.id === 'admin') {
+      if (!user) {
+        // User not logged in - redirect to Google login
+        // The redirect query param tells the backend to return to admin panel after login
+        const redirectUrl = `${window.location.origin}/switchboard?admin=true`;
+        window.location.href = `${process.env.REACT_APP_API_URL || 'https://meal-planner-app-mve2.onrender.com'}/auth/google?redirect=${encodeURIComponent(redirectUrl)}`;
+      } else if (!isAdmin) {
+        // User is logged in but not admin
+        alert('You do not have admin privileges');
+        return;
+      } else {
+        // User is logged in and is admin - navigate to admin panel
+        onSelectApp(app.id);
+      }
+      return;
+    }
+
+    // Normal app click handling
     if (app.available && onSelectApp) {
       onSelectApp(app.id);
     }
