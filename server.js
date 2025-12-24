@@ -21,6 +21,9 @@ const fitnessRoutes = require('./fitness/backend/routes/fitness');
 // Import nutrition routes (read-only meal data for fitness module)
 const nutritionRoutes = require('./routes/nutrition');
 
+// Import admin routes
+const adminRoutes = require('./routes/admin');
+
 // ============================================================================
 // RUN MIGRATIONS FIRST - BEFORE ANY EXPRESS SETUP
 // ============================================================================
@@ -525,6 +528,11 @@ app.use('/api/fitness', requireAuth, fitnessRoutes);
 // MOUNT NUTRITION ROUTES (Read-only meal data for fitness module)
 // ============================================================================
 app.use('/api/nutrition', nutritionRoutes);
+
+// ============================================================================
+// MOUNT ADMIN ROUTES (Admin user management)
+// ============================================================================
+app.use('/api/admin', adminRoutes);
 
 // simple profile endpoint
 app.get('/api/profile', requireAuth, (req, res) => {

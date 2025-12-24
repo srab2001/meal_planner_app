@@ -1,10 +1,18 @@
 /**
  * Admin Module - Entry Point
  * 
- * Exports the AdminCoachPanel component for use in the main app
+ * Exports admin components for use in the main app:
+ * - AdminCoachPanel: AI Coach question management
+ * - UserManagementPanel: User and invitation management
  */
 
+// AI Coach Admin Components
 export { default as AdminCoachPanel } from './components/AdminCoachPanel';
 export { default as QuestionList } from './components/QuestionList';
 export { default as QuestionForm } from './components/QuestionForm';
 export { default as QuestionPreview } from './components/QuestionPreview';
+
+// User Management Components
+export { default as UserManagementPanel } from './components/UserManagementPanel';
+export { default as UserTable } from './components/UserTable';
+export { default as InviteForm } from './components/InviteForm';
