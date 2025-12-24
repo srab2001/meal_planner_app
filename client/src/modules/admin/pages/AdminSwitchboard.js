@@ -7,66 +7,13 @@ const API_BASE = process.env.REACT_APP_API_URL || PRODUCTION_API;
 /**
  * AdminSwitchboard - Admin panel navigation hub
  * Shows different admin management options
+ * 
+ * Note: Authorization is enforced by the backend API endpoints.
+ * If the user doesn't have admin role, the actual API calls will fail
+ * with 403 Forbidden responses, which are handled by the individual
+ * admin components (UserManagementPanel, AdminCoachPanel, etc).
  */
 export default function AdminSwitchboard({ user, onBack, onNavigate }) {
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  // Verify user is admin
-  useEffect(() => {
-    const checkAdminStatus = async () => {
-      try {
-        // Get token from localStorage
-        const token = localStorage.getItem('auth_token');
-        
-        // Try to access admin endpoint to verify admin role
-        const response = await fetch(`${API_BASE}/api/admin/users`, {
-          method: 'GET',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        if (response.status === 403) {
-          setIsAdmin(false);
-        } else if (response.ok) {
-          setIsAdmin(true);
-        }
-      } catch (error) {
-        console.error('Error checking admin status:', error);
-        setIsAdmin(false);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkAdminStatus();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="admin-container">
-        <div className="loading-state">Loading admin panel...</div>
-      </div>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <div className="admin-container">
-        <div className="error-state">
-          <h2>Access Denied</h2>
-          <p>You do not have admin privileges to access this page.</p>
-          <button className="back-button" onClick={onBack}>
-            Go Back
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   const adminOptions = [
     {
       id: 'users',
