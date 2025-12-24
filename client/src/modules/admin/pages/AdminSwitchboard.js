@@ -16,12 +16,16 @@ export default function AdminSwitchboard({ user, onBack, onNavigate }) {
   useEffect(() => {
     const checkAdminStatus = async () => {
       try {
+        // Get token from localStorage
+        const token = localStorage.getItem('auth_token');
+        
         // Try to access admin endpoint to verify admin role
         const response = await fetch(`${API_BASE}/api/admin/users`, {
           method: 'GET',
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
           },
         });
 

@@ -36,11 +36,13 @@ export default function UserManagementPanel() {
     setLoading(true);
     setError(null);
     try {
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/admin/users', {
         method: 'GET',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -71,11 +73,13 @@ export default function UserManagementPanel() {
     setLoading(true);
     setError(null);
     try {
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/admin/invites', {
         method: 'GET',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -104,11 +108,13 @@ export default function UserManagementPanel() {
    */
   const handleUserUpdate = async (userId, updates) => {
     try {
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/admin/users/${userId}`, {
         method: 'PATCH',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(updates),
       });
@@ -143,11 +149,13 @@ export default function UserManagementPanel() {
    */
   const handleResendInvite = async (inviteId) => {
     try {
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/admin/invites/${inviteId}/resend`, {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
       });
 
