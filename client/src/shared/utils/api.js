@@ -35,6 +35,13 @@ export const removeToken = () => localStorage.removeItem('auth_token');
 export const fetchWithAuth = async (url, options = {}, onAuthError = null) => {
   const token = getToken();
   
+  console.log('🔐 fetchWithAuth called:', {
+    url,
+    hasToken: !!token,
+    tokenLength: token ? token.length : 0,
+    tokenPreview: token ? token.substring(0, 50) + '...' : 'NO TOKEN'
+  });
+  
   const response = await fetch(url, {
     ...options,
     headers: {
@@ -46,7 +53,11 @@ export const fetchWithAuth = async (url, options = {}, onAuthError = null) => {
 
   // Handle authentication failures
   if (response.status === 401 || response.status === 403) {
-    console.error('🔐 Authentication failed');
+    console.error('🔐 Authentication failed', {
+      status: response.status,
+      url,
+      hasToken: !!token
+    });
     if (onAuthError) {
       onAuthError();
     }
