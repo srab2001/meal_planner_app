@@ -533,6 +533,7 @@ function App() {
         <AppSwitchboard 
           onSelectApp={handleSelectApp} 
           user={user}
+          onLogout={handleLogout}
         />
       )}
 

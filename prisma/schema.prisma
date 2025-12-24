@@ -402,15 +402,26 @@ model fitness_workouts {
   id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id               String   @db.Uuid
   workout_date          DateTime @db.Date
-  workout_type          String   // "strength", "cardio", "hiit"
+  workout_type          String?  // "strength", "cardio", "hiit", "ai-generated"
   duration_minutes      Int?
   notes                 String?
+  
+  // AI-Generated Workout Fields
+  workout_data          Json?    // Full 6-section workout structure from ChatGPT
+  intensity             String?  // "low" | "medium" | "high"
+  calories_burned       Int?     // Estimated calories burned
+  difficulty_rating     Int?     // 1-10 scale
+  
+  // Interview Tracking
+  interview_responses   Json?    // Store user's answers to interview questions
+  
   created_at            DateTime @default(now()) @db.Timestamptz(6)
   users                 users    @relation("fitness_workouts", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   workout_exercises     fitness_workout_exercises[]
 
   @@index([user_id], map: "idx_fitness_workouts_user_id")
   @@index([workout_date], map: "idx_fitness_workouts_date")
+  @@index([intensity], map: "idx_fitness_workouts_intensity")
 }
 
 /// Exercises within a workout

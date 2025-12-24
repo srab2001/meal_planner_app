@@ -965,10 +965,70 @@ router.get('/admin/interview-questions', requireAuth, async (req, res) => {
       where.is_active = active === 'true' || active === true;
     }
     
-    const questions = await getDb().admin_interview_questions.findMany({
+    let questions = await getDb().admin_interview_questions.findMany({
       where,
       orderBy: { order_position: 'asc' },
     });
+    
+    // Auto-seed default questions if none exist
+    if (questions.length === 0) {
+      console.log('[GET /api/fitness/admin/interview-questions] No questions found - seeding defaults...');
+      try {
+        const defaultQuestions = [
+          {
+            question_text: 'What type of workout are you interested in?',
+            question_type: 'text',
+            order_position: 1,
+            is_active: true
+          },
+          {
+            question_text: 'How many days per week can you exercise?',
+            question_type: 'multiple_choice',
+            options: ['1-2 days', '3-4 days', '5-6 days', '7 days'],
+            order_position: 2,
+            is_active: true
+          },
+          {
+            question_text: 'What is your current fitness level?',
+            question_type: 'multiple_choice',
+            options: ['Beginner', 'Intermediate', 'Advanced', 'Elite'],
+            order_position: 3,
+            is_active: true
+          },
+          {
+            question_text: 'Do you have access to gym equipment?',
+            question_type: 'yes_no',
+            order_position: 4,
+            is_active: true
+          },
+          {
+            question_text: 'How much time can you dedicate per workout (in minutes)?',
+            question_type: 'range',
+            options: { min: 15, max: 120 },
+            order_position: 5,
+            is_active: true
+          }
+        ];
+
+        // Create questions
+        for (const q of defaultQuestions) {
+          await getDb().admin_interview_questions.create({
+            data: q
+          });
+        }
+        
+        console.log(`✅ Seeded ${defaultQuestions.length} default interview questions`);
+        
+        // Fetch again after seeding
+        questions = await getDb().admin_interview_questions.findMany({
+          where,
+          orderBy: { order_position: 'asc' },
+        });
+      } catch (seedError) {
+        console.error('[GET /api/fitness/admin/interview-questions] Seeding error:', seedError.message);
+        // Continue anyway - return empty questions list
+      }
+    }
     
     console.log(`✅ Retrieved ${questions.length} interview questions`);
     

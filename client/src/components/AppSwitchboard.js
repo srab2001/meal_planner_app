@@ -8,7 +8,7 @@ import './AppSwitchboard.css';
  * Shown after splash screen, allows user to select which app to use.
  * Future apps can be added here as tiles.
  */
-export default function AppSwitchboard({ onSelectApp, user }) {
+export default function AppSwitchboard({ onSelectApp, user, onLogout }) {
   // Check feature flag for integrations
   const integrationsEnabled = featureFlags.isEnabled('health_integrations');
   
@@ -117,13 +117,22 @@ export default function AppSwitchboard({ onSelectApp, user }) {
             </text>
           </svg>
         </div>
-        <h1>ASR Digital Services</h1>
-        <p className="switchboard-subtitle">Health & Wellness Portal</p>
-        {user && (
-          <p className="switchboard-welcome">
-            Welcome back, {user.name || user.email}!
-          </p>
-        )}
+        <div className="switchboard-header-content">
+          <div>
+            <h1>ASR Digital Services</h1>
+            <p className="switchboard-subtitle">Health & Wellness Portal</p>
+            {user && (
+              <p className="switchboard-welcome">
+                Welcome back, {user.name || user.email}!
+              </p>
+            )}
+          </div>
+          {onLogout && (
+            <button className="logout-btn" onClick={onLogout} title="Sign out">
+              <span>🚪</span> Logout
+            </button>
+          )}
+        </div>
       </header>
 
       {/* App Grid */}

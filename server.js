@@ -399,7 +399,9 @@ function generateToken(user) {
       email: user.email,
       googleId: user.googleId,
       displayName: user.displayName,
-      picture: user.picture
+      picture: user.picture,
+      role: user.role || 'user',
+      status: user.status || 'active'
     },
     JWT_SECRET,
     { expiresIn: '30d' }
@@ -504,7 +506,9 @@ app.get('/auth/user', (req, res) => {
       id: decoded.id,
       email: decoded.email,
       displayName: decoded.displayName,
-      picture: decoded.picture
+      picture: decoded.picture,
+      role: decoded.role || 'user',
+      status: decoded.status || 'active'
     }
   });
 });
@@ -539,7 +543,8 @@ app.get('/api/profile', requireAuth, (req, res) => {
   res.json({
     id: req.user.id,
     email: req.user.email,
-    full_name: req.user.full_name
+    full_name: req.user.full_name,
+    role: req.user.role
   });
 });
 
@@ -2002,7 +2007,7 @@ app.get('/api/user/profile', requireAuth, async (req, res) => {
     const userResult = await db.query(
       `SELECT
         id, email, display_name, picture_url, phone_number, timezone,
-        meal_plans_generated, bio, created_at, last_login
+        meal_plans_generated, bio, role, created_at, last_login
       FROM users
       WHERE id = $1`,
       [userId]
