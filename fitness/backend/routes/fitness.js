@@ -882,7 +882,7 @@ Be friendly, encouraging, and professional. Keep responses concise.`;
     // Call OpenAI
     console.log('[AI Interview] Calling OpenAI API...');
     const response = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
         ...messages.map(msg => ({
