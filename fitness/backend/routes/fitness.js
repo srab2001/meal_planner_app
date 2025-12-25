@@ -41,11 +41,11 @@ let mainDb = null;
 
 function getFitnessDb() {
   if (!fitnessDb) {
-    // Use DATABASE_URL for fitness tables (Neon - this is the fitness database)
-    const dbUrl = process.env.DATABASE_URL;
+    // Use FITNESS_DATABASE_URL (Neon) for fitness tables, fallback to DATABASE_URL
+    const dbUrl = process.env.FITNESS_DATABASE_URL || process.env.DATABASE_URL;
     if (!dbUrl) {
       throw new Error(
-        'DATABASE_URL environment variable is not set. ' +
+        'FITNESS_DATABASE_URL or DATABASE_URL environment variable is not set. ' +
         'Fitness routes cannot operate without a database connection.'
       );
     }
