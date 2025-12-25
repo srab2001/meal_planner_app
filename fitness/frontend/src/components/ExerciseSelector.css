@@ -1,0 +1,241 @@
+/* ExerciseSelector Modal Styles */
+.exercise-selector-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  padding: 16px;
+}
+
+.exercise-selector-modal {
+  background: #FFFFFF;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+/* Modal Header */
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #CCCCCC;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #333333;
+}
+
+.close-button {
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  color: #666666;
+  font-size: 24px;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: all 150ms ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-button:hover {
+  background: #F5F5F5;
+  color: #333333;
+}
+
+/* Filters Section */
+.filters-section {
+  padding: 16px 24px;
+  background: #F5F5F5;
+  border-bottom: 1px solid #CCCCCC;
+  display: grid;
+  gap: 12px;
+}
+
+.search-input,
+.filter-select {
+  width: 100%;
+  height: 44px;
+  padding: 0 16px;
+  border: 1px solid #CCCCCC;
+  border-radius: 8px;
+  font-size: 16px;
+  background: #FFFFFF;
+  transition: border-color 150ms ease-in-out;
+}
+
+.search-input:focus,
+.filter-select:focus {
+  outline: none;
+  border-color: #0066CC;
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+}
+
+/* Results Count */
+.results-count {
+  padding: 12px 24px;
+  font-size: 14px;
+  color: #666666;
+  border-bottom: 1px solid #F5F5F5;
+}
+
+/* Exercise List */
+.exercises-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 24px;
+}
+
+.loading-state,
+.error-state,
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: #666666;
+}
+
+.error-state button {
+  margin-top: 16px;
+  padding: 8px 24px;
+  background: #0066CC;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.empty-hint {
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+/* Category Groups */
+.exercise-category-group {
+  margin-bottom: 24px;
+}
+
+.category-heading {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #666666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Exercise Items */
+.exercise-item {
+  width: 100%;
+  padding: 16px;
+  background: #FFFFFF;
+  border: 1px solid #CCCCCC;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 150ms ease-in-out;
+}
+
+.exercise-item:hover {
+  border-color: #0066CC;
+  background: #F0F7FF;
+  transform: translateX(4px);
+}
+
+.exercise-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.exercise-item-name {
+  font-weight: 600;
+  font-size: 16px;
+  color: #333333;
+}
+
+.exercise-item-badge {
+  padding: 4px 12px;
+  background: #F5F5F5;
+  border-radius: 12px;
+  font-size: 12px;
+  color: #666666;
+  text-transform: capitalize;
+}
+
+.exercise-item-description {
+  margin: 8px 0;
+  font-size: 14px;
+  color: #666666;
+  line-height: 1.5;
+}
+
+.exercise-item-meta {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.difficulty-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.difficulty-beginner {
+  background: #D1FAE5;
+  color: #065F46;
+}
+
+.difficulty-intermediate {
+  background: #FEF3C7;
+  color: #92400E;
+}
+
+.difficulty-advanced {
+  background: #FEE2E2;
+  color: #991B1B;
+}
+
+.compound-badge {
+  padding: 4px 12px;
+  background: #E0F2FE;
+  color: #075985;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .exercise-selector-modal {
+    max-height: 95vh;
+  }
+
+  .modal-header,
+  .filters-section,
+  .exercises-list {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}

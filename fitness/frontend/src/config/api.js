@@ -45,22 +45,34 @@ const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 const ENDPOINTS = {
   // User profile management
   PROFILE: '/api/fitness/profile',
-  
+
   // Workout logging and history
   WORKOUTS: '/api/fitness/workouts',
-  
+  WORKOUT_DETAIL: (id) => `/api/fitness/workouts/${id}`,
+
+  // Exercise management within workouts
+  WORKOUT_EXERCISES: (workoutId) => `/api/fitness/workouts/${workoutId}/exercises`,
+  WORKOUT_EXERCISE_DETAIL: (workoutId, exerciseId) => `/api/fitness/workouts/${workoutId}/exercises/${exerciseId}`,
+
+  // Set management within exercises
+  EXERCISE_SETS: (workoutId, exerciseId) => `/api/fitness/workouts/${workoutId}/exercises/${exerciseId}/sets`,
+  EXERCISE_SET_DETAIL: (workoutId, exerciseId, setId) => `/api/fitness/workouts/${workoutId}/exercises/${exerciseId}/sets/${setId}`,
+
+  // Exercise library
+  EXERCISE_DEFINITIONS: '/api/fitness/exercise-definitions',
+
   // Goals and targets
   GOALS: '/api/fitness/goals',
-  
+
   // AI Workout Coach - Interview questions management
   INTERVIEW_QUESTIONS: '/api/fitness/admin/interview-questions',
-  
+
   // AI Workout Plan generation
   AI_WORKOUT_PLAN: '/api/fitness/ai-interview',
-  
+
   // Progress tracking
   PROGRESS: '/api/fitness/progress',
-  
+
   // Integrations (Apple Health, Google Fit, etc.)
   INTEGRATIONS: '/api/fitness/integrations',
 };

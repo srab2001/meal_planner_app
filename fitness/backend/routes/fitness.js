@@ -543,6 +543,547 @@ router.post('/workouts', requireAuth, async (req, res) => {
   }
 });
 
+/**
+ * GET /api/fitness/workouts/:id
+ * Get single workout with all exercises and sets
+ *
+ * Security: Only returns workout if user owns it
+ * Response: { success: true, data: { ...workout, exercises: [...] } }
+ */
+router.get('/workouts/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    console.log(`[GET /api/fitness/workouts/${id}] User: ${req.user.email}`);
+
+    const workout = await getFitnessDb().fitness_workouts.findFirst({
+      where: {
+        id: id,
+        user_id: userId  // Security: only user's workouts
+      },
+      include: {
+        workout_exercises: {
+          include: {
+            sets: {
+              orderBy: { set_number: 'asc' }
+            }
+          },
+          orderBy: { exercise_order: 'asc' }
+        }
+      }
+    });
+
+    if (!workout) {
+      return res.status(404).json({
+        success: false,
+        error: 'Workout not found'
+      });
+    }
+
+    console.log(`✅ Retrieved workout with ${workout.workout_exercises.length} exercises`);
+
+    res.json({
+      success: true,
+      data: workout
+    });
+  } catch (error) {
+    console.error('[GET /api/fitness/workouts/:id] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch workout'
+    });
+  }
+});
+
+/**
+ * PUT /api/fitness/workouts/:id
+ * Update workout metadata (name, date, duration, notes)
+ *
+ * Security: Only allows updates if user owns the workout
+ * Body: { workout_name?, workout_date?, duration_minutes?, notes? }
+ */
+router.put('/workouts/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const { workout_name, workout_date, duration_minutes, notes } = req.body;
+
+    console.log(`[PUT /api/fitness/workouts/${id}] User: ${req.user.email}`);
+
+    // Verify ownership
+    const existing = await getFitnessDb().fitness_workouts.findFirst({
+      where: { id, user_id: userId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        error: 'Workout not found'
+      });
+    }
+
+    // Build update object with only provided fields
+    const updateData = { updated_at: new Date() };
+    if (workout_name !== undefined) updateData.workout_name = workout_name;
+    if (workout_date !== undefined) updateData.workout_date = new Date(workout_date);
+    if (duration_minutes !== undefined) updateData.duration_minutes = duration_minutes;
+    if (notes !== undefined) updateData.notes = notes;
+
+    const updated = await getFitnessDb().fitness_workouts.update({
+      where: { id },
+      data: updateData
+    });
+
+    console.log(`✅ Workout updated successfully`);
+
+    res.json({
+      success: true,
+      data: updated
+    });
+  } catch (error) {
+    console.error('[PUT /api/fitness/workouts/:id] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update workout'
+    });
+  }
+});
+
+/**
+ * DELETE /api/fitness/workouts/:id
+ * Delete workout and all associated exercises/sets (cascade)
+ *
+ * Security: Only allows deletion if user owns the workout
+ */
+router.delete('/workouts/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    console.log(`[DELETE /api/fitness/workouts/${id}] User: ${req.user.email}`);
+
+    // Verify ownership
+    const workout = await getFitnessDb().fitness_workouts.findFirst({
+      where: { id, user_id: userId }
+    });
+
+    if (!workout) {
+      return res.status(404).json({
+        success: false,
+        error: 'Workout not found'
+      });
+    }
+
+    // Delete workout (cascade will remove exercises and sets)
+    await getFitnessDb().fitness_workouts.delete({ where: { id } });
+
+    console.log(`✅ Workout deleted successfully`);
+
+    res.json({
+      success: true,
+      message: 'Workout deleted successfully'
+    });
+  } catch (error) {
+    console.error('[DELETE /api/fitness/workouts/:id] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete workout'
+    });
+  }
+});
+
+/**
+ * POST /api/fitness/workouts/:workoutId/exercises
+ * Add an exercise to a workout with its sets
+ *
+ * Body: {
+ *   exercise_name: string,
+ *   exercise_order: number,
+ *   sets: [{ set_number, reps?, weight?, duration_seconds? }]
+ * }
+ */
+router.post('/workouts/:workoutId/exercises', requireAuth, async (req, res) => {
+  try {
+    const { workoutId } = req.params;
+    const userId = req.user.id;
+    const { exercise_name, exercise_order, sets } = req.body;
+
+    console.log(`[POST /api/fitness/workouts/${workoutId}/exercises] User: ${req.user.email}`);
+
+    // Verify workout ownership
+    const workout = await getFitnessDb().fitness_workouts.findFirst({
+      where: { id: workoutId, user_id: userId }
+    });
+
+    if (!workout) {
+      return res.status(404).json({
+        success: false,
+        error: 'Workout not found'
+      });
+    }
+
+    // Validate required fields
+    if (!exercise_name) {
+      return res.status(400).json({
+        success: false,
+        error: 'exercise_name is required'
+      });
+    }
+
+    // Create exercise with sets
+    const exercise = await getFitnessDb().fitness_workout_exercises.create({
+      data: {
+        workout_id: workoutId,
+        exercise_name,
+        exercise_order: exercise_order || 1,
+        sets: {
+          create: (sets || []).map(set => ({
+            set_number: set.set_number,
+            reps: set.reps || null,
+            weight: set.weight || null,
+            duration_seconds: set.duration_seconds || null
+          }))
+        }
+      },
+      include: {
+        sets: true
+      }
+    });
+
+    console.log(`✅ Exercise added with ${sets?.length || 0} sets`);
+
+    res.json({
+      success: true,
+      data: exercise
+    });
+  } catch (error) {
+    console.error('[POST /api/fitness/workouts/:workoutId/exercises] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to add exercise'
+    });
+  }
+});
+
+/**
+ * PUT /api/fitness/workouts/:workoutId/exercises/:exerciseId
+ * Update exercise details (name, order)
+ */
+router.put('/workouts/:workoutId/exercises/:exerciseId', requireAuth, async (req, res) => {
+  try {
+    const { workoutId, exerciseId } = req.params;
+    const userId = req.user.id;
+    const { exercise_name, exercise_order } = req.body;
+
+    console.log(`[PUT /api/fitness/workouts/${workoutId}/exercises/${exerciseId}]`);
+
+    // Verify workout ownership
+    const workout = await getFitnessDb().fitness_workouts.findFirst({
+      where: { id: workoutId, user_id: userId }
+    });
+
+    if (!workout) {
+      return res.status(404).json({
+        success: false,
+        error: 'Workout not found'
+      });
+    }
+
+    // Verify exercise belongs to workout
+    const exercise = await getFitnessDb().fitness_workout_exercises.findFirst({
+      where: { id: exerciseId, workout_id: workoutId }
+    });
+
+    if (!exercise) {
+      return res.status(404).json({
+        success: false,
+        error: 'Exercise not found'
+      });
+    }
+
+    // Update exercise
+    const updateData = {};
+    if (exercise_name !== undefined) updateData.exercise_name = exercise_name;
+    if (exercise_order !== undefined) updateData.exercise_order = exercise_order;
+
+    const updated = await getFitnessDb().fitness_workout_exercises.update({
+      where: { id: exerciseId },
+      data: updateData
+    });
+
+    console.log(`✅ Exercise updated`);
+
+    res.json({
+      success: true,
+      data: updated
+    });
+  } catch (error) {
+    console.error('[PUT /api/fitness/workouts/:workoutId/exercises/:exerciseId] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update exercise'
+    });
+  }
+});
+
+/**
+ * DELETE /api/fitness/workouts/:workoutId/exercises/:exerciseId
+ * Remove exercise from workout (cascade deletes sets)
+ */
+router.delete('/workouts/:workoutId/exercises/:exerciseId', requireAuth, async (req, res) => {
+  try {
+    const { workoutId, exerciseId } = req.params;
+    const userId = req.user.id;
+
+    console.log(`[DELETE /api/fitness/workouts/${workoutId}/exercises/${exerciseId}]`);
+
+    // Verify workout ownership
+    const workout = await getFitnessDb().fitness_workouts.findFirst({
+      where: { id: workoutId, user_id: userId }
+    });
+
+    if (!workout) {
+      return res.status(404).json({
+        success: false,
+        error: 'Workout not found'
+      });
+    }
+
+    // Delete exercise (cascade removes sets)
+    await getFitnessDb().fitness_workout_exercises.delete({
+      where: { id: exerciseId }
+    });
+
+    console.log(`✅ Exercise deleted`);
+
+    res.json({
+      success: true,
+      message: 'Exercise deleted successfully'
+    });
+  } catch (error) {
+    console.error('[DELETE /api/fitness/workouts/:workoutId/exercises/:exerciseId] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete exercise'
+    });
+  }
+});
+
+/**
+ * POST /api/fitness/workouts/:workoutId/exercises/:exerciseId/sets
+ * Add a set to an exercise
+ *
+ * Body: { set_number, reps?, weight?, duration_seconds? }
+ */
+router.post('/workouts/:workoutId/exercises/:exerciseId/sets', requireAuth, async (req, res) => {
+  try {
+    const { workoutId, exerciseId } = req.params;
+    const userId = req.user.id;
+    const { set_number, reps, weight, duration_seconds } = req.body;
+
+    console.log(`[POST /api/fitness/workouts/${workoutId}/exercises/${exerciseId}/sets]`);
+
+    // Verify workout ownership
+    const workout = await getFitnessDb().fitness_workouts.findFirst({
+      where: { id: workoutId, user_id: userId },
+      include: {
+        workout_exercises: {
+          where: { id: exerciseId }
+        }
+      }
+    });
+
+    if (!workout || workout.workout_exercises.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Workout or exercise not found'
+      });
+    }
+
+    // Create set
+    const set = await getFitnessDb().fitness_workout_sets.create({
+      data: {
+        exercise_id: exerciseId,
+        set_number: set_number || 1,
+        reps: reps || null,
+        weight: weight || null,
+        duration_seconds: duration_seconds || null
+      }
+    });
+
+    console.log(`✅ Set added`);
+
+    res.json({
+      success: true,
+      data: set
+    });
+  } catch (error) {
+    console.error('[POST /api/fitness/workouts/:workoutId/exercises/:exerciseId/sets] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to add set'
+    });
+  }
+});
+
+/**
+ * PUT /api/fitness/workouts/:workoutId/exercises/:exerciseId/sets/:setId
+ * Update a set's details
+ *
+ * Body: { reps?, weight?, duration_seconds? }
+ */
+router.put('/workouts/:workoutId/exercises/:exerciseId/sets/:setId', requireAuth, async (req, res) => {
+  try {
+    const { workoutId, exerciseId, setId } = req.params;
+    const userId = req.user.id;
+    const { reps, weight, duration_seconds } = req.body;
+
+    console.log(`[PUT /api/fitness/workouts/${workoutId}/exercises/${exerciseId}/sets/${setId}]`);
+
+    // Verify workout ownership
+    const workout = await getFitnessDb().fitness_workouts.findFirst({
+      where: { id: workoutId, user_id: userId }
+    });
+
+    if (!workout) {
+      return res.status(404).json({
+        success: false,
+        error: 'Workout not found'
+      });
+    }
+
+    // Verify set belongs to exercise
+    const set = await getFitnessDb().fitness_workout_sets.findFirst({
+      where: { id: setId, exercise_id: exerciseId }
+    });
+
+    if (!set) {
+      return res.status(404).json({
+        success: false,
+        error: 'Set not found'
+      });
+    }
+
+    // Update set
+    const updateData = {};
+    if (reps !== undefined) updateData.reps = reps;
+    if (weight !== undefined) updateData.weight = weight;
+    if (duration_seconds !== undefined) updateData.duration_seconds = duration_seconds;
+
+    const updated = await getFitnessDb().fitness_workout_sets.update({
+      where: { id: setId },
+      data: updateData
+    });
+
+    console.log(`✅ Set updated`);
+
+    res.json({
+      success: true,
+      data: updated
+    });
+  } catch (error) {
+    console.error('[PUT /api/fitness/workouts/:workoutId/exercises/:exerciseId/sets/:setId] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update set'
+    });
+  }
+});
+
+/**
+ * DELETE /api/fitness/workouts/:workoutId/exercises/:exerciseId/sets/:setId
+ * Remove a set from an exercise
+ */
+router.delete('/workouts/:workoutId/exercises/:exerciseId/sets/:setId', requireAuth, async (req, res) => {
+  try {
+    const { workoutId, setId } = req.params;
+    const userId = req.user.id;
+
+    console.log(`[DELETE /api/fitness/workouts/${workoutId}/exercises/:exerciseId/sets/${setId}]`);
+
+    // Verify workout ownership
+    const workout = await getFitnessDb().fitness_workouts.findFirst({
+      where: { id: workoutId, user_id: userId }
+    });
+
+    if (!workout) {
+      return res.status(404).json({
+        success: false,
+        error: 'Workout not found'
+      });
+    }
+
+    // Delete set
+    await getFitnessDb().fitness_workout_sets.delete({
+      where: { id: setId }
+    });
+
+    console.log(`✅ Set deleted`);
+
+    res.json({
+      success: true,
+      message: 'Set deleted successfully'
+    });
+  } catch (error) {
+    console.error('[DELETE /api/fitness/workouts/:workoutId/exercises/:exerciseId/sets/:setId] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete set'
+    });
+  }
+});
+
+/**
+ * GET /api/fitness/exercise-definitions
+ * Get exercise library with optional filters
+ *
+ * Query Parameters:
+ * - category: Filter by muscle category (chest, back, legs, etc.)
+ * - difficulty: Filter by difficulty level (beginner, intermediate, advanced)
+ * - equipment: Filter by equipment type (barbell, dumbbell, etc.)
+ * - search: Search by exercise name
+ */
+router.get('/exercise-definitions', requireAuth, async (req, res) => {
+  try {
+    const { category, difficulty, equipment, search } = req.query;
+
+    console.log(`[GET /api/fitness/exercise-definitions] Filters:`, { category, difficulty, equipment, search });
+
+    const where = { is_active: true };
+    if (category) where.category = category;
+    if (difficulty) where.difficulty_level = difficulty;
+    if (equipment) where.equipment = equipment;
+    if (search) {
+      where.name = {
+        contains: search,
+        mode: 'insensitive'
+      };
+    }
+
+    const exercises = await getFitnessDb().exercise_definitions.findMany({
+      where,
+      orderBy: [
+        { category: 'asc' },
+        { name: 'asc' }
+      ]
+    });
+
+    console.log(`✅ Retrieved ${exercises.length} exercises`);
+
+    res.json({
+      success: true,
+      data: exercises
+    });
+  } catch (error) {
+    console.error('[GET /api/fitness/exercise-definitions] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch exercises'
+    });
+  }
+});
+
 // ============================================================================
 // GOALS ENDPOINTS
 // ============================================================================

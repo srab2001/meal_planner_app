@@ -21,21 +21,15 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'  # No Color
 
-# Get the API key from command line argument
-if [ $# -eq 0 ]; then
-    echo -e "${RED}❌ ERROR: No OpenAI API key provided${NC}"
-    echo ""
-    echo "Usage:"
-    echo "  ./update-openai-key.sh <your-openai-api-key>"
-    echo ""
-    echo "Example:"
-    echo "  ./update-openai-key.sh sk-proj-xyz123..."
-    echo ""
-    echo "Get your key from: https://platform.openai.com/api-keys"
-    exit 1
-fi
 
-NEW_KEY="$1"
+# Get the API key from command line argument or prompt interactively
+if [ $# -eq 0 ]; then
+    echo -e "${YELLOW}No OpenAI API key provided as argument.${NC}"
+    echo "Please paste your new OpenAI API key (sk-proj-...):"
+    read -r NEW_KEY
+else
+    NEW_KEY="$1"
+fi
 
 # Validate key format
 if [[ ! "$NEW_KEY" =~ ^sk-proj- ]]; then

@@ -1,0 +1,28 @@
+services:
+  # Backend API Service
+  - type: web
+    name: meal-planner-api
+    runtime: node
+    env: node
+    buildCommand: rm -rf node_modules package-lock.json .yarn .npm dist build .next yarn.lock && npm cache clean --force && npm install --production
+    startCommand: node scripts/run-migrations.js && node server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: RENDER_CACHE_BUST
+        value: "2025-12-22-14-00-00Z"
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_CALLBACK_URL
+        sync: false
+      - key: FRONTEND_BASE
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false

@@ -69,10 +69,23 @@ function AICoach({ user, token }) {
       setSubmitting(true);
       setError(null);
 
+      // Build messages array from Q&A pairs for conversation history
+      const messages = questions.map((q, idx) => ({
+        role: 'user',
+        content: `Q${idx + 1}: ${q.question_text}\nA: ${answers[q.id] || 'No answer provided'}`
+      }));
+
+      // Add initial context message
+      messages.unshift({
+        role: 'user',
+        content: 'I want to create a personalized workout plan based on my fitness assessment.'
+      });
+
+      // Backend expects: messages, interview_answers, userProfile
       const payload = {
-        answers: answers,
-        user_id: user.id,
-        metadata: {
+        messages: messages,
+        interview_answers: answers,
+        userProfile: {
           age: user.age,
           fitness_level: user.fitness_level,
         },
@@ -88,11 +101,18 @@ function AICoach({ user, token }) {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to generate plan: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to generate plan: ${response.status}`);
       }
 
-      const plan = await response.json();
-      setWorkoutPlan(plan);
+      const result = await response.json();
+
+      // Check if workout was successfully generated
+      if (result.workoutGenerated && result.workout) {
+        setWorkoutPlan(result.workout);
+      } else {
+        throw new Error('Workout was not generated. Please try again.');
+      }
     } catch (err) {
       console.error('Error submitting answers:', err);
       setError(`Error: ${err.message}`);

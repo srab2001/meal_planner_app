@@ -1,0 +1,79 @@
+/* SetEntry Component Styles */
+.set-entry {
+  display: grid;
+  grid-template-columns: 40px 1fr 1fr 40px;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #F5F5F5;
+}
+
+.set-entry:last-of-type {
+  border-bottom: none;
+}
+
+.set-number {
+  text-align: center;
+  font-weight: 600;
+  color: #333333;
+  font-size: 14px;
+}
+
+.reps-input,
+.weight-input {
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid #CCCCCC;
+  border-radius: 8px;
+  font-size: 16px;
+  text-align: center;
+  transition: border-color 150ms ease-in-out;
+}
+
+.reps-input:focus,
+.weight-input:focus {
+  outline: none;
+  border-color: #0066CC;
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+}
+
+.reps-input::placeholder,
+.weight-input::placeholder {
+  color: #CCCCCC;
+}
+
+/* Remove number input spinners */
+.reps-input::-webkit-outer-spin-button,
+.reps-input::-webkit-inner-spin-button,
+.weight-input::-webkit-outer-spin-button,
+.weight-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.reps-input[type=number],
+.weight-input[type=number] {
+  -moz-appearance: textfield;
+}
+
+.remove-set-button {
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 1px solid #CCCCCC;
+  border-radius: 50%;
+  color: #999999;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 150ms ease-in-out;
+  margin: 0 auto;
+}
+
+.remove-set-button:hover {
+  background: #FEF2F2;
+  border-color: #DC3545;
+  color: #DC3545;
+}

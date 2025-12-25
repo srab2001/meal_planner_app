@@ -97,6 +97,30 @@ model fitness_workout_sets {
   @@index([exercise_id], map: "idx_fitness_workout_sets_exercise_id")
 }
 
+/// Exercise library - predefined exercises with metadata
+/// This is the master exercise database used for workout creation
+model exercise_definitions {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name              String   @db.VarChar(255)
+  description       String?  @db.Text
+  category          String   @db.VarChar(50) // "chest", "back", "legs", "shoulders", "arms", "core", "cardio"
+  muscle_group      String?  @db.VarChar(100) // Primary muscle targeted
+  secondary_muscles String[] // Array of secondary muscles
+  equipment         String?  @db.VarChar(50) // "barbell", "dumbbell", "machine", "bodyweight", "cable", "kettlebell"
+  difficulty_level  String   @default("beginner") @db.VarChar(20) // "beginner", "intermediate", "advanced"
+  form_tips         String[] // Array of form cues and safety tips
+  video_url         String?  @db.Text // Optional instructional video link
+  is_compound       Boolean  @default(false) // Multi-joint movement
+  is_active         Boolean  @default(true) // Available for selection
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([category], map: "idx_exercise_definitions_category")
+  @@index([difficulty_level], map: "idx_exercise_definitions_difficulty")
+  @@index([is_active], map: "idx_exercise_definitions_active")
+  @@index([equipment], map: "idx_exercise_definitions_equipment")
+}
+
 /// Admin-managed interview questions for AI Coach
 /// NOTE: This table exists in the main meal_planner database (migration 006)
 /// Column names match migration 006: question_text, question_type, order_position, is_active
