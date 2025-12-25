@@ -33,23 +33,24 @@ if (!process.env.SESSION_SECRET && !process.env.JWT_SECRET) {
   console.warn('[Fitness Auth] Tokens will fail verification. Set SESSION_SECRET in your environment.');
 }
 
-// Lazy-initialize Prisma client on first use to avoid failures at module load time
-// NOTE: admin_interview_questions table is in the main Render database, not the Neon fitness database
-// So we MUST use DATABASE_URL for this table. For fitness tables, can use either DATABASE_URL or FITNESS_DATABASE_URL
+// Lazy-initialize Prisma clients on first use to avoid failures at module load time
+// NOTE: Fitness tables (fitness_profiles, fitness_goals, etc.) are in FITNESS_DATABASE_URL (Neon)
+// Admin tables (admin_interview_questions) are in DATABASE_URL (main Render)
 let fitnessDb = null;
+let mainDb = null;
 
-function getDb() {
+function getFitnessDb() {
   if (!fitnessDb) {
-    // Use main DATABASE_URL since admin_interview_questions is in main schema
-    const dbUrl = process.env.DATABASE_URL;
+    // Use FITNESS_DATABASE_URL for fitness tables (Neon)
+    const dbUrl = process.env.FITNESS_DATABASE_URL;
     if (!dbUrl) {
       throw new Error(
-        'DATABASE_URL environment variable is not set. ' +
+        'FITNESS_DATABASE_URL environment variable is not set. ' +
         'Fitness routes cannot operate without a database connection.'
       );
     }
     
-    console.log('[Fitness DB] Initializing Prisma client with connection pooling...');
+    console.log('[Fitness DB] Initializing Prisma client for fitness database (Neon)...');
     
     fitnessDb = new PrismaClient({
       datasources: {
@@ -73,6 +74,43 @@ function getDb() {
     console.log('[Fitness DB] ✅ Prisma client initialized');
   }
   return fitnessDb;
+}
+
+function getMainDb() {
+  if (!mainDb) {
+    // Use main DATABASE_URL for admin tables (admin_interview_questions)
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error(
+        'DATABASE_URL environment variable is not set. ' +
+        'Admin interview questions table cannot be accessed without main database connection.'
+      );
+    }
+    
+    console.log('[Main DB] Initializing Prisma client for main database (Render)...');
+    
+    mainDb = new PrismaClient({
+      datasources: {
+        db: { url: dbUrl },
+      },
+      // Enable connection pooling and error recovery
+      log: ['warn', 'error'],
+    });
+    
+    // Handle connection errors gracefully
+    mainDb.$on('error', (event) => {
+      console.error('[Main DB] Prisma error event:', event.message);
+    });
+    
+    // Reconnect on disconnect
+    mainDb.$on('disconnect', () => {
+      console.warn('[Main DB] Database disconnected - will reconnect on next query');
+      mainDb = null; // Reset to force reconnection
+    });
+    
+    console.log('[Main DB] ✅ Prisma client initialized');
+  }
+  return mainDb;
 }
 
 /**
@@ -139,7 +177,7 @@ router.get('/profile', requireAuth, async (req, res) => {
     const userId = req.user.id;
     console.log(`[GET /api/fitness/profile] Fetching profile for user: ${req.user.email}`);
 
-    const profile = await getDb().fitness_profiles.findUnique({
+    const profile = await getFitnessDb().fitness_profiles.findUnique({
       where: { user_id: userId },
     });
 
@@ -229,7 +267,7 @@ router.post('/profile', requireAuth, async (req, res) => {
     }
 
     // Check if profile exists
-    const existingProfile = await getDb().fitness_profiles.findUnique({
+    const existingProfile = await getFitnessDb().fitness_profiles.findUnique({
       where: { user_id: userId },
     });
 
@@ -237,7 +275,7 @@ router.post('/profile', requireAuth, async (req, res) => {
 
     if (existingProfile) {
       // Update existing profile
-      profile = await getDb().fitness_profiles.update({
+      profile = await getFitnessDb().fitness_profiles.update({
         where: { user_id: userId },
         data: {
           height_cm: height_cm !== undefined ? height_cm : existingProfile.height_cm,
@@ -251,7 +289,7 @@ router.post('/profile', requireAuth, async (req, res) => {
       console.log(`📝 Profile updated for ${req.user.email}`);
     } else {
       // Create new profile
-      profile = await getDb().fitness_profiles.create({
+      profile = await getFitnessDb().fitness_profiles.create({
         data: {
           user_id: userId,
           height_cm: height_cm || null,
@@ -334,7 +372,7 @@ router.get('/workouts', requireAuth, async (req, res) => {
       where.workout_type = type;
     }
 
-    const workouts = await getDb().fitness_workouts.findMany({
+    const workouts = await getFitnessDb().fitness_workouts.findMany({
       where,
       include: {
         workout_exercises: {
@@ -446,7 +484,7 @@ router.post('/workouts', requireAuth, async (req, res) => {
     }
 
     // Check for duplicate workout on the same day for this user
-    const existingWorkout = await getDb().fitness_workouts.findFirst({
+    const existingWorkout = await getFitnessDb().fitness_workouts.findFirst({
       where: {
         user_id: userId,
         workout_date: dateObj,
@@ -469,7 +507,7 @@ router.post('/workouts', requireAuth, async (req, res) => {
     }
 
     // Create the workout
-    const workout = await getDb().fitness_workouts.create({
+    const workout = await getFitnessDb().fitness_workouts.create({
       data: {
         user_id: userId,
         workout_date: dateObj,
@@ -537,7 +575,7 @@ router.get('/goals', requireAuth, async (req, res) => {
       where.status = status;
     }
 
-    const goals = await getDb().fitness_goals.findMany({
+    const goals = await getFitnessDb().fitness_goals.findMany({
       where,
       orderBy: { created_at: 'desc' },
     });
@@ -629,7 +667,7 @@ router.post('/goals', requireAuth, async (req, res) => {
     }
 
     // Create the goal
-    const goal = await getDb().fitness_goals.create({
+    const goal = await getFitnessDb().fitness_goals.create({
       data: {
         user_id: userId,
         goal_type,
@@ -885,7 +923,7 @@ Be friendly, encouraging, and professional. Keep responses concise.`;
             console.log(`[AI Interview] Saving workout to database (attempt ${saveAttempts}/${maxAttempts})`);
             
             // Store the entire 6-section workout as JSON
-            savedWorkout = await getDb().fitness_workouts.create({
+            savedWorkout = await getFitnessDb().fitness_workouts.create({
               data: {
                 user_id: userId,
                 workout_data: JSON.stringify(workout), // Store full 6-section structure
@@ -965,7 +1003,7 @@ router.get('/admin/interview-questions', requireAuth, async (req, res) => {
       where.is_active = active === 'true' || active === true;
     }
     
-    let questions = await getDb().admin_interview_questions.findMany({
+    let questions = await getMainDb().admin_interview_questions.findMany({
       where,
       orderBy: { order_position: 'asc' },
     });
@@ -1012,7 +1050,7 @@ router.get('/admin/interview-questions', requireAuth, async (req, res) => {
 
         // Create questions
         for (const q of defaultQuestions) {
-          await getDb().admin_interview_questions.create({
+          await getMainDb().admin_interview_questions.create({
             data: q
           });
         }
@@ -1020,7 +1058,7 @@ router.get('/admin/interview-questions', requireAuth, async (req, res) => {
         console.log(`✅ Seeded ${defaultQuestions.length} default interview questions`);
         
         // Fetch again after seeding
-        questions = await getDb().admin_interview_questions.findMany({
+        questions = await getMainDb().admin_interview_questions.findMany({
           where,
           orderBy: { order_position: 'asc' },
         });
@@ -1101,7 +1139,7 @@ router.post('/admin/interview-questions', requireAuth, async (req, res) => {
     }
     
     // Create the question
-    const newQuestion = await getDb().admin_interview_questions.create({
+    const newQuestion = await getMainDb().admin_interview_questions.create({
       data: {
         question_text: question_text.trim(),
         question_type: question_type,
@@ -1158,7 +1196,7 @@ router.put('/admin/interview-questions/:id', requireAuth, async (req, res) => {
     console.log(`[PUT /api/fitness/admin/interview-questions/:id] Updating question: ${id}`);
     
     // Check if question exists
-    const existingQuestion = await getDb().admin_interview_questions.findUnique({
+    const existingQuestion = await getMainDb().admin_interview_questions.findUnique({
       where: { id: parseInt(id) },
     });
     
@@ -1196,7 +1234,7 @@ router.put('/admin/interview-questions/:id', requireAuth, async (req, res) => {
     updateData.updated_at = new Date();
     
     // Update the question
-    const updatedQuestion = await getDb().admin_interview_questions.update({
+    const updatedQuestion = await getMainDb().admin_interview_questions.update({
       where: { id: parseInt(id) },
       data: updateData,
     });
@@ -1238,7 +1276,7 @@ router.delete('/admin/interview-questions/:id', requireAuth, async (req, res) =>
     console.log(`[DELETE /api/fitness/admin/interview-questions/:id] Deleting question: ${id}`);
     
     // Check if question exists
-    const existingQuestion = await getDb().admin_interview_questions.findUnique({
+    const existingQuestion = await getMainDb().admin_interview_questions.findUnique({
       where: { id: parseInt(id) },
     });
     
@@ -1250,7 +1288,7 @@ router.delete('/admin/interview-questions/:id', requireAuth, async (req, res) =>
     }
     
     // Delete the question
-    await getDb().admin_interview_questions.delete({
+    await getMainDb().admin_interview_questions.delete({
       where: { id: parseInt(id) },
     });
     
@@ -1282,7 +1320,7 @@ router.patch('/admin/interview-questions/:id/toggle', requireAuth, async (req, r
     console.log(`[PATCH /api/fitness/admin/interview-questions/:id/toggle] Toggling question: ${id}`);
     
     // Check if question exists
-    const existingQuestion = await getDb().admin_interview_questions.findUnique({
+    const existingQuestion = await getMainDb().admin_interview_questions.findUnique({
       where: { id: parseInt(id) },
     });
     
@@ -1294,7 +1332,7 @@ router.patch('/admin/interview-questions/:id/toggle', requireAuth, async (req, r
     }
     
     // Toggle the active status
-    const updatedQuestion = await getDb().admin_interview_questions.update({
+    const updatedQuestion = await getMainDb().admin_interview_questions.update({
       where: { id: parseInt(id) },
       data: {
         is_active: !existingQuestion.is_active,
@@ -1356,7 +1394,7 @@ router.patch('/admin/interview-questions-reorder', async (req, res) => {
     // Update each question's order
     const updatedQuestions = await Promise.all(
       questions.map(q =>
-        getDb().admin_interview_questions.update({
+        getMainDb().admin_interview_questions.update({
           where: { id: parseInt(q.id) },
           data: { order_position: q.order_position, updated_at: new Date() },
         })
