@@ -41,11 +41,11 @@ let mainDb = null;
 
 function getFitnessDb() {
   if (!fitnessDb) {
-    // Use FITNESS_DATABASE_URL for fitness tables (Neon)
-    const dbUrl = process.env.FITNESS_DATABASE_URL;
+    // Use DATABASE_URL for fitness tables (Neon - this is the fitness database)
+    const dbUrl = process.env.DATABASE_URL;
     if (!dbUrl) {
       throw new Error(
-        'FITNESS_DATABASE_URL environment variable is not set. ' +
+        'DATABASE_URL environment variable is not set. ' +
         'Fitness routes cannot operate without a database connection.'
       );
     }
@@ -78,11 +78,12 @@ function getFitnessDb() {
 
 function getMainDb() {
   if (!mainDb) {
-    // Use main DATABASE_URL for admin tables (admin_interview_questions)
-    const dbUrl = process.env.DATABASE_URL;
+    // Use main database URL for admin tables (admin_interview_questions)
+    // In fitness backend, this is MAIN_DATABASE_URL; in main server, it's DATABASE_URL
+    const dbUrl = process.env.MAIN_DATABASE_URL || process.env.DATABASE_URL;
     if (!dbUrl) {
       throw new Error(
-        'DATABASE_URL environment variable is not set. ' +
+        'MAIN_DATABASE_URL or DATABASE_URL environment variable is not set. ' +
         'Admin interview questions table cannot be accessed without main database connection.'
       );
     }
