@@ -2332,6 +2332,68 @@ function requireAdmin(req, res, next) {
   }
 }
 
+// User login (email/password)
+app.post('/api/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    // Query user by email
+    const result = await db.query(
+      'SELECT id, email, display_name, password_hash FROM users WHERE email = $1',
+      [email.toLowerCase().trim()]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    const user = result.rows[0];
+
+    // For backward compatibility: if no password_hash, allow any password (temporary)
+    // In production, you'd want to require users to set passwords
+    if (!user.password_hash) {
+      console.log(`⚠️  User ${email} has no password set - allowing login (set password recommended)`);
+    } else {
+      // Verify password using bcrypt
+      const bcrypt = require('bcrypt');
+      const validPassword = await bcrypt.compare(password, user.password_hash);
+
+      if (!validPassword) {
+        return res.status(401).json({ error: 'Invalid email or password' });
+      }
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        role: 'user'
+      },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    console.log(`✅ User logged in: ${email}`);
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        display_name: user.display_name
+      }
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Login failed. Please try again.' });
+  }
+});
+
 // Admin login
 app.post('/api/admin/login', (req, res) => {
   const { password } = req.body;
