@@ -58,8 +58,17 @@ CREATE TABLE IF NOT EXISTS user_preferences (
 
 -- Create indexes for user_preferences
 CREATE INDEX IF NOT EXISTS idx_user_prefs_user_id ON user_preferences(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_prefs_cuisines ON user_preferences USING GIN(default_cuisines);
-CREATE INDEX IF NOT EXISTS idx_user_prefs_dietary ON user_preferences USING GIN(default_dietary);
+
+-- Only create GIN indexes if the columns exist (handles partial table creation)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_preferences' AND column_name = 'default_cuisines') THEN
+        CREATE INDEX IF NOT EXISTS idx_user_prefs_cuisines ON user_preferences USING GIN(default_cuisines);
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_preferences' AND column_name = 'default_dietary') THEN
+        CREATE INDEX IF NOT EXISTS idx_user_prefs_dietary ON user_preferences USING GIN(default_dietary);
+    END IF;
+END $$;
 
 -- Auto-update updated_at on user_preferences
 CREATE TRIGGER update_user_preferences_updated_at BEFORE UPDATE ON user_preferences
