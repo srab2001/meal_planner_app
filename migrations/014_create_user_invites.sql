@@ -3,43 +3,98 @@
 
 CREATE TABLE IF NOT EXISTS user_invites (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email VARCHAR(255) NOT NULL UNIQUE,
-  role VARCHAR(50) NOT NULL DEFAULT 'user',
-  token VARCHAR(255) NOT NULL UNIQUE,
-  status VARCHAR(50) NOT NULL DEFAULT 'pending',
-  -- pending: awaiting acceptance
-  -- accepted: user accepted and account created
-  -- expired: invite expired before acceptance
-  expires_at TIMESTAMP NOT NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by UUID REFERENCES users(id) ON DELETE SET NULL,
-  accepted_at TIMESTAMP DEFAULT NULL,
-  accepted_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  email VARCHAR(255),
+  role VARCHAR(50) DEFAULT 'user',
+  token VARCHAR(255),
+  status VARCHAR(50) DEFAULT 'pending',
+  expires_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_by UUID,
+  accepted_at TIMESTAMP,
+  accepted_by UUID,
   notes TEXT
 );
 
--- Create indexes (only if columns exist)
+-- Ensure ALL columns exist (handles partial table creation from failed deployments)
+ALTER TABLE user_invites ADD COLUMN IF NOT EXISTS id UUID DEFAULT gen_random_uuid();
+ALTER TABLE user_invites ADD COLUMN IF NOT EXISTS email VARCHAR(255);
+ALTER TABLE user_invites ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT 'user';
+ALTER TABLE user_invites ADD COLUMN IF NOT EXISTS token VARCHAR(255);
+ALTER TABLE user_invites ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending';
+ALTER TABLE user_invites ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP;
+ALTER TABLE user_invites ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE user_invites ADD COLUMN IF NOT EXISTS created_by UUID;
+ALTER TABLE user_invites ADD COLUMN IF NOT EXISTS accepted_at TIMESTAMP;
+ALTER TABLE user_invites ADD COLUMN IF NOT EXISTS accepted_by UUID;
+ALTER TABLE user_invites ADD COLUMN IF NOT EXISTS notes TEXT;
+
+-- Add constraints (safe with IF NOT EXISTS pattern)
 DO $$
 BEGIN
-    -- Index for finding by email
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_invites' AND column_name = 'email') THEN
-        CREATE INDEX IF NOT EXISTS idx_user_invites_email ON user_invites(email);
-    END IF;
+    -- Make columns NOT NULL if they should be
+    BEGIN
+        ALTER TABLE user_invites ALTER COLUMN email SET NOT NULL;
+    EXCEPTION WHEN others THEN NULL;
+    END;
 
-    -- Index for finding by token
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_invites' AND column_name = 'token') THEN
-        CREATE INDEX IF NOT EXISTS idx_user_invites_token ON user_invites(token);
-    END IF;
+    BEGIN
+        ALTER TABLE user_invites ALTER COLUMN role SET NOT NULL;
+    EXCEPTION WHEN others THEN NULL;
+    END;
 
-    -- Index for finding pending invites by expiry
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_invites' AND column_name = 'status') THEN
-        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_invites' AND column_name = 'expires_at') THEN
-            CREATE INDEX IF NOT EXISTS idx_user_invites_status_expiry ON user_invites(status, expires_at);
-        END IF;
-    END IF;
+    BEGIN
+        ALTER TABLE user_invites ALTER COLUMN token SET NOT NULL;
+    EXCEPTION WHEN others THEN NULL;
+    END;
 
-    -- Index for admin viewing their invites
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_invites' AND column_name = 'created_by') THEN
-        CREATE INDEX IF NOT EXISTS idx_user_invites_created_by ON user_invites(created_by);
-    END IF;
+    BEGIN
+        ALTER TABLE user_invites ALTER COLUMN status SET NOT NULL;
+    EXCEPTION WHEN others THEN NULL;
+    END;
+
+    BEGIN
+        ALTER TABLE user_invites ALTER COLUMN expires_at SET NOT NULL;
+    EXCEPTION WHEN others THEN NULL;
+    END;
+
+    BEGIN
+        ALTER TABLE user_invites ALTER COLUMN created_at SET NOT NULL;
+    EXCEPTION WHEN others THEN NULL;
+    END;
+
+    -- Add unique constraints
+    BEGIN
+        ALTER TABLE user_invites ADD CONSTRAINT unique_user_invites_email UNIQUE (email);
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END;
+
+    BEGIN
+        ALTER TABLE user_invites ADD CONSTRAINT unique_user_invites_token UNIQUE (token);
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END;
+
+    -- Add foreign key constraints
+    BEGIN
+        ALTER TABLE user_invites ADD CONSTRAINT fk_user_invites_created_by
+        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL;
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END;
+
+    BEGIN
+        ALTER TABLE user_invites ADD CONSTRAINT fk_user_invites_accepted_by
+        FOREIGN KEY (accepted_by) REFERENCES users(id) ON DELETE SET NULL;
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END;
+
+    -- Add primary key if missing
+    BEGIN
+        ALTER TABLE user_invites ADD PRIMARY KEY (id);
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END;
 END $$;
+
+-- Create indexes (table structure is now guaranteed complete)
+CREATE INDEX IF NOT EXISTS idx_user_invites_email ON user_invites(email);
+CREATE INDEX IF NOT EXISTS idx_user_invites_token ON user_invites(token);
+CREATE INDEX IF NOT EXISTS idx_user_invites_status_expiry ON user_invites(status, expires_at);
+CREATE INDEX IF NOT EXISTS idx_user_invites_created_by ON user_invites(created_by);

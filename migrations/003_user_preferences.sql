@@ -21,16 +21,12 @@ CREATE INDEX IF NOT EXISTS idx_users_timezone ON users(timezone);
 
 CREATE TABLE IF NOT EXISTS user_preferences (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID UNIQUE REFERENCES users(id) ON DELETE CASCADE,
-
-  -- Meal Planning Defaults
+  user_id UUID,
   default_cuisines JSONB DEFAULT '[]',
   default_people INTEGER DEFAULT 2,
   default_meals JSONB DEFAULT '["breakfast", "lunch", "dinner"]',
   default_days JSONB DEFAULT '["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]',
   default_dietary JSONB DEFAULT '[]',
-
-  -- Email Notification Preferences
   email_notifications JSONB DEFAULT '{
     "weeklyReminder": true,
     "mealPlanReady": true,
@@ -38,37 +34,72 @@ CREATE TABLE IF NOT EXISTS user_preferences (
     "accountActivity": true,
     "promotions": false
   }',
-
-  -- Display Preferences
   theme VARCHAR(20) DEFAULT 'light',
   units VARCHAR(20) DEFAULT 'imperial',
   language VARCHAR(10) DEFAULT 'en',
-
-  -- Privacy Settings
   share_favorites BOOLEAN DEFAULT FALSE,
   public_profile BOOLEAN DEFAULT FALSE,
-
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-  CONSTRAINT check_theme CHECK (theme IN ('light', 'dark', 'auto')),
-  CONSTRAINT check_units CHECK (units IN ('imperial', 'metric')),
-  CONSTRAINT check_default_people CHECK (default_people > 0 AND default_people <= 20)
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create indexes for user_preferences
-CREATE INDEX IF NOT EXISTS idx_user_prefs_user_id ON user_preferences(user_id);
+-- Ensure ALL columns exist (handles partial table creation from failed deployments)
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS id UUID DEFAULT uuid_generate_v4();
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS user_id UUID;
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS default_cuisines JSONB DEFAULT '[]';
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS default_people INTEGER DEFAULT 2;
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS default_meals JSONB DEFAULT '["breakfast", "lunch", "dinner"]';
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS default_days JSONB DEFAULT '["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]';
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS default_dietary JSONB DEFAULT '[]';
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS email_notifications JSONB DEFAULT '{
+    "weeklyReminder": true,
+    "mealPlanReady": true,
+    "favoriteRecipeDigest": false,
+    "accountActivity": true,
+    "promotions": false
+  }';
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS theme VARCHAR(20) DEFAULT 'light';
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS units VARCHAR(20) DEFAULT 'imperial';
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS language VARCHAR(10) DEFAULT 'en';
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS share_favorites BOOLEAN DEFAULT FALSE;
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS public_profile BOOLEAN DEFAULT FALSE;
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
--- Only create GIN indexes if the columns exist (handles partial table creation)
+-- Add constraints safely
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_preferences' AND column_name = 'default_cuisines') THEN
-        CREATE INDEX IF NOT EXISTS idx_user_prefs_cuisines ON user_preferences USING GIN(default_cuisines);
-    END IF;
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_preferences' AND column_name = 'default_dietary') THEN
-        CREATE INDEX IF NOT EXISTS idx_user_prefs_dietary ON user_preferences USING GIN(default_dietary);
-    END IF;
+    BEGIN
+        ALTER TABLE user_preferences ADD CONSTRAINT unique_user_preferences_user_id UNIQUE (user_id);
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END;
+
+    BEGIN
+        ALTER TABLE user_preferences ADD CONSTRAINT fk_user_preferences_user_id
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END;
+
+    BEGIN
+        ALTER TABLE user_preferences ADD CONSTRAINT check_theme CHECK (theme IN ('light', 'dark', 'auto'));
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END;
+
+    BEGIN
+        ALTER TABLE user_preferences ADD CONSTRAINT check_units CHECK (units IN ('imperial', 'metric'));
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END;
+
+    BEGIN
+        ALTER TABLE user_preferences ADD CONSTRAINT check_default_people CHECK (default_people > 0 AND default_people <= 20);
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END;
 END $$;
+
+-- Create indexes (table structure is now guaranteed complete)
+CREATE INDEX IF NOT EXISTS idx_user_prefs_user_id ON user_preferences(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_prefs_cuisines ON user_preferences USING GIN(default_cuisines);
+CREATE INDEX IF NOT EXISTS idx_user_prefs_dietary ON user_preferences USING GIN(default_dietary);
 
 -- Auto-update updated_at on user_preferences
 CREATE TRIGGER update_user_preferences_updated_at BEFORE UPDATE ON user_preferences
