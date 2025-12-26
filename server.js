@@ -2416,6 +2416,19 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// Test endpoint to verify database access
+app.get('/api/test-db-user', async (req, res) => {
+  try {
+    const result = await db.query(
+      'SELECT id, email, display_name FROM users WHERE email = $1',
+      ['rabinowitzstuarta@gmail.com']
+    );
+    res.json({ success: true, userFound: result.rows.length > 0, user: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Admin login
 app.post('/api/admin/login', (req, res) => {
   const { password } = req.body;
