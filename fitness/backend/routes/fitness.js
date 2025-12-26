@@ -34,23 +34,23 @@ if (!process.env.SESSION_SECRET && !process.env.JWT_SECRET) {
 }
 
 // Lazy-initialize Prisma clients on first use to avoid failures at module load time
-// NOTE: Fitness tables (fitness_profiles, fitness_goals, etc.) are in FITNESS_DATABASE_URL (Neon)
-// Admin tables (admin_interview_questions) are in DATABASE_URL (main Render)
+// NOTE: All tables (fitness + admin) are now in the main DATABASE_URL (Render PostgreSQL)
+// Migration 017 created all fitness tables in the main database
 let fitnessDb = null;
 let mainDb = null;
 
 function getFitnessDb() {
   if (!fitnessDb) {
-    // Use FITNESS_DATABASE_URL (Neon) for fitness tables, fallback to DATABASE_URL
-    const dbUrl = process.env.FITNESS_DATABASE_URL || process.env.DATABASE_URL;
+    // Use main DATABASE_URL where migration 017 created all fitness tables
+    const dbUrl = process.env.DATABASE_URL;
     if (!dbUrl) {
       throw new Error(
-        'FITNESS_DATABASE_URL or DATABASE_URL environment variable is not set. ' +
+        'DATABASE_URL environment variable is not set. ' +
         'Fitness routes cannot operate without a database connection.'
       );
     }
-    
-    console.log('[Fitness DB] Initializing Prisma client for fitness database (Neon)...');
+
+    console.log('[Fitness DB] Initializing Prisma client for main database (Render PostgreSQL)...');
     
     fitnessDb = new PrismaClient({
       datasources: {
@@ -78,17 +78,17 @@ function getFitnessDb() {
 
 function getMainDb() {
   if (!mainDb) {
-    // Use main database URL for admin tables (admin_interview_questions)
-    // In fitness backend, this is MAIN_DATABASE_URL; in main server, it's DATABASE_URL
-    const dbUrl = process.env.MAIN_DATABASE_URL || process.env.DATABASE_URL;
+    // Use same main DATABASE_URL for admin tables (admin_interview_questions)
+    // All tables are in the same database now
+    const dbUrl = process.env.DATABASE_URL;
     if (!dbUrl) {
       throw new Error(
-        'MAIN_DATABASE_URL or DATABASE_URL environment variable is not set. ' +
+        'DATABASE_URL environment variable is not set. ' +
         'Admin interview questions table cannot be accessed without main database connection.'
       );
     }
-    
-    console.log('[Main DB] Initializing Prisma client for main database (Render)...');
+
+    console.log('[Main DB] Initializing Prisma client for main database (Render PostgreSQL)...');
     
     mainDb = new PrismaClient({
       datasources: {
