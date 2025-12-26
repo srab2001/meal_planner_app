@@ -87,10 +87,17 @@ BEGIN
     END;
 
     -- Add primary key if missing
-    BEGIN
-        ALTER TABLE user_invites ADD PRIMARY KEY (id);
-    EXCEPTION WHEN duplicate_object THEN NULL;
-    END;
+    -- Note: Can't add PK if one already exists (error 42P16), so check first
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_name = 'user_invites'
+        AND constraint_type = 'PRIMARY KEY'
+    ) THEN
+        BEGIN
+            ALTER TABLE user_invites ADD PRIMARY KEY (id);
+        EXCEPTION WHEN OTHERS THEN NULL;
+        END;
+    END IF;
 END $$;
 
 -- Create indexes (table structure is now guaranteed complete)
