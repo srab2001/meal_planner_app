@@ -2343,23 +2343,28 @@ function requireAdmin(req, res, next) {
 // User login (email/password)
 app.post('/api/login', async (req, res) => {
   try {
+    console.log('[LOGIN] Login attempt:', req.body.email);
     const { email, password } = req.body;
 
     if (!email || !password) {
+      console.log('[LOGIN] Missing email or password');
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
     // Query user by email
+    console.log('[LOGIN] Querying database for user:', email);
     const result = await db.query(
       'SELECT id, email, display_name, password_hash FROM users WHERE email = $1',
       [email.toLowerCase().trim()]
     );
 
+    console.log('[LOGIN] Query result:', result.rows.length, 'users found');
     if (result.rows.length === 0) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
     const user = result.rows[0];
+    console.log('[LOGIN] User found:', user.email, 'has password_hash:', !!user.password_hash);
 
     // For backward compatibility: if no password_hash, allow any password (temporary)
     // In production, you'd want to require users to set passwords
@@ -2401,8 +2406,12 @@ app.post('/api/login', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Login failed. Please try again.' });
+    console.error('[LOGIN] Error during login:', error.message);
+    console.error('[LOGIN] Stack:', error.stack);
+    res.status(500).json({
+      error: 'Login failed. Please try again.',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
