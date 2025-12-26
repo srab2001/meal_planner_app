@@ -1,6 +1,6 @@
 // This file is part of the meal_planner monorepo
-// Fitness module - separate Prisma schema
-// Database: Dedicated Neon PostgreSQL
+// Fitness module - Prisma schema
+// Database: Render PostgreSQL (shared with main app)
 
 generator client {
   provider = "prisma-client-js"

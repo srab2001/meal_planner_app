@@ -23,10 +23,10 @@ A comprehensive fitness tracking application with AI-powered workout generation,
 
 ### Tech Stack
 
-**Frontend:** React 18 + React Router v6 + Vite
-**Backend:** Node.js + Express + Prisma ORM
-**Database:** PostgreSQL (Neon)
-**AI:** OpenAI API (GPT-4o-mini)
+**Frontend:** React 18 + React Router v6 + Vite (Deployed on Vercel)
+**Backend:** Node.js + Express + Prisma ORM (Deployed on Render)
+**Database:** PostgreSQL (Render)
+**AI:** OpenAI API (GPT-4o-mini via Render)
 
 ### Database Schema (7 Tables)
 
