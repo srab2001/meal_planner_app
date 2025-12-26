@@ -87,13 +87,33 @@ CREATE TABLE IF NOT EXISTS workout_exercises_detailed (
 -- Add role column to users table if it doesn't exist
 ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT 'user'; -- 'user', 'admin'
 
--- Create indexes for performance
-CREATE INDEX IF NOT EXISTS idx_admin_questions_active ON admin_interview_questions(is_active);
-CREATE INDEX IF NOT EXISTS idx_admin_questions_position ON admin_interview_questions(order_position);
-CREATE INDEX IF NOT EXISTS idx_structured_workouts_user ON structured_workouts(user_id);
-CREATE INDEX IF NOT EXISTS idx_structured_workouts_date ON structured_workouts(workout_date);
-CREATE INDEX IF NOT EXISTS idx_workout_exercises_workout ON workout_exercises_detailed(structured_workout_id);
-CREATE INDEX IF NOT EXISTS idx_workout_exercises_section ON workout_exercises_detailed(section_type);
+-- Create indexes for performance (only if columns exist)
+DO $$
+BEGIN
+    -- Indexes for admin_interview_questions
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'admin_interview_questions' AND column_name = 'is_active') THEN
+        CREATE INDEX IF NOT EXISTS idx_admin_questions_active ON admin_interview_questions(is_active);
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'admin_interview_questions' AND column_name = 'order_position') THEN
+        CREATE INDEX IF NOT EXISTS idx_admin_questions_position ON admin_interview_questions(order_position);
+    END IF;
+
+    -- Indexes for structured_workouts
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'structured_workouts' AND column_name = 'user_id') THEN
+        CREATE INDEX IF NOT EXISTS idx_structured_workouts_user ON structured_workouts(user_id);
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'structured_workouts' AND column_name = 'workout_date') THEN
+        CREATE INDEX IF NOT EXISTS idx_structured_workouts_date ON structured_workouts(workout_date);
+    END IF;
+
+    -- Indexes for workout_exercises_detailed
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'workout_exercises_detailed' AND column_name = 'structured_workout_id') THEN
+        CREATE INDEX IF NOT EXISTS idx_workout_exercises_workout ON workout_exercises_detailed(structured_workout_id);
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'workout_exercises_detailed' AND column_name = 'section_type') THEN
+        CREATE INDEX IF NOT EXISTS idx_workout_exercises_section ON workout_exercises_detailed(section_type);
+    END IF;
+END $$;
 
 -- Log successful migration
 SELECT 'Admin Interview Questions and Structured Workouts tables created successfully' as status;
