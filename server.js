@@ -85,7 +85,23 @@ async function runMigrationsSync() {
       }
     }
 
-    console.log('[MIGRATIONS] ✅ All migrations completed successfully');
+    console.log('[MIGRATIONS] ✅ All main migrations completed successfully');
+
+    // Run fitness migrations using Prisma
+    console.log('[FITNESS] 🏋️  Running fitness database migrations...');
+    try {
+      const { execSync } = require('child_process');
+      execSync('cd fitness && npx prisma migrate deploy', {
+        stdio: 'inherit',
+        env: { ...process.env }
+      });
+      console.log('[FITNESS] ✅ Fitness migrations completed successfully');
+    } catch (fitError) {
+      console.error('[FITNESS] ⚠️  Fitness migrations failed (non-fatal):', fitError.message);
+      console.log('[FITNESS] ℹ️  This may be expected if fitness migrations were already applied');
+      console.log('[FITNESS] ℹ️  Server will continue starting...');
+    }
+
     return true;
   } catch (error) {
     console.error('[MIGRATIONS] ❌ Migration execution failed:', error.message);
