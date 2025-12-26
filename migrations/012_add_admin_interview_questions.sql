@@ -2,30 +2,41 @@
 -- Table was created by migration 006_create_admin_questions_and_structured_workouts.sql
 -- with these columns: id, question_text, question_type, options, option_range, order_position, is_active
 
--- Handle legacy 'question' column (migrate to 'question_text' if it exists)
+-- Handle legacy column names (migrate old schema to new schema)
 DO $$
 BEGIN
-    -- If old 'question' column exists, handle migration
+    -- Migrate 'question' → 'question_text'
     IF EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_name = 'admin_interview_questions'
         AND column_name = 'question'
     ) THEN
-        -- Add question_text column if it doesn't exist
         IF NOT EXISTS (
             SELECT 1 FROM information_schema.columns
             WHERE table_name = 'admin_interview_questions'
             AND column_name = 'question_text'
         ) THEN
-            -- Add new column
             ALTER TABLE admin_interview_questions ADD COLUMN question_text TEXT;
-
-            -- Copy data from old column to new column
             UPDATE admin_interview_questions SET question_text = question WHERE question IS NOT NULL;
         END IF;
-
-        -- Drop the old 'question' column
         ALTER TABLE admin_interview_questions DROP COLUMN IF EXISTS question;
+    END IF;
+
+    -- Migrate 'type' → 'question_type'
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'admin_interview_questions'
+        AND column_name = 'type'
+    ) THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'admin_interview_questions'
+            AND column_name = 'question_type'
+        ) THEN
+            ALTER TABLE admin_interview_questions ADD COLUMN question_type VARCHAR(50) DEFAULT 'text';
+            UPDATE admin_interview_questions SET question_type = type WHERE type IS NOT NULL;
+        END IF;
+        ALTER TABLE admin_interview_questions DROP COLUMN IF EXISTS type;
     END IF;
 END $$;
 
