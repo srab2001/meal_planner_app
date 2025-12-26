@@ -187,6 +187,137 @@ app.post('/api/generate-meals', requireAuth, async (req, res) => {
     .json({ error: 'generate-meals route not wired on this server build' });
 });
 
+// ============================================
+// FITNESS API ROUTES
+// ============================================
+
+// In-memory storage for workouts (replace with database later)
+const workoutStorage = new Map();
+
+// Get all workouts for authenticated user
+app.get('/api/fitness/workouts', requireAuth, (req, res) => {
+  const userId = req.user.id;
+  const userWorkouts = workoutStorage.get(userId) || [];
+
+  res.json({
+    workouts: userWorkouts.map(workout => ({
+      ...workout,
+      exerciseCount: workout.exercises?.length || 0,
+      duration: calculateWorkoutDuration(workout)
+    }))
+  });
+});
+
+// Create new workout
+app.post('/api/fitness/workouts', requireAuth, (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { workoutDate, workoutName, exercises, notes } = req.body;
+
+    // Validation
+    if (!workoutName || !workoutDate || !exercises || exercises.length === 0) {
+      return res.status(400).json({
+        error: 'Missing required fields: workoutName, workoutDate, and exercises'
+      });
+    }
+
+    // Create workout object
+    const workout = {
+      id: Date.now().toString(),
+      userId,
+      workoutDate,
+      workoutName,
+      exercises,
+      notes: notes || '',
+      createdAt: new Date().toISOString()
+    };
+
+    // Store workout
+    const userWorkouts = workoutStorage.get(userId) || [];
+    userWorkouts.push(workout);
+    workoutStorage.set(userId, userWorkouts);
+
+    res.status(201).json({
+      success: true,
+      workout: {
+        ...workout,
+        exerciseCount: exercises.length,
+        duration: calculateWorkoutDuration(workout)
+      }
+    });
+  } catch (error) {
+    console.error('Error creating workout:', error);
+    res.status(500).json({ error: 'Failed to create workout' });
+  }
+});
+
+// Get weekly fitness stats
+app.get('/api/fitness/stats/weekly', requireAuth, (req, res) => {
+  try {
+    const userId = req.user.id;
+    const userWorkouts = workoutStorage.get(userId) || [];
+
+    // Filter workouts from last 7 days
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const weeklyWorkouts = userWorkouts.filter(workout => {
+      const workoutDate = new Date(workout.workoutDate);
+      return workoutDate >= sevenDaysAgo && workoutDate <= now;
+    });
+
+    // Calculate stats
+    const workoutCount = weeklyWorkouts.length;
+    const totalDuration = weeklyWorkouts.reduce((sum, w) => {
+      return sum + calculateWorkoutDuration(w);
+    }, 0);
+
+    const completionRate = workoutCount > 0 ? Math.round((workoutCount / 7) * 100) : 0;
+    const estimatedCalories = totalDuration * 5; // Rough estimate: 5 cal/min
+
+    res.json({
+      workoutCount,
+      totalDuration,
+      completionRate: Math.min(completionRate, 100),
+      estimatedCalories
+    });
+  } catch (error) {
+    console.error('Error fetching weekly stats:', error);
+    res.status(500).json({ error: 'Failed to fetch weekly stats' });
+  }
+});
+
+// Delete workout
+app.delete('/api/fitness/workouts/:id', requireAuth, (req, res) => {
+  try {
+    const userId = req.user.id;
+    const workoutId = req.params.id;
+    const userWorkouts = workoutStorage.get(userId) || [];
+
+    const filteredWorkouts = userWorkouts.filter(w => w.id !== workoutId);
+
+    if (filteredWorkouts.length === userWorkouts.length) {
+      return res.status(404).json({ error: 'Workout not found' });
+    }
+
+    workoutStorage.set(userId, filteredWorkouts);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting workout:', error);
+    res.status(500).json({ error: 'Failed to delete workout' });
+  }
+});
+
+// Helper function to calculate workout duration
+function calculateWorkoutDuration(workout) {
+  // Estimate: 3 minutes per set + 1 minute rest
+  let totalSets = 0;
+  (workout.exercises || []).forEach(exercise => {
+    totalSets += (exercise.sets || []).length;
+  });
+  return Math.max(totalSets * 4, 20); // Minimum 20 minutes
+}
+
 // Global error handler - must be after all routes
 app.use((err, req, res, next) => {
   console.error('Server error:', err);

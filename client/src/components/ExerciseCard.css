@@ -1,0 +1,193 @@
+/* Exercise Card */
+.exercise-card {
+  background-color: #f8f8f8;
+  border-radius: 8px;
+  border-left: 4px solid #0066CC;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.exercise-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Exercise Header */
+.exercise-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.exercise-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.exercise-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: #0066CC;
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.exercise-details h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333333;
+  margin: 0 0 4px 0;
+}
+
+.exercise-category {
+  font-size: 14px;
+  color: #666666;
+}
+
+.exercise-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.toggle-button,
+.delete-button {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #666666;
+  cursor: pointer;
+  padding: 8px;
+  transition: color 0.2s ease;
+}
+
+.toggle-button:hover,
+.delete-button:hover {
+  color: #333333;
+}
+
+/* Sets Section */
+.sets-section {
+  padding: 16px;
+}
+
+.sets-header {
+  display: grid;
+  grid-template-columns: 60px 1fr 1fr 40px;
+  gap: 12px;
+  padding: 8px 12px;
+  background-color: #f0f0f0;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #666666;
+}
+
+.set-row {
+  display: grid;
+  grid-template-columns: 60px 1fr 1fr 40px;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background-color: white;
+  border-radius: 6px;
+}
+
+.set-number {
+  font-weight: 600;
+  color: #666666;
+}
+
+.set-row input,
+.set-row select {
+  padding: 8px;
+  font-size: 14px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.set-row input:focus {
+  outline: none;
+  border-color: #0066CC;
+}
+
+.weight-input-group {
+  display: flex;
+  gap: 4px;
+}
+
+.weight-input-group input {
+  flex: 1;
+}
+
+.unit-select {
+  width: 60px;
+  text-align: left;
+}
+
+.delete-set-button {
+  background: none;
+  border: none;
+  color: #dc3545;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+}
+
+.delete-set-button:hover {
+  opacity: 0.7;
+}
+
+/* Add Set Button */
+.add-set-button {
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+  background-color: white;
+  border: 2px dashed #0066CC;
+  border-radius: 6px;
+  color: #0066CC;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.add-set-button:hover {
+  background-color: #f0f7ff;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .exercise-details h3 {
+    font-size: 16px;
+  }
+
+  .sets-header,
+  .set-row {
+    grid-template-columns: 50px 1fr 1fr 40px;
+    gap: 8px;
+    padding: 6px 8px;
+  }
+
+  .set-row input,
+  .set-row select {
+    padding: 6px;
+    font-size: 13px;
+  }
+
+  .unit-select {
+    width: 50px;
+  }
+}

@@ -4,7 +4,7 @@ import LoginPage from './components/LoginPage';
 import ZIPCodeInput from './components/ZIPCodeInput';
 import StoreSelection from './components/StoreSelection';
 import Questionnaire from './components/Questionnaire';
-import MealPlanView from './components/MealPlanView';
+import Dashboard from './components/Dashboard';
 
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 console.log('API_BASE in browser:', API_BASE);
@@ -181,7 +181,7 @@ function App() {
       )}
 
       {currentView === 'mealplan' && (
-        <MealPlanView
+        <Dashboard
           mealPlan={mealPlan}
           preferences={preferences}
           user={user}
