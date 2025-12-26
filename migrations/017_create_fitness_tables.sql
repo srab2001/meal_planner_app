@@ -122,7 +122,7 @@ INSERT INTO exercise_definitions (name, description, category, muscle_group, sec
 ('Barbell Bench Press', 'Classic compound chest exercise', 'chest', 'pectoralis major', ARRAY['triceps', 'anterior deltoids'], 'barbell', 'intermediate', ARRAY['Keep feet flat on floor', 'Bar should touch mid-chest', 'Full range of motion'], true, true),
 ('Dumbbell Incline Press', 'Upper chest focus', 'chest', 'upper pectoralis', ARRAY['anterior deltoids', 'triceps'], 'dumbbell', 'intermediate', ARRAY['Set bench to 30-45 degrees', 'Control the descent', 'Press until arms fully extended'], true, true),
 ('Push-ups', 'Bodyweight chest builder', 'chest', 'pectoralis major', ARRAY['triceps', 'core'], 'bodyweight', 'beginner', ARRAY['Keep body in straight line', 'Elbows at 45 degrees', 'Full range of motion'], true, true),
-('Cable Chest Fly', 'Isolation movement for chest', 'chest', 'pectoralis major', ARRAY[], 'cable', 'beginner', ARRAY['Slight bend in elbows', 'Squeeze at center', 'Control the negative'], false, true),
+('Cable Chest Fly', 'Isolation movement for chest', 'chest', 'pectoralis major', ARRAY[]::TEXT[], 'cable', 'beginner', ARRAY['Slight bend in elbows', 'Squeeze at center', 'Control the negative'], false, true),
 ('Dips (Chest Focus)', 'Bodyweight compound movement', 'chest', 'lower pectoralis', ARRAY['triceps', 'anterior deltoids'], 'bodyweight', 'intermediate', ARRAY['Lean forward slightly', 'Go deep for chest activation', 'Control the movement'], true, true),
 
 -- BACK (7)
@@ -139,14 +139,14 @@ INSERT INTO exercise_definitions (name, description, category, muscle_group, sec
 ('Romanian Deadlifts', 'Hamstring and glute focus', 'legs', 'hamstrings', ARRAY['glutes', 'erector spinae'], 'barbell', 'intermediate', ARRAY['Slight knee bend', 'Hinge at hips', 'Feel stretch in hamstrings'], true, true),
 ('Leg Press', 'Quad-focused compound', 'legs', 'quadriceps', ARRAY['glutes', 'hamstrings'], 'machine', 'beginner', ARRAY['Feet shoulder width', 'Full range of motion', 'Push through heels'], true, true),
 ('Walking Lunges', 'Unilateral leg strength', 'legs', 'quadriceps', ARRAY['glutes', 'hamstrings'], 'dumbbell', 'intermediate', ARRAY['Step forward, drop back knee', 'Keep torso upright', 'Drive through front heel'], true, true),
-('Leg Curls', 'Hamstring isolation', 'legs', 'hamstrings', ARRAY[], 'machine', 'beginner', ARRAY['Control the weight', 'Full contraction', 'Slow negative'], false, true),
+('Leg Curls', 'Hamstring isolation', 'legs', 'hamstrings', ARRAY[]::TEXT[], 'machine', 'beginner', ARRAY['Control the weight', 'Full contraction', 'Slow negative'], false, true),
 ('Calf Raises', 'Calf development', 'legs', 'gastrocnemius', ARRAY['soleus'], 'machine', 'beginner', ARRAY['Full range of motion', 'Pause at top', 'Control descent'], false, true),
 ('Bulgarian Split Squats', 'Single leg strength', 'legs', 'quadriceps', ARRAY['glutes', 'hamstrings'], 'dumbbell', 'intermediate', ARRAY['Back foot elevated', 'Front knee stable', 'Upright torso'], true, true),
 ('Goblet Squats', 'Beginner-friendly squat', 'legs', 'quadriceps', ARRAY['glutes', 'core'], 'dumbbell', 'beginner', ARRAY['Hold weight at chest', 'Squat deep', 'Elbows inside knees'], true, true),
 
 -- SHOULDERS (5)
 ('Overhead Press', 'Compound shoulder builder', 'shoulders', 'anterior deltoids', ARRAY['triceps', 'upper chest'], 'barbell', 'intermediate', ARRAY['Press straight up', 'Core tight', 'Full lockout'], true, true),
-('Dumbbell Lateral Raises', 'Side delt isolation', 'shoulders', 'lateral deltoids', ARRAY[], 'dumbbell', 'beginner', ARRAY['Slight bend in elbows', 'Raise to shoulder height', 'Control the descent'], false, true),
+('Dumbbell Lateral Raises', 'Side delt isolation', 'shoulders', 'lateral deltoids', ARRAY[]::TEXT[], 'dumbbell', 'beginner', ARRAY['Slight bend in elbows', 'Raise to shoulder height', 'Control the descent'], false, true),
 ('Arnold Press', 'Full shoulder activation', 'shoulders', 'deltoids', ARRAY['triceps'], 'dumbbell', 'intermediate', ARRAY['Start with palms facing you', 'Rotate as you press', 'Full range of motion'], true, true),
 ('Reverse Pec Deck', 'Rear delt isolation', 'shoulders', 'rear deltoids', ARRAY['rhomboids'], 'machine', 'beginner', ARRAY['Chest against pad', 'Pull elbows back', 'Squeeze shoulder blades'], false, true),
 ('Upright Rows', 'Traps and side delts', 'shoulders', 'lateral deltoids', ARRAY['trapezius'], 'barbell', 'intermediate', ARRAY['Pull to chest height', 'Elbows high', 'Control the weight'], false, true),
@@ -155,17 +155,17 @@ INSERT INTO exercise_definitions (name, description, category, muscle_group, sec
 ('Barbell Curls', 'Classic bicep builder', 'arms', 'biceps', ARRAY['forearms'], 'barbell', 'beginner', ARRAY['Keep elbows stable', 'Full range of motion', 'Control the negative'], false, true),
 ('Tricep Dips', 'Compound tricep exercise', 'arms', 'triceps', ARRAY['chest', 'shoulders'], 'bodyweight', 'intermediate', ARRAY['Keep torso upright', 'Elbows track back', 'Full range of motion'], true, true),
 ('Hammer Curls', 'Bicep and forearm', 'arms', 'biceps', ARRAY['brachialis', 'forearms'], 'dumbbell', 'beginner', ARRAY['Neutral grip', 'Control the weight', 'No swinging'], false, true),
-('Overhead Tricep Extension', 'Long head tricep focus', 'arms', 'triceps', ARRAY[], 'dumbbell', 'beginner', ARRAY['Keep elbows pointed up', 'Full stretch', 'Control the weight'], false, true),
-('Cable Curls', 'Constant tension biceps', 'arms', 'biceps', ARRAY[], 'cable', 'beginner', ARRAY['Keep elbows stable', 'Squeeze at top', 'Slow negative'], false, true),
+('Overhead Tricep Extension', 'Long head tricep focus', 'arms', 'triceps', ARRAY[]::TEXT[], 'dumbbell', 'beginner', ARRAY['Keep elbows pointed up', 'Full stretch', 'Control the weight'], false, true),
+('Cable Curls', 'Constant tension biceps', 'arms', 'biceps', ARRAY[]::TEXT[], 'cable', 'beginner', ARRAY['Keep elbows stable', 'Squeeze at top', 'Slow negative'], false, true),
 ('Close-Grip Bench Press', 'Compound tricep movement', 'arms', 'triceps', ARRAY['chest'], 'barbell', 'intermediate', ARRAY['Hands shoulder width', 'Elbows tucked', 'Touch lower chest'], true, true),
-('Preacher Curls', 'Bicep peak isolation', 'arms', 'biceps', ARRAY[], 'barbell', 'beginner', ARRAY['Arms fully extended at bottom', 'Curl to full contraction', 'Slow eccentric'], false, true),
-('Skull Crushers', 'Tricep mass builder', 'arms', 'triceps', ARRAY[], 'barbell', 'intermediate', ARRAY['Lower to forehead', 'Keep elbows stable', 'Full extension'], false, true),
+('Preacher Curls', 'Bicep peak isolation', 'arms', 'biceps', ARRAY[]::TEXT[], 'barbell', 'beginner', ARRAY['Arms fully extended at bottom', 'Curl to full contraction', 'Slow eccentric'], false, true),
+('Skull Crushers', 'Tricep mass builder', 'arms', 'triceps', ARRAY[]::TEXT[], 'barbell', 'intermediate', ARRAY['Lower to forehead', 'Keep elbows stable', 'Full extension'], false, true),
 
 -- CORE (5)
 ('Planks', 'Core stability', 'core', 'rectus abdominis', ARRAY['obliques', 'transverse abdominis'], 'bodyweight', 'beginner', ARRAY['Straight body line', 'Engage core', 'Breathe steadily'], false, true),
 ('Russian Twists', 'Oblique rotation', 'core', 'obliques', ARRAY['rectus abdominis'], 'bodyweight', 'beginner', ARRAY['Lean back slightly', 'Rotate trunk', 'Control the movement'], false, true),
 ('Hanging Leg Raises', 'Lower ab focus', 'core', 'rectus abdominis', ARRAY['hip flexors'], 'bodyweight', 'intermediate', ARRAY['Control the swing', 'Raise knees to chest', 'Slow descent'], false, true),
-('Cable Crunches', 'Weighted ab work', 'core', 'rectus abdominis', ARRAY[], 'cable', 'beginner', ARRAY['Crunch down', 'Squeeze abs', 'Control the weight'], false, true),
+('Cable Crunches', 'Weighted ab work', 'core', 'rectus abdominis', ARRAY[]::TEXT[], 'cable', 'beginner', ARRAY['Crunch down', 'Squeeze abs', 'Control the weight'], false, true),
 ('Ab Wheel Rollouts', 'Advanced core strength', 'core', 'rectus abdominis', ARRAY['obliques', 'serratus'], 'bodyweight', 'advanced', ARRAY['Control the rollout', 'Keep core tight', 'Full range carefully'], false, true),
 
 -- CARDIO (2)
