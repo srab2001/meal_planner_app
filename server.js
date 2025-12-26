@@ -34,6 +34,14 @@ const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');
 
+// Try to load bcrypt (optional - only needed for password authentication)
+let bcrypt;
+try {
+  bcrypt = require('bcrypt');
+} catch (err) {
+  console.warn('⚠️  bcrypt not available - password authentication will be limited');
+}
+
 async function runMigrationsSync() {
   // Validate DATABASE_URL exists and is valid
   const dbUrl = process.env.DATABASE_URL;
@@ -2359,7 +2367,11 @@ app.post('/api/login', async (req, res) => {
       console.log(`⚠️  User ${email} has no password set - allowing login (set password recommended)`);
     } else {
       // Verify password using bcrypt
-      const bcrypt = require('bcrypt');
+      if (!bcrypt) {
+        console.error('❌ bcrypt not available but password_hash is set');
+        return res.status(500).json({ error: 'Password authentication not available' });
+      }
+
       const validPassword = await bcrypt.compare(password, user.password_hash);
 
       if (!validPassword) {
