@@ -2,9 +2,26 @@
 -- Table was created by migration 006_create_admin_questions_and_structured_workouts.sql
 -- with these columns: id, question_text, question_type, options, option_range, order_position, is_active
 
+-- Handle legacy 'question' column (rename to 'question_text' if it exists)
+DO $$
+BEGIN
+    -- If old 'question' column exists, rename it to 'question_text'
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'admin_interview_questions'
+        AND column_name = 'question'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'admin_interview_questions'
+        AND column_name = 'question_text'
+    ) THEN
+        ALTER TABLE admin_interview_questions RENAME COLUMN question TO question_text;
+    END IF;
+END $$;
+
 -- Ensure ALL columns exist (handles partial table creation from failed deployments)
 ALTER TABLE admin_interview_questions
-ADD COLUMN IF NOT EXISTS question_text TEXT NOT NULL DEFAULT '';
+ADD COLUMN IF NOT EXISTS question_text TEXT;
 
 ALTER TABLE admin_interview_questions
 ADD COLUMN IF NOT EXISTS question_type VARCHAR(50) DEFAULT 'text';
