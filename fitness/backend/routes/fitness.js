@@ -1263,13 +1263,52 @@ router.use((req, res) => {
 });
 
 /**
- * Handle unexpected errors
+ * GET /api/fitness/admin/interview-questions
+ * Get active interview questions for AI Coach
+ *
+ * Query: ?active=true (optional)
+ * Response: Array of question objects
  */
+router.get('/admin/interview-questions', requireAuth, async (req, res) => {
+  try {
+    const db = getMainDb();
+    const activeOnly = req.query.active === 'true';
+
+    console.log('[Interview Questions] Fetching questions, activeOnly:', activeOnly);
+
+    let questions;
+    if (activeOnly) {
+      questions = await db.$queryRaw`
+        SELECT id, question_text, question_type, options, option_range, order_position, is_active
+        FROM admin_interview_questions
+        WHERE is_active = true
+        ORDER BY order_position ASC, id ASC
+        LIMIT 10
+      `;
+    } else {
+      questions = await db.$queryRaw`
+        SELECT id, question_text, question_type, options, option_range, order_position, is_active
+        FROM admin_interview_questions
+        ORDER BY order_position ASC, id ASC
+      `;
+    }
+
+    console.log('[Interview Questions] Found', questions.length, 'questions');
+
+    res.json(questions);
+  } catch (error) {
+    console.error('[Interview Questions] Error:', error);
+    res.status(500).json({
+      error: 'database_error',
+      message: 'Failed to fetch interview questions'
+    });
+  }
+});
 
 /**
  * POST /api/fitness/ai-interview
  * AI-powered workout planning conversation
- * 
+ *
  * Request: { messages: Array, userProfile: Object }
  * Response: { message: string, workoutGenerated: boolean, workout?: Object }
  */
