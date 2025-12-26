@@ -2419,11 +2419,26 @@ app.post('/api/login', async (req, res) => {
 // Test endpoint to verify database access
 app.get('/api/test-db-user', async (req, res) => {
   try {
+    const dbUrl = process.env.DATABASE_URL;
+    const dbInfo = dbUrl ? {
+      host: new URL(dbUrl).hostname,
+      database: new URL(dbUrl).pathname.substring(1)
+    } : null;
+
     const result = await db.query(
       'SELECT id, email, display_name FROM users WHERE email = $1',
       ['rabinowitzstuarta@gmail.com']
     );
-    res.json({ success: true, userFound: result.rows.length > 0, user: result.rows[0] });
+
+    const allUsers = await db.query('SELECT email FROM users LIMIT 5');
+
+    res.json({
+      success: true,
+      userFound: result.rows.length > 0,
+      user: result.rows[0],
+      dbInfo,
+      sampleUsers: allUsers.rows
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
