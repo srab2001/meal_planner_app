@@ -20,15 +20,16 @@
  * Throws error if not set - prevents silent failures.
  */
 const API_BASE = (() => {
-  const url = process.env.REACT_APP_API_URL;
-  
+  // Vite uses import.meta.env instead of process.env
+  const url = import.meta.env.VITE_API_BASE_URL || process.env.REACT_APP_API_URL;
+
   if (!url) {
     throw new Error(
-      'REACT_APP_API_URL environment variable is not set.\n' +
-      'Run: cd fitness && ./env-sync.sh'
+      'VITE_API_BASE_URL environment variable is not set.\n' +
+      'Set it in Vercel environment variables'
     );
   }
-  
+
   // Remove trailing slash if present
   return url.endsWith('/') ? url.slice(0, -1) : url;
 })();
@@ -37,7 +38,7 @@ const API_BASE = (() => {
  * Get the Google Client ID from environment.
  * Optional - only required if using OAuth authentication.
  */
-const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || process.env.REACT_APP_GOOGLE_CLIENT_ID;
 
 /**
  * API endpoints for fitness module
