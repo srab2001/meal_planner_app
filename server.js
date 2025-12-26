@@ -2385,9 +2385,10 @@ app.post('/api/login', async (req, res) => {
     }
 
     // Generate JWT token
+    console.log('[LOGIN] Generating JWT for user:', user.id, typeof user.id);
     const token = jwt.sign(
       {
-        id: user.id,
+        id: String(user.id),
         email: user.email,
         role: 'user'
       },
@@ -2400,7 +2401,7 @@ app.post('/api/login', async (req, res) => {
     res.json({
       token,
       user: {
-        id: user.id,
+        id: String(user.id),
         email: user.email,
         display_name: user.display_name
       }
