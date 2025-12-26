@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './FitnessTracker.css';
 import WorkoutLog from './WorkoutLog';
 import ProgressDashboard from './ProgressDashboard';
+import AICoach from './AICoach';
 
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -14,6 +15,7 @@ function FitnessTracker({ user }) {
     completionRate: 0
   });
   const [loading, setLoading] = useState(true);
+  const [showAICoach, setShowAICoach] = useState(false);
 
   useEffect(() => {
     fetchWorkouts();
@@ -73,6 +75,11 @@ function FitnessTracker({ user }) {
       console.error('Error saving workout:', error);
       alert('Failed to save workout: ' + error.message);
     }
+  };
+
+  const handleAIWorkoutGenerated = async (workoutData) => {
+    await handleSaveWorkout(workoutData);
+    setShowAICoach(false);
   };
 
   if (currentView === 'log') {
@@ -141,6 +148,14 @@ function FitnessTracker({ user }) {
         </button>
 
         <button
+          className="action-button ai-button"
+          onClick={() => setShowAICoach(true)}
+        >
+          <span className="button-icon">✨</span>
+          <span className="button-text">AI Coach</span>
+        </button>
+
+        <button
           className="action-button secondary"
           onClick={() => setCurrentView('progress')}
         >
@@ -194,6 +209,14 @@ function FitnessTracker({ user }) {
           </div>
         )}
       </div>
+
+      {/* AI Coach Modal */}
+      {showAICoach && (
+        <AICoach
+          onWorkoutGenerated={handleAIWorkoutGenerated}
+          onClose={() => setShowAICoach(false)}
+        />
+      )}
     </div>
   );
 }

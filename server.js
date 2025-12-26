@@ -5,7 +5,7 @@ const cors = require('cors');
 const session = require('express-session');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
-// const OpenAI = require('openai'); // uncomment and wire /api/generate-meals when ready
+const OpenAI = require('openai');
 
 const {
   PORT,
@@ -194,6 +194,9 @@ app.post('/api/generate-meals', requireAuth, async (req, res) => {
 // In-memory storage for workouts (replace with database later)
 const workoutStorage = new Map();
 
+// Initialize OpenAI client
+const openai = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
+
 // Get all workouts for authenticated user
 app.get('/api/fitness/workouts', requireAuth, (req, res) => {
   const userId = req.user.id;
@@ -307,6 +310,162 @@ app.delete('/api/fitness/workouts/:id', requireAuth, (req, res) => {
     res.status(500).json({ error: 'Failed to delete workout' });
   }
 });
+
+// AI Workout Generation
+app.post('/api/fitness/ai/generate-workout', requireAuth, async (req, res) => {
+  try {
+    if (!openai) {
+      return res.status(503).json({
+        error: 'AI workout generation is not available. OpenAI API key not configured.'
+      });
+    }
+
+    const {
+      fitnessGoal,
+      experienceLevel,
+      workoutDuration,
+      equipment,
+      targetMuscles,
+      daysPerWeek
+    } = req.body;
+
+    // Validate required fields
+    if (!fitnessGoal || !experienceLevel || !workoutDuration || !equipment || equipment.length === 0) {
+      return res.status(400).json({
+        error: 'Missing required fields: fitnessGoal, experienceLevel, workoutDuration, equipment'
+      });
+    }
+
+    // Build the prompt for OpenAI
+    const prompt = buildWorkoutPrompt({
+      fitnessGoal,
+      experienceLevel,
+      workoutDuration,
+      equipment,
+      targetMuscles,
+      daysPerWeek
+    });
+
+    console.log('Generating AI workout with OpenAI...');
+
+    // Call OpenAI API
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a professional fitness coach and personal trainer. Create personalized workout plans based on user preferences. Return ONLY valid JSON without markdown formatting.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 2000
+    });
+
+    const responseText = completion.choices[0].message.content.trim();
+
+    // Parse the JSON response
+    let workoutData;
+    try {
+      // Remove markdown code blocks if present
+      const cleanedResponse = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+      workoutData = JSON.parse(cleanedResponse);
+    } catch (parseError) {
+      console.error('Failed to parse OpenAI response:', responseText);
+      throw new Error('Failed to parse AI response. Please try again.');
+    }
+
+    // Format the workout for our frontend
+    const formattedWorkout = {
+      workoutDate: new Date().toISOString().split('T')[0],
+      workoutName: workoutData.workoutName || `${fitnessGoal} Workout`,
+      exercises: workoutData.exercises.map(ex => ({
+        exerciseName: ex.name || ex.exerciseName,
+        category: ex.category || 'General',
+        sets: ex.sets.map(set => ({
+          reps: set.reps || 10,
+          weight: set.weight || 0,
+          unit: set.unit || 'lbs'
+        }))
+      })),
+      notes: workoutData.notes || workoutData.coachNotes || ''
+    };
+
+    res.json({
+      success: true,
+      workout: formattedWorkout
+    });
+
+  } catch (error) {
+    console.error('Error generating AI workout:', error);
+
+    if (error.status === 401) {
+      return res.status(503).json({
+        error: 'Invalid OpenAI API key. Please check your configuration.'
+      });
+    }
+
+    res.status(500).json({
+      error: error.message || 'Failed to generate AI workout'
+    });
+  }
+});
+
+// Helper function to build workout generation prompt
+function buildWorkoutPrompt(params) {
+  const {
+    fitnessGoal,
+    experienceLevel,
+    workoutDuration,
+    equipment,
+    targetMuscles,
+    daysPerWeek
+  } = params;
+
+  const goalDescriptions = {
+    muscle_gain: 'build muscle mass and increase size',
+    weight_loss: 'lose weight and burn fat',
+    endurance: 'improve cardiovascular endurance and stamina',
+    strength: 'increase maximum strength and power',
+    flexibility: 'enhance flexibility and mobility',
+    general: 'improve overall fitness and health'
+  };
+
+  const muscleTargets = targetMuscles && targetMuscles.length > 0
+    ? ` Focus on these muscle groups: ${targetMuscles.join(', ')}.`
+    : '';
+
+  return `Create a ${workoutDuration}-minute workout plan for someone who wants to ${goalDescriptions[fitnessGoal]}.
+
+Experience Level: ${experienceLevel}
+Available Equipment: ${equipment.join(', ')}
+Days per Week: ${daysPerWeek}${muscleTargets}
+
+Requirements:
+1. Create ${Math.min(8, Math.floor(parseInt(workoutDuration) / 5))} exercises appropriate for ${experienceLevel} level
+2. Each exercise should have 3-4 sets
+3. Provide appropriate rep ranges for the fitness goal
+4. Include exercise categories (Chest, Back, Legs, Shoulders, Arms, Core)
+5. Add helpful coaching notes at the end
+
+Return ONLY a JSON object in this exact format (no markdown, no code blocks):
+{
+  "workoutName": "Descriptive workout name",
+  "exercises": [
+    {
+      "name": "Exercise name",
+      "category": "Muscle group",
+      "sets": [
+        {"reps": 10, "weight": 0, "unit": "lbs"}
+      ]
+    }
+  ],
+  "notes": "Coaching tips and form cues"
+}`;
+}
 
 // Helper function to calculate workout duration
 function calculateWorkoutDuration(workout) {
