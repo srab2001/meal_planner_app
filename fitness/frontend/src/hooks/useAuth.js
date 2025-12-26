@@ -35,5 +35,5 @@ export function useAuth() {
     window.location.href = '/';
   };
 
-  return { user, token, loading, logout };
+  return { user, token, loading, logout, setUser, setToken };
 }

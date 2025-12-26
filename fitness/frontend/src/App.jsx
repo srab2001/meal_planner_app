@@ -5,6 +5,7 @@ import Dashboard from './components/Dashboard';
 import AdminQuestions from './components/AdminQuestions';
 import WorkoutLog from './components/WorkoutLog';
 import WorkoutDetail from './components/WorkoutDetail';
+import Login from './components/Login';
 import { useAuth } from './hooks/useAuth';
 import './App.css';
 
@@ -13,20 +14,17 @@ import './App.css';
  * Handles routing between different fitness screens with React Router
  */
 function App() {
-  const { user, token, loading, logout } = useAuth();
+  const { user, token, loading, logout, setUser, setToken } = useAuth();
 
   if (loading) {
     return <div className="app-loading">Loading fitness app...</div>;
   }
 
   if (!user || !token) {
-    return (
-      <div className="app-login-prompt">
-        <h1>Fitness Module</h1>
-        <p>Please log in to access the fitness app.</p>
-        <p>Redirect to main app login...</p>
-      </div>
-    );
+    return <Login onLoginSuccess={(newUser, newToken) => {
+      setUser(newUser);
+      setToken(newToken);
+    }} />;
   }
 
   return (
