@@ -100,6 +100,35 @@ function AICoachQuestionnaire({ user, token }) {
       setLoading(true);
       setError(null);
 
+      // Check if using demo token - use sample workout for demo users
+      const isDemoUser = token && token.startsWith('demo-token-');
+
+      if (isDemoUser) {
+        // Generate a sample workout plan for demo users
+        const demoWorkout = [
+          { day: 'Monday', exercise: 'Squats', sets: 4, reps: '8-10', rest: '90 sec', notes: 'Focus on depth and form' },
+          { day: 'Monday', exercise: 'Leg Press', sets: 3, reps: '10-12', rest: '60 sec', notes: 'Controlled movement' },
+          { day: 'Monday', exercise: 'Lunges', sets: 3, reps: '12 each', rest: '60 sec', notes: 'Alternating legs' },
+          { day: 'Wednesday', exercise: 'Bench Press', sets: 4, reps: '8-10', rest: '90 sec', notes: 'Full range of motion' },
+          { day: 'Wednesday', exercise: 'Incline Dumbbell Press', sets: 3, reps: '10-12', rest: '60 sec', notes: '30-degree incline' },
+          { day: 'Wednesday', exercise: 'Cable Flyes', sets: 3, reps: '12-15', rest: '45 sec', notes: 'Squeeze at peak' },
+          { day: 'Friday', exercise: 'Deadlifts', sets: 4, reps: '6-8', rest: '120 sec', notes: 'Keep back neutral' },
+          { day: 'Friday', exercise: 'Barbell Rows', sets: 3, reps: '8-10', rest: '90 sec', notes: 'Pull to lower chest' },
+          { day: 'Friday', exercise: 'Lat Pulldowns', sets: 3, reps: '10-12', rest: '60 sec', notes: 'Wide grip' },
+        ];
+
+        navigate('/workout-plan', {
+          state: {
+            workout: demoWorkout,
+            message: 'Demo workout plan generated based on your answers!',
+            goalName,
+            goalId,
+            answers,
+          },
+        });
+        return;
+      }
+
       // Build message content
       let messageContent = `Generate a workout plan based on these answers: ${JSON.stringify(answers)}`;
 

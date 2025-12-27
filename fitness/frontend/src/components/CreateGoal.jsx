@@ -27,6 +27,22 @@ function CreateGoal({ user, token }) {
       setSaving(true);
       setError(null);
 
+      // Check if using demo token - skip backend for demo users
+      const isDemoUser = token && token.startsWith('demo-token-');
+
+      if (isDemoUser) {
+        // For demo users, skip backend and navigate directly
+        const demoGoalId = 'demo-goal-' + Date.now();
+        navigate('/ai-coach', {
+          state: {
+            goalId: demoGoalId,
+            goalName: goalName.trim(),
+            goalDescription: goalDescription.trim()
+          }
+        });
+        return;
+      }
+
       const response = await fetch(`${API_BASE}${ENDPOINTS.GOALS}`, {
         method: 'POST',
         headers: {
