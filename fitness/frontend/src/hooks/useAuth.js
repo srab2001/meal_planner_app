@@ -13,14 +13,21 @@ export function useAuth() {
   useEffect(() => {
     // First, check URL hash for auth passed from main switchboard
     const hash = window.location.hash;
+    console.log('🔐 useAuth: checking hash:', hash);
+
     if (hash && hash.startsWith('#auth=')) {
       try {
-        const params = new URLSearchParams(hash.substring(6)); // Remove '#auth='
+        const paramString = hash.substring(6); // Remove '#auth='
+        console.log('🔐 useAuth: paramString:', paramString);
+        const params = new URLSearchParams(paramString);
         const urlToken = params.get('token');
         const urlUser = params.get('user');
+        console.log('🔐 useAuth: urlToken:', urlToken ? 'found' : 'missing');
+        console.log('🔐 useAuth: urlUser:', urlUser ? 'found' : 'missing');
 
         if (urlToken && urlUser) {
           const parsedUser = JSON.parse(urlUser);
+          console.log('🔐 useAuth: SSO login successful for:', parsedUser.email);
           // Store in localStorage for this app
           localStorage.setItem('token', urlToken);
           localStorage.setItem('auth_token', urlToken); // Also store as auth_token for consistency

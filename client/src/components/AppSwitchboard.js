@@ -233,11 +233,27 @@ export default function AppSwitchboard({ onSelectApp, user, onLogout, onLogin })
                 </button>
               </>
             ) : (
-              onLogout && (
-                <button className="logout-btn" onClick={onLogout} title="Sign out">
-                  <span>🚪</span> Logout
-                </button>
-              )
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <span style={{ color: 'white', fontSize: '14px' }}>
+                  {user.email || user.name || 'Logged in'}
+                </span>
+                {onLogout && (
+                  <button className="logout-btn" onClick={onLogout} title="Sign out" style={{
+                    background: '#e74c3c',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    <span>🚪</span> Logout
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>
