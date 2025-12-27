@@ -39,10 +39,41 @@ function consolidateShoppingList(shoppingList) {
     'lbs': { toBase: (v) => v * 453.592, type: 'weight', display: 'lb' },
     'g': { toBase: (v) => v, type: 'weight', display: 'g' },
     'kg': { toBase: (v) => v * 1000, type: 'weight', display: 'kg' },
-    // Count (units)
-    'each': { toBase: (v) => v, type: 'count', display: 'each' },
-    'piece': { toBase: (v) => v, type: 'count', display: 'piece' },
-    'item': { toBase: (v) => v, type: 'count', display: 'item' }
+    // Count (units) - these will be rounded to whole numbers
+    'each': { toBase: (v) => v, type: 'count', display: '' },
+    'piece': { toBase: (v) => v, type: 'count', display: '' },
+    'pieces': { toBase: (v) => v, type: 'count', display: '' },
+    'item': { toBase: (v) => v, type: 'count', display: '' },
+    'items': { toBase: (v) => v, type: 'count', display: '' },
+    'egg': { toBase: (v) => v, type: 'count', display: '' },
+    'eggs': { toBase: (v) => v, type: 'count', display: '' },
+    'clove': { toBase: (v) => v, type: 'count', display: '' },
+    'cloves': { toBase: (v) => v, type: 'count', display: '' },
+    'slice': { toBase: (v) => v, type: 'count', display: '' },
+    'slices': { toBase: (v) => v, type: 'count', display: '' },
+    'bunch': { toBase: (v) => v, type: 'count', display: '' },
+    'bunches': { toBase: (v) => v, type: 'count', display: '' },
+    'head': { toBase: (v) => v, type: 'count', display: '' },
+    'heads': { toBase: (v) => v, type: 'count', display: '' },
+    'can': { toBase: (v) => v, type: 'count', display: '' },
+    'cans': { toBase: (v) => v, type: 'count', display: '' },
+    'package': { toBase: (v) => v, type: 'count', display: '' },
+    'packages': { toBase: (v) => v, type: 'count', display: '' },
+    'bag': { toBase: (v) => v, type: 'count', display: '' },
+    'bags': { toBase: (v) => v, type: 'count', display: '' },
+    'bottle': { toBase: (v) => v, type: 'count', display: '' },
+    'bottles': { toBase: (v) => v, type: 'count', display: '' },
+    'jar': { toBase: (v) => v, type: 'count', display: '' },
+    'jars': { toBase: (v) => v, type: 'count', display: '' },
+    'loaf': { toBase: (v) => v, type: 'count', display: '' },
+    'loaves': { toBase: (v) => v, type: 'count', display: '' },
+    'stalk': { toBase: (v) => v, type: 'count', display: '' },
+    'stalks': { toBase: (v) => v, type: 'count', display: '' },
+    'sprig': { toBase: (v) => v, type: 'count', display: '' },
+    'sprigs': { toBase: (v) => v, type: 'count', display: '' },
+    'medium': { toBase: (v) => v, type: 'count', display: '' },
+    'large': { toBase: (v) => v, type: 'count', display: '' },
+    'small': { toBase: (v) => v, type: 'count', display: '' }
   };
 
   // Helper function to parse fraction strings (e.g., "1/4" -> 0.25)
@@ -190,9 +221,10 @@ function consolidateShoppingList(shoppingList) {
         displayUnit = displayQuantity >= 1.5 ? 'oz' : 'oz';
       }
     } else {
-      // Count (each)
-      displayQuantity = baseQuantity;
-      displayUnit = displayQuantity >= 1.5 ? 'items' : 'item';
+      // Count (each) - round UP to nearest whole number
+      // You can't buy 0.1 of an egg, so round to 1
+      displayQuantity = Math.ceil(baseQuantity);
+      displayUnit = displayQuantity > 1 ? '' : '';
     }
 
     // Format display - reduce decimal places
@@ -200,7 +232,11 @@ function consolidateShoppingList(shoppingList) {
     if (!consolidated[categoryKey]) consolidated[categoryKey] = [];
 
     let formatted;
-    if (displayQuantity % 1 === 0) {
+
+    // For count items (eggs, items, pieces), always use whole numbers
+    if (type === 'count') {
+      formatted = `${displayQuantity} ${name}`;
+    } else if (displayQuantity % 1 === 0) {
       // Whole number
       formatted = `${Math.round(displayQuantity)} ${displayUnit} ${name}`;
     } else if (displayQuantity % 0.25 === 0) {
