@@ -55,6 +55,26 @@
   font-size: 0.9rem;
 }
 
+.ai-coach__tweak-notice {
+  background: #FEF3C7;
+  border: 1px solid #FCD34D;
+  border-radius: var(--radius-md);
+  color: #92400E;
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  font-size: 0.9rem;
+}
+
+.ai-coach__tweak-notice strong {
+  display: block;
+  margin-bottom: var(--spacing-xs);
+}
+
+.ai-coach__tweak-notice p {
+  margin: 0;
+  font-style: italic;
+}
+
 .ai-coach__form {
   display: flex;
   flex-direction: column;

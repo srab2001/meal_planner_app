@@ -1,16 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { API_BASE, ENDPOINTS } from '../config/api';
 import './AICoachQuestionnaire.css';
 
 /**
- * Screen B - AI Coach Questionnaire
- * 7 questions that feed into ChatGPT to generate workout plan
+ * Screen B - AI Coach Questionnaire (Enhanced)
+ * Features:
+ * - 7 questions that feed into ChatGPT
+ * - Support for regeneration with tweaks
+ * - Pre-fills answers when regenerating
  */
 function AICoachQuestionnaire({ user, token }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { goalId, goalName, goalDescription } = location.state || {};
+  const {
+    goalId,
+    goalName,
+    goalDescription,
+    previousAnswers,
+    tweakRequest,
+  } = location.state || {};
 
   const [answers, setAnswers] = useState({
     fitness_objective: '',
@@ -24,6 +33,13 @@ function AICoachQuestionnaire({ user, token }) {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Pre-fill answers if regenerating
+  useEffect(() => {
+    if (previousAnswers) {
+      setAnswers(previousAnswers);
+    }
+  }, [previousAnswers]);
 
   const questions = [
     {
@@ -84,6 +100,14 @@ function AICoachQuestionnaire({ user, token }) {
       setLoading(true);
       setError(null);
 
+      // Build message content
+      let messageContent = `Generate a workout plan based on these answers: ${JSON.stringify(answers)}`;
+
+      // Add tweak request if regenerating
+      if (tweakRequest) {
+        messageContent += `\n\nADDITIONAL MODIFICATIONS REQUESTED: ${tweakRequest}`;
+      }
+
       // Send answers to AI endpoint
       const response = await fetch(`${API_BASE}${ENDPOINTS.AI_INTERVIEW}`, {
         method: 'POST',
@@ -95,10 +119,11 @@ function AICoachQuestionnaire({ user, token }) {
           interview_answers: answers,
           goal_id: goalId,
           goal_name: goalName,
+          tweak_request: tweakRequest || null,
           messages: [
             {
               role: 'user',
-              content: `Generate a workout plan based on these answers: ${JSON.stringify(answers)}`,
+              content: messageContent,
             },
           ],
         }),
@@ -117,6 +142,7 @@ function AICoachQuestionnaire({ user, token }) {
           workout: data.workout,
           message: data.message,
           goalName,
+          goalId,
           answers,
         },
       });
@@ -134,20 +160,22 @@ function AICoachQuestionnaire({ user, token }) {
         <div className="ai-coach__header">
           <h1 className="ai-coach__title">AI Workout Coach</h1>
           {goalName && (
-            <p className="ai-coach__goal-badge">
-              Goal: {goalName}
-            </p>
+            <p className="ai-coach__goal-badge">Goal: {goalName}</p>
+          )}
+          {tweakRequest && (
+            <div className="ai-coach__tweak-notice">
+              <strong>Regenerating with modifications:</strong>
+              <p>{tweakRequest}</p>
+            </div>
           )}
           <p className="ai-coach__subtitle">
-            Answer the following questions so our AI can create your personalized workout plan.
+            {tweakRequest
+              ? 'Review your answers below and click Generate to create a modified plan.'
+              : 'Answer the following questions so our AI can create your personalized workout plan.'}
           </p>
         </div>
 
-        {error && (
-          <div className="ai-coach__error">
-            {error}
-          </div>
-        )}
+        {error && <div className="ai-coach__error">{error}</div>}
 
         <form onSubmit={handleSubmit} className="ai-coach__form">
           {questions.map((q) => (
@@ -167,16 +195,14 @@ function AICoachQuestionnaire({ user, token }) {
             </div>
           ))}
 
-          <button
-            type="submit"
-            className="ai-coach__button"
-            disabled={loading}
-          >
+          <button type="submit" className="ai-coach__button" disabled={loading}>
             {loading ? (
               <>
                 <span className="ai-coach__spinner"></span>
-                Generating Workout Plan...
+                {tweakRequest ? 'Regenerating Plan...' : 'Generating Workout Plan...'}
               </>
+            ) : tweakRequest ? (
+              'Regenerate Modified Plan'
             ) : (
               'Generate AI Workout Plan'
             )}

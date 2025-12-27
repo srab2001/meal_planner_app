@@ -1299,7 +1299,7 @@ router.post('/ai-interview', requireAuth, async (req, res) => {
     console.log('[AI Interview] OpenAI client found, making request...');
 
     // Build context for AI with interview answers if provided
-    const { interview_answers, goal_name } = req.body;
+    const { interview_answers, goal_name, tweak_request } = req.body;
 
     let systemPrompt = `You are a fitness coach.
 
@@ -1359,6 +1359,12 @@ User's Answers:
 ${goal_name ? `\nGoal Name: ${goal_name}` : ''}
 
 Generate a personalized ${interview_answers.days_per_week || '4-day'} workout plan based on these answers. Make sure to respect any injuries mentioned and match the intensity level requested.`;
+
+      // Add tweak request if regenerating
+      if (tweak_request) {
+        answersText += `\n\nIMPORTANT MODIFICATIONS REQUESTED BY USER: ${tweak_request}
+Please adjust the workout plan according to these specific modifications while maintaining safety and respecting any injuries.`;
+      }
 
       systemPrompt += '\n\n' + answersText;
     }
