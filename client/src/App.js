@@ -82,11 +82,31 @@ function App() {
     return response;
   };
 
+  // Fitness app URL for SSO redirect
+  const FITNESS_APP_URL = 'https://frontend-cvqv1y3sj-stus-projects-458dd35a.vercel.app';
+
   // Handler: Login - MUST be defined before useEffect that calls it
   const handleLogin = (userData) => {
     console.log('🔐 handleLogin called, user:', userData?.email);
     setUser(userData);
-    
+
+    // Check if user came from fitness app (returnTo=fitness in URL)
+    const urlParams = new URLSearchParams(window.location.search);
+    const returnTo = urlParams.get('returnTo');
+    if (returnTo === 'fitness') {
+      console.log('🔐 User came from fitness app, redirecting back with SSO');
+      // Clean up URL
+      window.history.replaceState(null, '', window.location.pathname);
+      // Redirect to fitness app with auth token
+      const token = localStorage.getItem('auth_token');
+      const userStr = localStorage.getItem('user');
+      if (token && userStr) {
+        const params = new URLSearchParams({ token, user: userStr });
+        window.location.href = `${FITNESS_APP_URL}#auth=${params.toString()}`;
+        return;
+      }
+    }
+
     // Check if there's a redirect stored (user was trying to access specific app)
     const redirectTo = localStorage.getItem('redirect_after_login');
     if (redirectTo) {
