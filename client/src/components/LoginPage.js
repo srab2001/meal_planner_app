@@ -6,7 +6,7 @@ const OAUTH_BASE = process.env.REACT_APP_OAUTH_URL || PRODUCTION_OAUTH;
 
 console.log('LoginPage OAUTH_BASE:', OAUTH_BASE);
 
-function LoginPage() {
+function LoginPage({ onLogin }) {
   const [loginUrl, setLoginUrl] = useState('');
 
   useEffect(() => {
@@ -18,23 +18,96 @@ function LoginPage() {
     console.log('LoginPage LOGIN_URL:', url);
   }, []);
 
+  const handleDemoLogin = () => {
+    const demoUser = {
+      id: 'demo-user-001',
+      email: 'demo@asr.app',
+      name: 'Demo User',
+      role: 'user'
+    };
+    const demoToken = 'demo-token-' + Date.now();
+    localStorage.setItem('auth_token', demoToken);
+    localStorage.setItem('user', JSON.stringify(demoUser));
+    if (onLogin) {
+      onLogin(demoUser);
+    }
+  };
+
   return (
-    <div style={{ padding: '20px' }}>
-      <h1>Meal planner login</h1>
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      padding: '20px'
+    }}>
+      <div style={{
+        background: 'white',
+        borderRadius: '16px',
+        padding: '40px',
+        maxWidth: '400px',
+        width: '100%',
+        boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+        textAlign: 'center'
+      }}>
+        <h1 style={{ fontSize: '28px', marginBottom: '10px', color: '#333' }}>
+          AI Meal Planner
+        </h1>
+        <p style={{ color: '#666', marginBottom: '30px' }}>
+          Plan your weekly meals with personalized AI-generated recipes
+        </p>
 
-      <p>Step 1: start Google login.</p>
+        {/* Demo Login Button */}
+        <button
+          onClick={handleDemoLogin}
+          style={{
+            width: '100%',
+            padding: '14px 20px',
+            fontSize: '16px',
+            fontWeight: '600',
+            background: '#F5A623',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            marginBottom: '15px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '10px'
+          }}
+        >
+          Try Demo (No Login Required)
+        </button>
 
-      {/* This is a plain anchor. No JS, no button wrapper. */}
-      <p>
-        {loginUrl ? (
-          <a href={loginUrl}>Start Google login</a>
-        ) : (
-          <span>Loading...</span>
+        {/* Google Login Button */}
+        {loginUrl && (
+          <a
+            href={loginUrl}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px',
+              width: '100%',
+              padding: '14px 20px',
+              fontSize: '16px',
+              fontWeight: '600',
+              background: 'white',
+              color: '#333',
+              border: '1px solid #ddd',
+              borderRadius: '8px',
+              textDecoration: 'none',
+              boxSizing: 'border-box'
+            }}
+          >
+            <span style={{ fontSize: '20px' }}>G</span>
+            Continue with Google
+          </a>
         )}
-      </p>
-
-      <p>Step 2: if the link above does nothing, copy this URL and paste in a new tab:</p>
-      <pre>{loginUrl}</pre>
+      </div>
     </div>
   );
 }
