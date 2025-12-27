@@ -115,7 +115,21 @@ export default function AppSwitchboard({ onSelectApp, user, onLogout, onLogin })
   const handleAppClick = (app) => {
     // Handle external URL apps (like new Fitness Coach)
     if (app.externalUrl) {
-      window.open(app.externalUrl, '_blank');
+      // Pass auth token to external app so user is auto-authenticated
+      const token = localStorage.getItem('auth_token');
+      const userStr = localStorage.getItem('user');
+      let url = app.externalUrl;
+
+      if (token && userStr) {
+        // Pass token and user info via URL hash (more secure than query params)
+        const params = new URLSearchParams({
+          token: token,
+          user: userStr
+        });
+        url = `${app.externalUrl}#auth=${params.toString()}`;
+      }
+
+      window.open(url, '_blank');
       return;
     }
 
