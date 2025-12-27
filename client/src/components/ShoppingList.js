@@ -231,30 +231,41 @@ function consolidateShoppingList(shoppingList) {
     const categoryKey = 'Consolidated';
     if (!consolidated[categoryKey]) consolidated[categoryKey] = [];
 
-    let formatted;
+    let quantityStr;
 
     // For count items (eggs, items, pieces), always use whole numbers
     if (type === 'count') {
-      formatted = `${displayQuantity} ${name}`;
+      quantityStr = `${displayQuantity}`;
     } else if (displayQuantity % 1 === 0) {
       // Whole number
-      formatted = `${Math.round(displayQuantity)} ${displayUnit} ${name}`;
+      quantityStr = `${Math.round(displayQuantity)} ${displayUnit}`;
     } else if (displayQuantity % 0.25 === 0) {
       // Quarter measurements (common in recipes)
       const quarters = Math.round(displayQuantity * 4);
       if (quarters === 1) {
-        formatted = `1/4 ${displayUnit} ${name}`;
+        quantityStr = `1/4 ${displayUnit}`;
       } else if (quarters % 4 === 0) {
-        formatted = `${quarters / 4} ${displayUnit} ${name}`;
+        quantityStr = `${quarters / 4} ${displayUnit}`;
       } else {
-        formatted = `${quarters}/4 ${displayUnit} ${name}`;
+        quantityStr = `${quarters}/4 ${displayUnit}`;
       }
     } else {
       // Decimal
-      formatted = `${displayQuantity.toFixed(2)} ${displayUnit} ${name}`;
+      quantityStr = `${displayQuantity.toFixed(2)} ${displayUnit}`;
     }
 
-    consolidated[categoryKey].push(formatted);
+    // Capitalize first letter of name
+    const displayName = name.charAt(0).toUpperCase() + name.slice(1);
+
+    // Return object in same format as original shopping list items
+    consolidated[categoryKey].push({
+      item: displayName,
+      quantity: quantityStr.trim(),
+      // Prices are not available after consolidation
+      estimatedPrice: null,
+      primaryStorePrice: null,
+      comparisonStorePrice: null
+    });
   });
 
   return Object.keys(consolidated).length > 0 ? consolidated : shoppingList;
