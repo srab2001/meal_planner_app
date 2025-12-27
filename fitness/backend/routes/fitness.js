@@ -1530,17 +1530,22 @@ Be friendly, encouraging, and professional. Keep responses concise.`;
  */
 router.get('/admin/interview-questions', requireAuth, async (req, res) => {
   try {
-    const { active } = req.query;
-    
+    const { active, plan_type } = req.query;
+
     console.log(`[GET /api/fitness/admin/interview-questions] Fetching interview questions`);
     if (active !== undefined) console.log(`  Filter: active=${active}`);
-    
+    if (plan_type) console.log(`  Filter: plan_type=${plan_type}`);
+
     const where = {};
-    
+
     if (active !== undefined) {
       where.is_active = active === 'true' || active === true;
     }
-    
+
+    if (plan_type) {
+      where.plan_type = plan_type;
+    }
+
     let questions = await getMainDb().admin_interview_questions.findMany({
       where,
       orderBy: { order_position: 'asc' },
@@ -1616,6 +1621,9 @@ router.get('/admin/interview-questions', requireAuth, async (req, res) => {
         options: q.options,
         order_position: q.order_position,
         is_active: q.is_active,
+        plan_type: q.plan_type,
+        help_text: q.help_text,
+        comar_tag: q.comar_tag,
         created_at: q.created_at,
         updated_at: q.updated_at,
       })),
@@ -1646,11 +1654,11 @@ router.get('/admin/interview-questions', requireAuth, async (req, res) => {
  */
 router.post('/admin/interview-questions', requireAuth, async (req, res) => {
   try {
-    const { question_text, question_type, options, order_position, is_active } = req.body;
-    
+    const { question_text, question_type, options, order_position, is_active, plan_type, help_text, comar_tag } = req.body;
+
     console.log(`[POST /api/fitness/admin/interview-questions] Creating question`);
-    console.log(`  Type: ${question_type}, Question: ${question_text?.substring(0, 50)}...`);
-    
+    console.log(`  Type: ${question_type}, Plan: ${plan_type}, Question: ${question_text?.substring(0, 50)}...`);
+
     // Input validation
     if (!question_text || typeof question_text !== 'string' || !question_text.trim()) {
       return res.status(400).json({
@@ -1658,14 +1666,22 @@ router.post('/admin/interview-questions', requireAuth, async (req, res) => {
         message: 'question_text is required and must be a non-empty string',
       });
     }
-    
+
     if (!question_type || !['text', 'multiple_choice', 'range', 'yes_no'].includes(question_type)) {
       return res.status(400).json({
         error: 'invalid_type',
         message: 'question_type must be one of: text, multiple_choice, range, yes_no',
       });
     }
-    
+
+    // Validate plan_type if provided
+    if (plan_type && !['IEP', '504', 'BIP'].includes(plan_type)) {
+      return res.status(400).json({
+        error: 'invalid_plan_type',
+        message: 'plan_type must be one of: IEP, 504, BIP',
+      });
+    }
+
     // Validate options for multiple_choice
     if (question_type === 'multiple_choice') {
       if (!options || !Array.isArray(options) || options.length < 2) {
@@ -1675,7 +1691,7 @@ router.post('/admin/interview-questions', requireAuth, async (req, res) => {
         });
       }
     }
-    
+
     // Create the question
     const newQuestion = await getMainDb().admin_interview_questions.create({
       data: {
@@ -1684,11 +1700,14 @@ router.post('/admin/interview-questions', requireAuth, async (req, res) => {
         options: options ? options : null,
         order_position: typeof order_position === 'number' ? order_position : 0,
         is_active: is_active !== false, // default to true
+        plan_type: plan_type || null,
+        help_text: help_text ? help_text.trim() : null,
+        comar_tag: comar_tag ? comar_tag.trim() : null,
       },
     });
-    
+
     console.log(`✨ Question created: ${newQuestion.id}`);
-    
+
     res.json({
       success: true,
       question: {
@@ -1698,6 +1717,9 @@ router.post('/admin/interview-questions', requireAuth, async (req, res) => {
         options: newQuestion.options,
         order_position: newQuestion.order_position,
         is_active: newQuestion.is_active,
+        plan_type: newQuestion.plan_type,
+        help_text: newQuestion.help_text,
+        comar_tag: newQuestion.comar_tag,
         created_at: newQuestion.created_at,
         updated_at: newQuestion.updated_at,
       },
@@ -1729,22 +1751,22 @@ router.post('/admin/interview-questions', requireAuth, async (req, res) => {
 router.put('/admin/interview-questions/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { question_text, question_type, options, order_position, is_active } = req.body;
-    
+    const { question_text, question_type, options, order_position, is_active, plan_type, help_text, comar_tag } = req.body;
+
     console.log(`[PUT /api/fitness/admin/interview-questions/:id] Updating question: ${id}`);
-    
+
     // Check if question exists
     const existingQuestion = await getMainDb().admin_interview_questions.findUnique({
       where: { id: parseInt(id) },
     });
-    
+
     if (!existingQuestion) {
       return res.status(404).json({
         error: 'not_found',
         message: `Interview question with ID ${id} not found`,
       });
     }
-    
+
     // Validate inputs if provided
     if (question_type && !['text', 'multiple_choice', 'range', 'yes_no'].includes(question_type)) {
       return res.status(400).json({
@@ -1752,7 +1774,15 @@ router.put('/admin/interview-questions/:id', requireAuth, async (req, res) => {
         message: 'question_type must be one of: text, multiple_choice, range, yes_no',
       });
     }
-    
+
+    // Validate plan_type if provided
+    if (plan_type && !['IEP', '504', 'BIP'].includes(plan_type)) {
+      return res.status(400).json({
+        error: 'invalid_plan_type',
+        message: 'plan_type must be one of: IEP, 504, BIP',
+      });
+    }
+
     if (question_type === 'multiple_choice' && options) {
       if (!Array.isArray(options) || options.length < 2) {
         return res.status(400).json({
@@ -1761,7 +1791,7 @@ router.put('/admin/interview-questions/:id', requireAuth, async (req, res) => {
         });
       }
     }
-    
+
     // Build update object
     const updateData = {};
     if (question_text !== undefined) updateData.question_text = question_text;
@@ -1769,16 +1799,19 @@ router.put('/admin/interview-questions/:id', requireAuth, async (req, res) => {
     if (options !== undefined) updateData.options = options || null;
     if (order_position !== undefined) updateData.order_position = order_position;
     if (is_active !== undefined) updateData.is_active = is_active;
+    if (plan_type !== undefined) updateData.plan_type = plan_type || null;
+    if (help_text !== undefined) updateData.help_text = help_text ? help_text.trim() : null;
+    if (comar_tag !== undefined) updateData.comar_tag = comar_tag ? comar_tag.trim() : null;
     updateData.updated_at = new Date();
-    
+
     // Update the question
     const updatedQuestion = await getMainDb().admin_interview_questions.update({
       where: { id: parseInt(id) },
       data: updateData,
     });
-    
+
     console.log(`📝 Question updated: ${id}`);
-    
+
     res.json({
       success: true,
       question: {
@@ -1788,6 +1821,9 @@ router.put('/admin/interview-questions/:id', requireAuth, async (req, res) => {
         options: updatedQuestion.options,
         order_position: updatedQuestion.order_position,
         is_active: updatedQuestion.is_active,
+        plan_type: updatedQuestion.plan_type,
+        help_text: updatedQuestion.help_text,
+        comar_tag: updatedQuestion.comar_tag,
         created_at: updatedQuestion.created_at,
         updated_at: updatedQuestion.updated_at,
       },

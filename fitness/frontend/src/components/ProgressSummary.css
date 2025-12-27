@@ -1,0 +1,166 @@
+/* Progress Summary */
+
+.progress-summary {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: var(--spacing-md);
+}
+
+.progress-summary--loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--asr-gray-600);
+}
+
+/* Header */
+.progress-summary__title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--asr-gray-900);
+  margin: 0 0 var(--spacing-lg);
+}
+
+/* Error */
+.progress-summary__error {
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: #FEE2E2;
+  border: 1px solid #FECACA;
+  border-radius: var(--radius-md);
+  color: #991B1B;
+}
+
+/* Cards */
+.progress-summary__card {
+  background: var(--asr-white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+}
+
+.progress-summary__card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--asr-gray-800);
+  margin: 0 0 var(--spacing-md);
+}
+
+/* Line Chart */
+.progress-summary__chart {
+  padding: var(--spacing-md) 0;
+}
+
+.progress-summary__line-chart {
+  position: relative;
+}
+
+.progress-summary__svg {
+  width: 100%;
+  height: 100px;
+}
+
+.progress-summary__chart-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--spacing-sm);
+  font-size: 0.8rem;
+  color: var(--asr-gray-500);
+}
+
+/* Bar Chart */
+.progress-summary__bar-chart {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  height: 150px;
+  padding: var(--spacing-md) 0;
+}
+
+.progress-summary__bar-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.progress-summary__bar-container {
+  width: 60px;
+  height: 100px;
+  background: var(--asr-gray-100);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+.progress-summary__bar {
+  width: 100%;
+  background: var(--asr-primary);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  transition: height 0.3s ease;
+  min-height: 10px;
+}
+
+.progress-summary__bar--calories {
+  background: var(--asr-orange);
+}
+
+.progress-summary__bar--steps {
+  background: var(--asr-gray-600);
+}
+
+.progress-summary__bar-label {
+  font-size: 0.8rem;
+  color: var(--asr-gray-600);
+}
+
+.progress-summary__bar-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--asr-gray-900);
+}
+
+/* Stats */
+.progress-summary__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-md);
+}
+
+.progress-summary__stat {
+  background: var(--asr-white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--spacing-md);
+  text-align: center;
+}
+
+.progress-summary__stat-value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--asr-gray-900);
+}
+
+.progress-summary__stat-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--asr-gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: var(--spacing-xs);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .progress-summary__stats {
+    grid-template-columns: 1fr;
+  }
+
+  .progress-summary__bar-container {
+    width: 50px;
+  }
+}

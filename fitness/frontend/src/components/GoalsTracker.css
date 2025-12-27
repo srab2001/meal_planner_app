@@ -1,0 +1,110 @@
+/* Goals Tracker */
+
+.goals-tracker {
+  max-width: 500px;
+  margin: 0 auto;
+  padding: var(--spacing-md);
+}
+
+.goals-tracker--loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--asr-gray-600);
+}
+
+/* Header */
+.goals-tracker__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.goals-tracker__title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--asr-gray-900);
+  margin: 0;
+}
+
+/* Error */
+.goals-tracker__error {
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: #FEE2E2;
+  border: 1px solid #FECACA;
+  border-radius: var(--radius-md);
+  color: #991B1B;
+}
+
+/* Goals List */
+.goals-tracker__list {
+  background: var(--asr-white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.goals-tracker__empty {
+  padding: var(--spacing-xl);
+  text-align: center;
+  color: var(--asr-gray-500);
+}
+
+.goals-tracker__empty p {
+  margin-bottom: var(--spacing-md);
+}
+
+.goals-tracker__item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--asr-gray-100);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.goals-tracker__item:last-child {
+  border-bottom: none;
+}
+
+.goals-tracker__item:hover {
+  background: var(--asr-gray-50);
+}
+
+.goals-tracker__item-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--asr-gray-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.goals-tracker__item-content {
+  flex: 1;
+}
+
+.goals-tracker__item-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--asr-gray-900);
+  margin: 0 0 var(--spacing-xs);
+}
+
+.goals-tracker__item-meta {
+  font-size: 0.85rem;
+  color: var(--asr-gray-500);
+  margin: 0;
+}
+
+.goals-tracker__item-arrow {
+  font-size: 1.5rem;
+  color: var(--asr-gray-400);
+}

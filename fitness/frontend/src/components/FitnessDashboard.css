@@ -1,0 +1,266 @@
+/* Fitness Dashboard - Main Dashboard View */
+
+.fitness-dashboard {
+  max-width: 500px;
+  margin: 0 auto;
+  padding: var(--spacing-md);
+}
+
+.fitness-dashboard--loading,
+.fitness-dashboard--error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  text-align: center;
+  gap: var(--spacing-md);
+}
+
+/* Welcome Header */
+.fitness-dashboard__welcome {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--asr-white);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.fitness-dashboard__welcome-content {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.fitness-dashboard__welcome-icon {
+  font-size: 1.5rem;
+}
+
+.fitness-dashboard__welcome-text {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--asr-gray-900);
+  margin: 0;
+}
+
+.fitness-dashboard__profile-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--asr-gray-200);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+
+/* Stats Cards */
+.fitness-dashboard__stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.fitness-dashboard__stat-card {
+  background: var(--asr-white);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm);
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--asr-gray-200);
+}
+
+.fitness-dashboard__stat-label {
+  font-size: 0.65rem;
+  color: var(--asr-gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: var(--spacing-xs);
+}
+
+.fitness-dashboard__stat-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--asr-gray-900);
+}
+
+.fitness-dashboard__stat-value--text {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.fitness-dashboard__stat-unit {
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: var(--asr-gray-500);
+  margin-left: 2px;
+}
+
+/* Sections */
+.fitness-dashboard__section {
+  background: var(--asr-white);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.fitness-dashboard__section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+}
+
+.fitness-dashboard__section-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--asr-gray-800);
+  margin: 0;
+}
+
+.fitness-dashboard__view-all {
+  font-size: 0.8rem;
+  color: var(--asr-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.fitness-dashboard__view-all:hover {
+  color: var(--asr-primary-dark);
+}
+
+/* Workout List */
+.fitness-dashboard__workout-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.fitness-dashboard__empty {
+  text-align: center;
+  padding: var(--spacing-lg);
+  color: var(--asr-gray-500);
+  font-size: 0.9rem;
+}
+
+.fitness-dashboard__empty a {
+  color: var(--asr-primary);
+}
+
+.fitness-dashboard__workout-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px solid var(--asr-gray-100);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.fitness-dashboard__workout-item:last-child {
+  border-bottom: none;
+}
+
+.fitness-dashboard__workout-item:hover {
+  background: var(--asr-gray-50);
+  margin: 0 calc(-1 * var(--spacing-sm));
+  padding-left: var(--spacing-sm);
+  padding-right: var(--spacing-sm);
+}
+
+.fitness-dashboard__workout-checkbox input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--asr-primary);
+}
+
+.fitness-dashboard__workout-info {
+  flex: 1;
+}
+
+.fitness-dashboard__workout-name {
+  font-size: 0.9rem;
+  color: var(--asr-gray-700);
+}
+
+.fitness-dashboard__workout-arrow {
+  color: var(--asr-gray-400);
+  font-size: 1.25rem;
+}
+
+/* Charts */
+.fitness-dashboard__charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-md);
+}
+
+.fitness-dashboard__chart {
+  background: var(--asr-gray-50);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm);
+}
+
+.fitness-dashboard__chart-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--asr-gray-700);
+  margin: 0 0 var(--spacing-sm);
+}
+
+.fitness-dashboard__chart-placeholder {
+  height: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.fitness-dashboard__bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spacing-xs);
+  height: 60px;
+}
+
+.fitness-dashboard__bar {
+  flex: 1;
+  background: var(--asr-gray-400);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  min-height: 10px;
+}
+
+.fitness-dashboard__chart-dots {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-sm);
+}
+
+.fitness-dashboard__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--asr-gray-300);
+}
+
+.fitness-dashboard__dot--active {
+  background: var(--asr-gray-600);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .fitness-dashboard__stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .fitness-dashboard__charts {
+    grid-template-columns: 1fr;
+  }
+}

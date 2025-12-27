@@ -380,21 +380,31 @@ model fitness_profiles {
 }
 
 /// Fitness goals - weight loss, muscle gain, endurance
+/// Updated to support 6-question Goal Builder with COMAR validation
 model fitness_goals {
-  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id      String    @db.Uuid
-  goal_type    String    // "weight_loss", "muscle_gain", "endurance"
-  target_value Decimal?  @db.Decimal(8, 2)
-  unit         String?   // "lbs", "kg", "minutes", "reps"
-  start_date   DateTime? @db.Date
-  target_date  DateTime? @db.Date
-  status       String    @default("active") // "active", "completed", "abandoned"
-  created_at   DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime  @default(now()) @db.Timestamptz(6)
-  users        users     @relation("fitness_goals", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id         String    @db.Uuid
+  goal_type       String    // "weight_loss", "muscle_gain", "endurance", "custom_plan"
+  target_value    Decimal?  @db.Decimal(8, 2)
+  unit            String?   // "lbs", "kg", "minutes", "reps"
+  start_date      DateTime? @db.Date
+  target_date     DateTime? @db.Date
+  status          String    @default("active") // "active", "completed", "abandoned", "draft"
+
+  // 6-Question Goal Builder Fields
+  plan_data       Json?     // Store all answers and AI output
+  plan_type       String?   // "IEP", "504", "BIP"
+  comar_validated Boolean   @default(false)  // Has passed COMAR validation
+  validated_at    DateTime? @db.Timestamptz(6)
+  ai_output       Json?     // AI-generated plan based on answers
+
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime  @default(now()) @db.Timestamptz(6)
+  users           users     @relation("fitness_goals", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([user_id], map: "idx_fitness_goals_user_id")
   @@index([status], map: "idx_fitness_goals_status")
+  @@index([plan_type], map: "idx_fitness_goals_plan_type")
 }
 
 /// Fitness workouts - individual workout sessions
@@ -458,10 +468,14 @@ model admin_interview_questions {
   options         Json?
   order_position  Int?     @default(0)
   is_active       Boolean  @default(true)
+  plan_type       String?  @db.VarChar(20)  // "IEP", "504", "BIP"
+  help_text       String?  @db.Text         // Help text shown to user
+  comar_tag       String?  @db.VarChar(50)  // COMAR validation tag: "measurable", "timeline", "specific"
   created_at      DateTime @default(now()) @db.Timestamp(0)
   updated_at      DateTime @default(now()) @db.Timestamp(0)
 
   @@map("admin_interview_questions")
   @@index([is_active], map: "idx_admin_questions_active")
   @@index([order_position], map: "idx_admin_questions_position")
+  @@index([plan_type], map: "idx_admin_questions_plan_type")
 }

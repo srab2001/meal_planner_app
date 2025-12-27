@@ -70,6 +70,7 @@ const ENDPOINTS = {
 
   // AI Workout Plan generation
   AI_WORKOUT_PLAN: '/api/fitness/ai-interview',
+  AI_INTERVIEW: '/api/fitness/ai-interview',
 
   // Progress tracking
   PROGRESS: '/api/fitness/progress',
