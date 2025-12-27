@@ -197,8 +197,9 @@ function WorkoutPlanResult({ user, token }) {
       setSaveError(null);
 
       // Group rows back into days format
+      const rowsToSave = editableRows.length > 0 ? editableRows : workoutRows;
       const daysMap = {};
-      editableRows.forEach((row) => {
+      rowsToSave.forEach((row) => {
         const dayKey = row.dayGroup || row.day || 'Day 1';
         if (!daysMap[dayKey]) {
           daysMap[dayKey] = {
@@ -224,6 +225,30 @@ function WorkoutPlanResult({ user, token }) {
         },
         closeout: workout?.closeout,
       };
+
+      // Check if using demo token - save to localStorage for demo users
+      const isDemoUser = token && token.startsWith('demo-token-');
+
+      if (isDemoUser) {
+        // Save to localStorage for demo users
+        const savedWorkouts = JSON.parse(localStorage.getItem('demoWorkouts') || '[]');
+        savedWorkouts.push({
+          id: 'demo-workout-' + Date.now(),
+          workout_date: new Date().toISOString().split('T')[0],
+          workout_type: 'ai-generated',
+          duration_minutes: parseInt(workout?.summary?.total_duration) || 60,
+          notes: `AI-generated workout for goal: ${goalName || 'Custom'}`,
+          workout_data: workoutData,
+          goal_id: goalId,
+          created_at: new Date().toISOString(),
+        });
+        localStorage.setItem('demoWorkouts', JSON.stringify(savedWorkouts));
+
+        setSaveSuccess(true);
+        setIsEditing(false);
+        setTimeout(() => setSaveSuccess(false), 3000);
+        return;
+      }
 
       const response = await fetch(`${API_BASE}${ENDPOINTS.WORKOUTS}`, {
         method: 'POST',

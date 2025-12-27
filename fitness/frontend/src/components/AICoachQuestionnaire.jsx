@@ -104,18 +104,46 @@ function AICoachQuestionnaire({ user, token }) {
       const isDemoUser = token && token.startsWith('demo-token-');
 
       if (isDemoUser) {
-        // Generate a sample workout plan for demo users
-        const demoWorkout = [
-          { day: 'Monday', exercise: 'Squats', sets: 4, reps: '8-10', rest: '90 sec', notes: 'Focus on depth and form' },
-          { day: 'Monday', exercise: 'Leg Press', sets: 3, reps: '10-12', rest: '60 sec', notes: 'Controlled movement' },
-          { day: 'Monday', exercise: 'Lunges', sets: 3, reps: '12 each', rest: '60 sec', notes: 'Alternating legs' },
-          { day: 'Wednesday', exercise: 'Bench Press', sets: 4, reps: '8-10', rest: '90 sec', notes: 'Full range of motion' },
-          { day: 'Wednesday', exercise: 'Incline Dumbbell Press', sets: 3, reps: '10-12', rest: '60 sec', notes: '30-degree incline' },
-          { day: 'Wednesday', exercise: 'Cable Flyes', sets: 3, reps: '12-15', rest: '45 sec', notes: 'Squeeze at peak' },
-          { day: 'Friday', exercise: 'Deadlifts', sets: 4, reps: '6-8', rest: '120 sec', notes: 'Keep back neutral' },
-          { day: 'Friday', exercise: 'Barbell Rows', sets: 3, reps: '8-10', rest: '90 sec', notes: 'Pull to lower chest' },
-          { day: 'Friday', exercise: 'Lat Pulldowns', sets: 3, reps: '10-12', rest: '60 sec', notes: 'Wide grip' },
-        ];
+        // Generate a sample workout plan for demo users (format matches parser)
+        const demoWorkout = {
+          days: [
+            {
+              day: 'Monday',
+              location: 'Gym',
+              exercises: [
+                { name: 'Squats', sets: '4', reps: '8-10', weight: '135 lbs' },
+                { name: 'Leg Press', sets: '3', reps: '10-12', weight: '180 lbs' },
+                { name: 'Lunges', sets: '3', reps: '12 each', weight: '30 lbs' },
+              ],
+            },
+            {
+              day: 'Wednesday',
+              location: 'Gym',
+              exercises: [
+                { name: 'Bench Press', sets: '4', reps: '8-10', weight: '115 lbs' },
+                { name: 'Incline Dumbbell Press', sets: '3', reps: '10-12', weight: '40 lbs' },
+                { name: 'Cable Flyes', sets: '3', reps: '12-15', weight: '25 lbs' },
+              ],
+            },
+            {
+              day: 'Friday',
+              location: 'Gym',
+              exercises: [
+                { name: 'Deadlifts', sets: '4', reps: '6-8', weight: '185 lbs' },
+                { name: 'Barbell Rows', sets: '3', reps: '8-10', weight: '95 lbs' },
+                { name: 'Lat Pulldowns', sets: '3', reps: '10-12', weight: '100 lbs' },
+              ],
+            },
+          ],
+          summary: {
+            total_duration: '60 minutes',
+            intensity_level: 'Medium',
+            calories_burned_estimate: 450,
+          },
+          closeout: {
+            notes: 'This is a demo workout plan. Start with lighter weights and focus on proper form. Rest 60-90 seconds between sets.',
+          },
+        };
 
         navigate('/workout-plan', {
           state: {
