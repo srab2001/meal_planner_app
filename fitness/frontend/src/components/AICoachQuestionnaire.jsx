@@ -104,44 +104,120 @@ function AICoachQuestionnaire({ user, token }) {
       const isDemoUser = token && token.startsWith('demo-token-');
 
       if (isDemoUser) {
-        // Generate a sample workout plan for demo users (format matches parser)
+        // Check if user wants pool workouts
+        const locationAnswer = (answers.workout_location || '').toLowerCase();
+        const includePool = locationAnswer.includes('pool') || locationAnswer.includes('both') || locationAnswer.includes('swim');
+        const includeGym = locationAnswer.includes('gym') || locationAnswer.includes('both') || !locationAnswer.includes('pool only');
+
+        // Generate workout based on user's location preference
+        const gymDays = [
+          {
+            day: 'Monday',
+            location: 'Gym',
+            exercises: [
+              { name: 'Squats', sets: '4', reps: '8-10', weight: '135 lbs' },
+              { name: 'Leg Press', sets: '3', reps: '10-12', weight: '180 lbs' },
+              { name: 'Lunges', sets: '3', reps: '12 each', weight: '30 lbs' },
+            ],
+          },
+          {
+            day: 'Wednesday',
+            location: 'Gym',
+            exercises: [
+              { name: 'Bench Press', sets: '4', reps: '8-10', weight: '115 lbs' },
+              { name: 'Incline Dumbbell Press', sets: '3', reps: '10-12', weight: '40 lbs' },
+              { name: 'Cable Flyes', sets: '3', reps: '12-15', weight: '25 lbs' },
+            ],
+          },
+          {
+            day: 'Friday',
+            location: 'Gym',
+            exercises: [
+              { name: 'Deadlifts', sets: '4', reps: '6-8', weight: '185 lbs' },
+              { name: 'Barbell Rows', sets: '3', reps: '8-10', weight: '95 lbs' },
+              { name: 'Lat Pulldowns', sets: '3', reps: '10-12', weight: '100 lbs' },
+            ],
+          },
+        ];
+
+        const poolDays = [
+          {
+            day: 'Tuesday',
+            location: 'Pool',
+            exercises: [
+              { name: 'Freestyle Laps', sets: '4', reps: '100m', weight: 'N/A' },
+              { name: 'Backstroke Laps', sets: '3', reps: '50m', weight: 'N/A' },
+              { name: 'Treading Water', sets: '3', reps: '2 min', weight: 'N/A' },
+            ],
+          },
+          {
+            day: 'Thursday',
+            location: 'Pool',
+            exercises: [
+              { name: 'Breaststroke Laps', sets: '4', reps: '100m', weight: 'N/A' },
+              { name: 'Water Jogging', sets: '3', reps: '5 min', weight: 'N/A' },
+              { name: 'Flutter Kicks (holding edge)', sets: '3', reps: '1 min', weight: 'N/A' },
+            ],
+          },
+        ];
+
+        const poolOnlyDays = [
+          {
+            day: 'Monday',
+            location: 'Pool',
+            exercises: [
+              { name: 'Freestyle Laps', sets: '4', reps: '100m', weight: 'N/A' },
+              { name: 'Backstroke Laps', sets: '3', reps: '50m', weight: 'N/A' },
+              { name: 'Treading Water', sets: '3', reps: '2 min', weight: 'N/A' },
+            ],
+          },
+          {
+            day: 'Wednesday',
+            location: 'Pool',
+            exercises: [
+              { name: 'Breaststroke Laps', sets: '4', reps: '100m', weight: 'N/A' },
+              { name: 'Water Jogging', sets: '3', reps: '5 min', weight: 'N/A' },
+              { name: 'Flutter Kicks (holding edge)', sets: '3', reps: '1 min', weight: 'N/A' },
+            ],
+          },
+          {
+            day: 'Friday',
+            location: 'Pool',
+            exercises: [
+              { name: 'Butterfly Drills', sets: '3', reps: '25m', weight: 'N/A' },
+              { name: 'Mixed Stroke Laps', sets: '4', reps: '100m', weight: 'N/A' },
+              { name: 'Cool Down Swim', sets: '2', reps: '50m', weight: 'N/A' },
+            ],
+          },
+        ];
+
+        // Build workout days based on location preference
+        let workoutDays;
+        let closeoutNotes;
+
+        if (includePool && includeGym) {
+          // Both gym and pool - alternate days
+          workoutDays = [gymDays[0], poolDays[0], gymDays[1], poolDays[1], gymDays[2]];
+          closeoutNotes = 'This demo plan combines gym strength training (Mon/Wed/Fri) with pool cardio (Tue/Thu). Adjust weights and distances to your fitness level.';
+        } else if (includePool && !includeGym) {
+          // Pool only
+          workoutDays = poolOnlyDays;
+          closeoutNotes = 'This demo plan focuses on swimming and water exercises. Great for low-impact cardio and full-body conditioning.';
+        } else {
+          // Gym only (default)
+          workoutDays = gymDays;
+          closeoutNotes = 'This is a demo workout plan. Start with lighter weights and focus on proper form. Rest 60-90 seconds between sets.';
+        }
+
         const demoWorkout = {
-          days: [
-            {
-              day: 'Monday',
-              location: 'Gym',
-              exercises: [
-                { name: 'Squats', sets: '4', reps: '8-10', weight: '135 lbs' },
-                { name: 'Leg Press', sets: '3', reps: '10-12', weight: '180 lbs' },
-                { name: 'Lunges', sets: '3', reps: '12 each', weight: '30 lbs' },
-              ],
-            },
-            {
-              day: 'Wednesday',
-              location: 'Gym',
-              exercises: [
-                { name: 'Bench Press', sets: '4', reps: '8-10', weight: '115 lbs' },
-                { name: 'Incline Dumbbell Press', sets: '3', reps: '10-12', weight: '40 lbs' },
-                { name: 'Cable Flyes', sets: '3', reps: '12-15', weight: '25 lbs' },
-              ],
-            },
-            {
-              day: 'Friday',
-              location: 'Gym',
-              exercises: [
-                { name: 'Deadlifts', sets: '4', reps: '6-8', weight: '185 lbs' },
-                { name: 'Barbell Rows', sets: '3', reps: '8-10', weight: '95 lbs' },
-                { name: 'Lat Pulldowns', sets: '3', reps: '10-12', weight: '100 lbs' },
-              ],
-            },
-          ],
+          days: workoutDays,
           summary: {
             total_duration: '60 minutes',
             intensity_level: 'Medium',
             calories_burned_estimate: 450,
           },
           closeout: {
-            notes: 'This is a demo workout plan. Start with lighter weights and focus on proper form. Rest 60-90 seconds between sets.',
+            notes: closeoutNotes,
           },
         };
 
