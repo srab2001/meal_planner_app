@@ -83,7 +83,7 @@ function App() {
   };
 
   // Fitness app URL for SSO redirect
-  const FITNESS_APP_URL = 'https://frontend-3jhd7akje-stus-projects-458dd35a.vercel.app';
+  const FITNESS_APP_URL = 'https://frontend-6zia26yng-stus-projects-458dd35a.vercel.app';
 
   // Handler: Login - MUST be defined before useEffect that calls it
   const handleLogin = (userData) => {
