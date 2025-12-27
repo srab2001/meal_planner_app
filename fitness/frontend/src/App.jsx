@@ -1,14 +1,9 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, NavLink } from 'react-router-dom';
 
-import GoalBuilder from './components/GoalBuilder';
-import FitnessDashboard from './components/FitnessDashboard';
-import WorkoutLogPage from './components/WorkoutLogPage';
-import WorkoutDetail from './components/WorkoutDetail';
+import CreateGoal from './components/CreateGoal';
+import AICoachQuestionnaire from './components/AICoachQuestionnaire';
+import WorkoutPlanResult from './components/WorkoutPlanResult';
 import GoalsTracker from './components/GoalsTracker';
-import ProgressSummary from './components/ProgressSummary';
-import AdminLayout from './components/AdminLayout';
-import AdminQuestionBank from './components/AdminQuestionBank';
-import AdminQuestionDetail from './components/AdminQuestionDetail';
 import Login from './components/Login';
 import { useAuth } from './hooks/useAuth';
 import './styles/asr-theme.css';
@@ -16,7 +11,11 @@ import './App.css';
 
 /**
  * ASR Fitness Platform - Main App Component
- * Modernized fitness app with admin control, AI-driven goals, and COMAR-aware saving
+ *
+ * Simplified 3-Screen Flow:
+ * 1. Create Fitness Goal (Screen A)
+ * 2. AI Coach Questionnaire (Screen B) - 7 questions
+ * 3. Workout Plan Result (Screen C) - Table format
  */
 function App() {
   const { user, token, loading, logout, setUser, setToken } = useAuth();
@@ -32,8 +31,6 @@ function App() {
     }} />;
   }
 
-  const isAdmin = user?.role === 'admin';
-
   return (
     <Router>
       <div className="asr-app">
@@ -41,7 +38,7 @@ function App() {
         <header className="asr-header">
           <div className="asr-header__logo">
             <div className="asr-header__logo-img">ASR</div>
-            <h1 className="asr-header__title">Goal Builder | Six Questions</h1>
+            <h1 className="asr-header__title">Fitness Coach</h1>
           </div>
 
           <nav className="asr-header__nav">
@@ -50,40 +47,14 @@ function App() {
               end
               className={({ isActive }) => `asr-btn ${isActive ? 'asr-btn--orange' : 'asr-btn--outline'}`}
             >
-              Dashboard
-            </NavLink>
-            <NavLink
-              to="/goals/new"
-              className={({ isActive }) => `asr-btn ${isActive ? 'asr-btn--orange' : 'asr-btn--outline'}`}
-            >
               Create Goal
             </NavLink>
             <NavLink
               to="/goals"
               className={({ isActive }) => `asr-btn ${isActive ? 'asr-btn--orange' : 'asr-btn--outline'}`}
             >
-              Goals
+              My Goals
             </NavLink>
-            <NavLink
-              to="/workouts"
-              className={({ isActive }) => `asr-btn ${isActive ? 'asr-btn--orange' : 'asr-btn--outline'}`}
-            >
-              Workouts
-            </NavLink>
-            <NavLink
-              to="/progress"
-              className={({ isActive }) => `asr-btn ${isActive ? 'asr-btn--orange' : 'asr-btn--outline'}`}
-            >
-              Progress
-            </NavLink>
-            {isAdmin && (
-              <NavLink
-                to="/admin/questions"
-                className={({ isActive }) => `asr-btn ${isActive ? 'asr-btn--orange' : 'asr-btn--outline'}`}
-              >
-                Admin
-              </NavLink>
-            )}
           </nav>
 
           <div className="asr-header__user">
@@ -99,35 +70,18 @@ function App() {
         {/* Main Content */}
         <main className="asr-main">
           <Routes>
-            {/* Dashboard - Home */}
-            <Route path="/" element={<FitnessDashboard user={user} token={token} />} />
+            {/* Screen A - Create Fitness Goal */}
+            <Route path="/" element={<CreateGoal user={user} token={token} />} />
+            <Route path="/create-goal" element={<CreateGoal user={user} token={token} />} />
 
-            {/* Goal Builder - 6 Questions Form */}
-            <Route path="/goals/new" element={<GoalBuilder user={user} token={token} />} />
-            <Route path="/goals/:id/edit" element={<GoalBuilder user={user} token={token} />} />
+            {/* Screen B - AI Coach Questionnaire (7 Questions) */}
+            <Route path="/ai-coach" element={<AICoachQuestionnaire user={user} token={token} />} />
 
-            {/* Goals Tracker */}
+            {/* Screen C - Workout Plan Result (Table) */}
+            <Route path="/workout-plan" element={<WorkoutPlanResult user={user} token={token} />} />
+
+            {/* Goals List */}
             <Route path="/goals" element={<GoalsTracker user={user} token={token} />} />
-
-            {/* Workout Management */}
-            <Route path="/workouts" element={<WorkoutLogPage user={user} token={token} />} />
-            <Route path="/workouts/new" element={<WorkoutLogPage user={user} token={token} mode="new" />} />
-            <Route path="/workouts/:id" element={<WorkoutDetail user={user} token={token} />} />
-
-            {/* Progress Summary */}
-            <Route path="/progress" element={<ProgressSummary user={user} token={token} />} />
-
-            {/* Admin Routes */}
-            {isAdmin && (
-              <>
-                <Route path="/admin" element={<AdminLayout user={user} token={token} />}>
-                  <Route index element={<Navigate to="/admin/questions" replace />} />
-                  <Route path="questions" element={<AdminQuestionBank token={token} />} />
-                  <Route path="questions/new" element={<AdminQuestionDetail token={token} />} />
-                  <Route path="questions/:id" element={<AdminQuestionDetail token={token} />} />
-                </Route>
-              </>
-            )}
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />

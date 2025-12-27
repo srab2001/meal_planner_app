@@ -1299,121 +1299,68 @@ router.post('/ai-interview', requireAuth, async (req, res) => {
     console.log('[AI Interview] OpenAI client found, making request...');
 
     // Build context for AI with interview answers if provided
-    const { interview_answers, question_count } = req.body;
-    
-    let systemPrompt = `You are a professional fitness coach AI. Your goal is to create personalized workout plans based on user information.`;
-    
-    // If interview answers are provided, use structured generation
+    const { interview_answers, goal_name } = req.body;
+
+    let systemPrompt = `You are a fitness coach.
+
+Input:
+1. Fitness objective
+2. Workout location preference
+3. Workout intensity
+4. Days per week
+5. Overall goal
+6. Injured muscles
+7. Focus type: strength, ability, or weight loss
+
+Rules:
+- Respect injuries - never include exercises that stress injured muscles
+- Match intensity and days to user's preferences
+- Use gym/pool/both as requested
+- Output ONLY a JSON object with workout data
+- No commentary or explanations outside the JSON
+
+Output format: Generate a JSON object wrapped in <WORKOUT_JSON> tags with this structure:
+
+<WORKOUT_JSON>
+{
+  "days": [
+    {
+      "day": "Day 1",
+      "exercises": [
+        { "location": "Gym", "exercise": "Exercise name", "sets": "3", "reps": "10", "weight": "135 lbs" }
+      ]
+    }
+  ],
+  "summary": {
+    "total_duration": "60 minutes",
+    "intensity_level": "medium",
+    "calories_burned_estimate": 400,
+    "difficulty_rating": "6"
+  },
+  "closeout": {
+    "notes": "Motivational note for the user"
+  }
+}
+</WORKOUT_JSON>
+
+Use pounds for weight. If bodyweight exercise, write "Body" for weight.`;
+
+    // If interview answers are provided, add them to the prompt
     if (interview_answers && Object.keys(interview_answers).length > 0) {
-      systemPrompt = `You are a professional fitness coach AI. You have received structured interview responses from a user. 
+      const answersText = `
+User's Answers:
+1. Fitness objective: ${interview_answers.fitness_objective || 'Not specified'}
+2. Workout location: ${interview_answers.workout_location || 'Gym'}
+3. Intensity: ${interview_answers.intensity || 'Moderate'}
+4. Days per week: ${interview_answers.days_per_week || '3-4 days'}
+5. Overall goal: ${interview_answers.overall_goal || 'Get fit'}
+6. Injuries: ${interview_answers.injuries || 'None'}
+7. Focus type: ${interview_answers.focus_type || 'General fitness'}
+${goal_name ? `\nGoal Name: ${goal_name}` : ''}
 
-Based on their responses, you MUST generate a detailed, personalized 6-section workout plan.
+Generate a personalized ${interview_answers.days_per_week || '4-day'} workout plan based on these answers. Make sure to respect any injuries mentioned and match the intensity level requested.`;
 
-The user provided these answers:
-${Object.entries(interview_answers).map(([key, value]) => `- ${key}: ${value}`).join('\n')}
-
-Generate a comprehensive workout with these 6 sections in this exact JSON format:
-
-<WORKOUT_JSON>
-{
-  "warm_up": {
-    "name": "string (e.g., 'Dynamic Stretching')",
-    "duration": "string (e.g., '5 minutes')",
-    "exercises": ["exercise 1", "exercise 2", "exercise 3"]
-  },
-  "strength": {
-    "name": "string",
-    "duration": "string",
-    "exercises": ["exercise 1", "exercise 2", "exercise 3"],
-    "sets_reps": "string (e.g., '3 sets of 10 reps')"
-  },
-  "cardio": {
-    "name": "string",
-    "duration": "string",
-    "exercises": ["exercise 1", "exercise 2"],
-    "notes": "string"
-  },
-  "agility": {
-    "name": "string",
-    "duration": "string",
-    "exercises": ["exercise 1", "exercise 2"],
-    "notes": "string"
-  },
-  "recovery": {
-    "name": "string",
-    "duration": "string",
-    "exercises": ["stretch 1", "stretch 2", "stretch 3"]
-  },
-  "closeout": {
-    "name": "string",
-    "notes": "string (motivation and next steps)"
-  },
-  "summary": {
-    "total_duration": "string",
-    "intensity_level": "low|medium|high",
-    "calories_burned_estimate": number,
-    "difficulty_rating": "1-10"
-  }
-}
-</WORKOUT_JSON>
-
-IMPORTANT:
-- Personalize based on the user's responses
-- Make exercises progressively harder if intensity is high
-- Include specific form cues or modifications for each exercise
-- Keep the JSON valid and properly formatted
-- Include motivational language in the closeout section
-
-Be professional, encouraging, and specific with exercise recommendations.`;
-    } else {
-      // Fallback to conversation-based approach if no structured answers
-      systemPrompt += `
-
-When the user provides information about their fitness goals and preferences, generate a JSON workout object and include it in your response like this:
-<WORKOUT_JSON>
-{
-  "warm_up": {
-    "name": "string",
-    "duration": "string",
-    "exercises": ["exercise 1", "exercise 2", "exercise 3"]
-  },
-  "strength": {
-    "name": "string",
-    "duration": "string",
-    "exercises": ["exercise 1", "exercise 2", "exercise 3"],
-    "sets_reps": "string"
-  },
-  "cardio": {
-    "name": "string",
-    "duration": "string",
-    "exercises": ["exercise 1", "exercise 2"],
-    "notes": "string"
-  },
-  "agility": {
-    "name": "string",
-    "duration": "string",
-    "exercises": ["exercise 1", "exercise 2"],
-    "notes": "string"
-  },
-  "recovery": {
-    "name": "string",
-    "duration": "string",
-    "exercises": ["stretch 1", "stretch 2", "stretch 3"]
-  },
-  "closeout": {
-    "name": "string",
-    "notes": "string"
-  },
-  "summary": {
-    "total_duration": "string",
-    "intensity_level": "low|medium|high",
-    "calories_burned_estimate": number,
-    "difficulty_rating": "1-10"
-  }
-}
-</WORKOUT_JSON>
-
-Be friendly, encouraging, and professional. Keep responses concise.`;
+      systemPrompt += '\n\n' + answersText;
     }
 
     // Call OpenAI
@@ -1428,7 +1375,7 @@ Be friendly, encouraging, and professional. Keep responses concise.`;
         }))
       ],
       temperature: 0.7,
-      max_tokens: 500
+      max_tokens: 2000
     });
 
     const aiMessage = response.choices[0].message.content;
