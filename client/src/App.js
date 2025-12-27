@@ -171,8 +171,8 @@ function App() {
         localStorage.setItem('redirect_after_login', redirect);
       }
       
-      // Clean up the URL
-      window.history.replaceState(null, '', window.location.pathname);
+      // Clean up the URL hash but preserve query params (like ?returnTo=fitness)
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
     }
 
     // Check if user is already authenticated with existing token
