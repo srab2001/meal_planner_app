@@ -530,10 +530,11 @@ function App() {
 
       {/* App Switchboard - main app launcher */}
       {!showSplash && currentView === 'switchboard' && (
-        <AppSwitchboard 
-          onSelectApp={handleSelectApp} 
+        <AppSwitchboard
+          onSelectApp={handleSelectApp}
           user={user}
           onLogout={handleLogout}
+          onLogin={handleLogin}
         />
       )}
 

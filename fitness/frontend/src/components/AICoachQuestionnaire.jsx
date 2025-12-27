@@ -104,117 +104,178 @@ function AICoachQuestionnaire({ user, token }) {
       const isDemoUser = token && token.startsWith('demo-token-');
 
       if (isDemoUser) {
-        // Check if user wants pool workouts
+        // Parse user answers for personalized demo workout
         const locationAnswer = (answers.workout_location || '').toLowerCase();
+        const intensityAnswer = (answers.intensity || '').toLowerCase();
+        const daysAnswer = (answers.days_per_week || '').toLowerCase();
+        const focusAnswer = (answers.focus_type || '').toLowerCase();
+        const objectiveAnswer = (answers.fitness_objective || '').toLowerCase();
+
+        // Determine location preferences
         const includePool = locationAnswer.includes('pool') || locationAnswer.includes('both') || locationAnswer.includes('swim');
         const includeGym = locationAnswer.includes('gym') || locationAnswer.includes('both') || !locationAnswer.includes('pool only');
 
-        // Generate workout based on user's location preference
-        const gymDays = [
-          {
-            day: 'Monday',
-            location: 'Gym',
-            exercises: [
-              { name: 'Squats', sets: '4', reps: '8-10', weight: '135 lbs' },
-              { name: 'Leg Press', sets: '3', reps: '10-12', weight: '180 lbs' },
-              { name: 'Lunges', sets: '3', reps: '12 each', weight: '30 lbs' },
-            ],
-          },
-          {
-            day: 'Wednesday',
-            location: 'Gym',
-            exercises: [
-              { name: 'Bench Press', sets: '4', reps: '8-10', weight: '115 lbs' },
-              { name: 'Incline Dumbbell Press', sets: '3', reps: '10-12', weight: '40 lbs' },
-              { name: 'Cable Flyes', sets: '3', reps: '12-15', weight: '25 lbs' },
-            ],
-          },
-          {
-            day: 'Friday',
-            location: 'Gym',
-            exercises: [
-              { name: 'Deadlifts', sets: '4', reps: '6-8', weight: '185 lbs' },
-              { name: 'Barbell Rows', sets: '3', reps: '8-10', weight: '95 lbs' },
-              { name: 'Lat Pulldowns', sets: '3', reps: '10-12', weight: '100 lbs' },
-            ],
-          },
-        ];
+        // Determine intensity level
+        let intensityLevel = 'Medium';
+        let setsMultiplier = 1;
+        let caloriesPerDay = 400;
+        if (intensityAnswer.includes('high') || intensityAnswer.includes('intense') || intensityAnswer.includes('push')) {
+          intensityLevel = 'High';
+          setsMultiplier = 1.5;
+          caloriesPerDay = 600;
+        } else if (intensityAnswer.includes('low') || intensityAnswer.includes('easy') || intensityAnswer.includes('recovery')) {
+          intensityLevel = 'Low';
+          setsMultiplier = 0.75;
+          caloriesPerDay = 250;
+        }
 
-        const poolDays = [
-          {
-            day: 'Tuesday',
-            location: 'Pool',
-            exercises: [
-              { name: 'Freestyle Laps', sets: '4', reps: '100m', weight: 'N/A' },
-              { name: 'Backstroke Laps', sets: '3', reps: '50m', weight: 'N/A' },
-              { name: 'Treading Water', sets: '3', reps: '2 min', weight: 'N/A' },
-            ],
-          },
-          {
-            day: 'Thursday',
-            location: 'Pool',
-            exercises: [
-              { name: 'Breaststroke Laps', sets: '4', reps: '100m', weight: 'N/A' },
-              { name: 'Water Jogging', sets: '3', reps: '5 min', weight: 'N/A' },
-              { name: 'Flutter Kicks (holding edge)', sets: '3', reps: '1 min', weight: 'N/A' },
-            ],
-          },
-        ];
+        // Determine number of days
+        let numDays = 3;
+        const daysMatch = daysAnswer.match(/(\d+)/);
+        if (daysMatch) {
+          numDays = Math.min(Math.max(parseInt(daysMatch[1]), 2), 6);
+        } else if (daysAnswer.includes('every') || daysAnswer.includes('daily')) {
+          numDays = 6;
+        }
 
-        const poolOnlyDays = [
-          {
-            day: 'Monday',
-            location: 'Pool',
-            exercises: [
-              { name: 'Freestyle Laps', sets: '4', reps: '100m', weight: 'N/A' },
-              { name: 'Backstroke Laps', sets: '3', reps: '50m', weight: 'N/A' },
-              { name: 'Treading Water', sets: '3', reps: '2 min', weight: 'N/A' },
-            ],
-          },
-          {
-            day: 'Wednesday',
-            location: 'Pool',
-            exercises: [
-              { name: 'Breaststroke Laps', sets: '4', reps: '100m', weight: 'N/A' },
-              { name: 'Water Jogging', sets: '3', reps: '5 min', weight: 'N/A' },
-              { name: 'Flutter Kicks (holding edge)', sets: '3', reps: '1 min', weight: 'N/A' },
-            ],
-          },
-          {
-            day: 'Friday',
-            location: 'Pool',
-            exercises: [
-              { name: 'Butterfly Drills', sets: '3', reps: '25m', weight: 'N/A' },
-              { name: 'Mixed Stroke Laps', sets: '4', reps: '100m', weight: 'N/A' },
-              { name: 'Cool Down Swim', sets: '2', reps: '50m', weight: 'N/A' },
-            ],
-          },
-        ];
+        // Determine focus type
+        let focusType = 'strength';
+        if (focusAnswer.includes('weight') || focusAnswer.includes('fat') || focusAnswer.includes('burn') || objectiveAnswer.includes('lose')) {
+          focusType = 'weight_loss';
+        } else if (focusAnswer.includes('ability') || focusAnswer.includes('athletic') || focusAnswer.includes('endurance')) {
+          focusType = 'athletic';
+        }
 
-        // Build workout days based on location preference
-        let workoutDays;
-        let closeoutNotes;
+        // Generate exercises based on focus type
+        const strengthExercises = {
+          legs: [
+            { name: 'Squats', sets: Math.round(4 * setsMultiplier), reps: '6-8', weight: '155 lbs' },
+            { name: 'Romanian Deadlifts', sets: Math.round(3 * setsMultiplier), reps: '8-10', weight: '135 lbs' },
+            { name: 'Leg Press', sets: Math.round(3 * setsMultiplier), reps: '10-12', weight: '200 lbs' },
+          ],
+          push: [
+            { name: 'Bench Press', sets: Math.round(4 * setsMultiplier), reps: '6-8', weight: '135 lbs' },
+            { name: 'Overhead Press', sets: Math.round(3 * setsMultiplier), reps: '8-10', weight: '85 lbs' },
+            { name: 'Dips', sets: Math.round(3 * setsMultiplier), reps: '8-12', weight: 'Body' },
+          ],
+          pull: [
+            { name: 'Deadlifts', sets: Math.round(4 * setsMultiplier), reps: '5-6', weight: '205 lbs' },
+            { name: 'Barbell Rows', sets: Math.round(3 * setsMultiplier), reps: '8-10', weight: '115 lbs' },
+            { name: 'Pull-ups', sets: Math.round(3 * setsMultiplier), reps: '6-10', weight: 'Body' },
+          ],
+        };
 
+        const weightLossExercises = {
+          hiit: [
+            { name: 'Burpees', sets: Math.round(4 * setsMultiplier), reps: '15', weight: 'Body' },
+            { name: 'Mountain Climbers', sets: Math.round(4 * setsMultiplier), reps: '30 sec', weight: 'Body' },
+            { name: 'Jump Squats', sets: Math.round(4 * setsMultiplier), reps: '20', weight: 'Body' },
+            { name: 'High Knees', sets: Math.round(3 * setsMultiplier), reps: '45 sec', weight: 'Body' },
+          ],
+          circuit: [
+            { name: 'Kettlebell Swings', sets: Math.round(4 * setsMultiplier), reps: '20', weight: '35 lbs' },
+            { name: 'Box Jumps', sets: Math.round(3 * setsMultiplier), reps: '12', weight: 'Body' },
+            { name: 'Battle Ropes', sets: Math.round(3 * setsMultiplier), reps: '30 sec', weight: 'N/A' },
+            { name: 'Rowing Machine', sets: Math.round(3 * setsMultiplier), reps: '500m', weight: 'N/A' },
+          ],
+        };
+
+        const athleticExercises = {
+          power: [
+            { name: 'Power Cleans', sets: Math.round(4 * setsMultiplier), reps: '5', weight: '115 lbs' },
+            { name: 'Box Jumps', sets: Math.round(3 * setsMultiplier), reps: '8', weight: 'Body' },
+            { name: 'Medicine Ball Slams', sets: Math.round(3 * setsMultiplier), reps: '12', weight: '20 lbs' },
+          ],
+          agility: [
+            { name: 'Ladder Drills', sets: Math.round(4 * setsMultiplier), reps: '4 patterns', weight: 'Body' },
+            { name: 'Cone Sprints', sets: Math.round(4 * setsMultiplier), reps: '6', weight: 'Body' },
+            { name: 'Lateral Bounds', sets: Math.round(3 * setsMultiplier), reps: '10 each', weight: 'Body' },
+          ],
+        };
+
+        const poolExercises = {
+          cardio: [
+            { name: 'Freestyle Sprints', sets: Math.round(6 * setsMultiplier), reps: '50m', weight: 'N/A' },
+            { name: 'Backstroke Laps', sets: Math.round(4 * setsMultiplier), reps: '100m', weight: 'N/A' },
+            { name: 'Treading Water (high intensity)', sets: Math.round(4 * setsMultiplier), reps: '2 min', weight: 'N/A' },
+          ],
+          endurance: [
+            { name: 'Continuous Swim', sets: '1', reps: '800m', weight: 'N/A' },
+            { name: 'Mixed Stroke Intervals', sets: Math.round(4 * setsMultiplier), reps: '200m', weight: 'N/A' },
+            { name: 'Water Jogging', sets: Math.round(3 * setsMultiplier), reps: '10 min', weight: 'N/A' },
+          ],
+        };
+
+        // Build workout days based on preferences
+        const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const workoutDays = [];
+        let totalCalories = 0;
+
+        for (let i = 0; i < numDays; i++) {
+          const dayName = dayNames[i];
+          let exercises = [];
+          let location = 'Gym';
+
+          if (includePool && includeGym) {
+            // Alternate gym and pool
+            if (i % 2 === 1) {
+              location = 'Pool';
+              exercises = focusType === 'weight_loss' ? poolExercises.cardio : poolExercises.endurance;
+            } else {
+              if (focusType === 'weight_loss') {
+                exercises = i === 0 ? weightLossExercises.hiit : weightLossExercises.circuit;
+              } else if (focusType === 'athletic') {
+                exercises = i === 0 ? athleticExercises.power : athleticExercises.agility;
+              } else {
+                exercises = i === 0 ? strengthExercises.legs : (i === 2 ? strengthExercises.push : strengthExercises.pull);
+              }
+            }
+          } else if (includePool && !includeGym) {
+            location = 'Pool';
+            exercises = i % 2 === 0 ? poolExercises.cardio : poolExercises.endurance;
+          } else {
+            // Gym only
+            if (focusType === 'weight_loss') {
+              exercises = i % 2 === 0 ? weightLossExercises.hiit : weightLossExercises.circuit;
+            } else if (focusType === 'athletic') {
+              exercises = i % 2 === 0 ? athleticExercises.power : athleticExercises.agility;
+            } else {
+              // Strength - rotate muscle groups
+              const groups = [strengthExercises.legs, strengthExercises.push, strengthExercises.pull];
+              exercises = groups[i % 3];
+            }
+          }
+
+          workoutDays.push({
+            day: dayName,
+            location,
+            exercises: exercises.map(e => ({ ...e, sets: String(e.sets) })),
+          });
+
+          totalCalories += caloriesPerDay;
+        }
+
+        // Generate personalized notes
+        let closeoutNotes = `This ${numDays}-day ${intensityLevel.toLowerCase()} intensity plan is designed for ${focusType.replace('_', ' ')}. `;
         if (includePool && includeGym) {
-          // Both gym and pool - alternate days
-          workoutDays = [gymDays[0], poolDays[0], gymDays[1], poolDays[1], gymDays[2]];
-          closeoutNotes = 'This demo plan combines gym strength training (Mon/Wed/Fri) with pool cardio (Tue/Thu). Adjust weights and distances to your fitness level.';
-        } else if (includePool && !includeGym) {
-          // Pool only
-          workoutDays = poolOnlyDays;
-          closeoutNotes = 'This demo plan focuses on swimming and water exercises. Great for low-impact cardio and full-body conditioning.';
+          closeoutNotes += 'It combines gym training with pool sessions for variety and recovery. ';
+        }
+        if (focusType === 'weight_loss') {
+          closeoutNotes += `Estimated ${totalCalories} calories burned per week. Focus on keeping rest periods short (30-45 sec) to maximize calorie burn.`;
+        } else if (focusType === 'athletic') {
+          closeoutNotes += 'Focus on explosive movements and proper form. Rest 60-90 seconds between sets.';
         } else {
-          // Gym only (default)
-          workoutDays = gymDays;
-          closeoutNotes = 'This is a demo workout plan. Start with lighter weights and focus on proper form. Rest 60-90 seconds between sets.';
+          closeoutNotes += 'Progressive overload is key - increase weight when you can complete all reps with good form.';
         }
 
         const demoWorkout = {
           days: workoutDays,
           summary: {
-            total_duration: '60 minutes',
-            intensity_level: 'Medium',
-            calories_burned_estimate: 450,
+            total_duration: intensityLevel === 'High' ? '75 minutes' : (intensityLevel === 'Low' ? '45 minutes' : '60 minutes'),
+            intensity_level: intensityLevel,
+            calories_burned_estimate: totalCalories,
+            days_per_week: numDays,
+            focus: focusType.replace('_', ' '),
           },
           closeout: {
             notes: closeoutNotes,
@@ -224,7 +285,7 @@ function AICoachQuestionnaire({ user, token }) {
         navigate('/workout-plan', {
           state: {
             workout: demoWorkout,
-            message: 'Demo workout plan generated based on your answers!',
+            message: `Personalized ${focusType.replace('_', ' ')} workout generated based on your answers!`,
             goalName,
             goalId,
             answers,

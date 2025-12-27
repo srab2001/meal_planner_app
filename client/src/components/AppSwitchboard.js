@@ -8,12 +8,36 @@ import './AppSwitchboard.css';
  * Shown after splash screen, allows user to select which app to use.
  * Future apps can be added here as tiles.
  */
-export default function AppSwitchboard({ onSelectApp, user, onLogout }) {
+export default function AppSwitchboard({ onSelectApp, user, onLogout, onLogin }) {
   // Check feature flag for integrations
   const integrationsEnabled = featureFlags.isEnabled('health_integrations');
-  
+
   // Check if user is admin
   const isAdmin = user?.role === 'admin';
+
+  // Demo login handler
+  const handleDemoLogin = () => {
+    const demoUser = {
+      id: 'demo-user-001',
+      email: 'demo@asr.app',
+      name: 'Demo User',
+      role: 'user',
+    };
+    const demoToken = 'demo-token-' + Date.now();
+    localStorage.setItem('auth_token', demoToken);
+    localStorage.setItem('user', JSON.stringify(demoUser));
+    if (onLogin) {
+      onLogin(demoUser);
+    } else {
+      window.location.reload();
+    }
+  };
+
+  // Google login handler
+  const handleGoogleLogin = () => {
+    const redirectUrl = `${window.location.origin}/switchboard`;
+    window.location.href = `${process.env.REACT_APP_API_URL || 'https://meal-planner-app-mve2.onrender.com'}/auth/google?redirect=${encodeURIComponent(redirectUrl)}`;
+  };
 
   const apps = [
     {
@@ -68,12 +92,13 @@ export default function AppSwitchboard({ onSelectApp, user, onLogout }) {
     },
     {
       id: 'fitness',
-      name: 'Fitness',
-      description: 'Workout tracking and exercise planning',
+      name: 'Fitness Coach',
+      description: 'AI-powered workout planning with gym & pool options',
       icon: '💪',
       color: '#27ae60',
       available: true,
-      comingSoon: false
+      comingSoon: false,
+      externalUrl: 'https://frontend-78h09j5g9-stus-projects-458dd35a.vercel.app'
     },
     // Admin panel - always shown, but requires login + admin role
     {
@@ -88,6 +113,12 @@ export default function AppSwitchboard({ onSelectApp, user, onLogout }) {
   ];
 
   const handleAppClick = (app) => {
+    // Handle external URL apps (like new Fitness Coach)
+    if (app.externalUrl) {
+      window.open(app.externalUrl, '_blank');
+      return;
+    }
+
     // Special handling for admin tile
     if (app.id === 'admin') {
       if (!user) {
@@ -146,11 +177,55 @@ export default function AppSwitchboard({ onSelectApp, user, onLogout }) {
               </p>
             )}
           </div>
-          {onLogout && (
-            <button className="logout-btn" onClick={onLogout} title="Sign out">
-              <span>🚪</span> Logout
-            </button>
-          )}
+          <div className="switchboard-auth-buttons">
+            {!user ? (
+              <>
+                <button
+                  className="google-login-btn"
+                  onClick={handleGoogleLogin}
+                  style={{
+                    background: 'white',
+                    color: '#333',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    marginRight: '10px'
+                  }}
+                >
+                  <span style={{ fontSize: '18px' }}>🔐</span> Sign in with Google
+                </button>
+                <button
+                  className="demo-login-btn"
+                  onClick={handleDemoLogin}
+                  style={{
+                    background: '#F5A623',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <span style={{ fontSize: '18px' }}>🎯</span> Demo Login
+                </button>
+              </>
+            ) : (
+              onLogout && (
+                <button className="logout-btn" onClick={onLogout} title="Sign out">
+                  <span>🚪</span> Logout
+                </button>
+              )
+            )}
+          </div>
         </div>
       </header>
 
