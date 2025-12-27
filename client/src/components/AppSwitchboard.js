@@ -98,7 +98,7 @@ export default function AppSwitchboard({ onSelectApp, user, onLogout, onLogin })
       color: '#27ae60',
       available: true,
       comingSoon: false,
-      externalUrl: 'https://frontend-hxf7r9urb-stus-projects-458dd35a.vercel.app'
+      externalUrl: 'https://frontend-q902fsg91-stus-projects-458dd35a.vercel.app'
     },
     // Admin panel - always shown, but requires login + admin role
     {
