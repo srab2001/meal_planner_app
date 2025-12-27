@@ -15,7 +15,7 @@ const https = require('https');
 const http = require('http');
 
 // Configuration
-const EXPECTED_FITNESS_URL = 'https://frontend-j7rsl34t3-stus-projects-458dd35a.vercel.app';
+const EXPECTED_FITNESS_URL = 'https://frontend-hxf7r9urb-stus-projects-458dd35a.vercel.app';
 const SWITCHBOARD_PATH = path.join(__dirname, '../client/src/components/AppSwitchboard.js');
 const APP_JS_PATH = path.join(__dirname, '../client/src/App.js');
 const FITNESS_QUESTIONNAIRE_PATH = path.join(__dirname, '../fitness/frontend/src/components/AICoachQuestionnaire.jsx');
