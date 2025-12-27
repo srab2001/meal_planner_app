@@ -18,7 +18,8 @@ function Login({ onLoginSuccess }) {
   const [loading, setLoading] = useState(false);
 
   // Main switchboard URL for SSO login
-  const SWITCHBOARD_URL = 'https://meal-planner-g42mhoud8-stus-projects-458dd35a.vercel.app';
+  // Use the stable Vercel project domain (not deployment-specific URL)
+  const SWITCHBOARD_URL = 'https://meal-planner-gold-one.vercel.app';
 
   // Google OAuth login - redirect to main switchboard
   // After login there, user clicks Fitness Coach to return with SSO

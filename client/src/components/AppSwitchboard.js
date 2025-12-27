@@ -33,9 +33,18 @@ export default function AppSwitchboard({ onSelectApp, user, onLogout, onLogin })
     }
   };
 
-  // Google login handler
+  // Google login handler - preserves returnTo param for SSO redirect back to fitness
   const handleGoogleLogin = () => {
-    const redirectUrl = `${window.location.origin}/switchboard`;
+    // Check if user came from fitness app (returnTo=fitness in URL)
+    const urlParams = new URLSearchParams(window.location.search);
+    const returnTo = urlParams.get('returnTo');
+
+    // Build redirect URL, preserving returnTo param if present
+    let redirectUrl = `${window.location.origin}/switchboard`;
+    if (returnTo) {
+      redirectUrl += `?returnTo=${returnTo}`;
+    }
+
     window.location.href = `${process.env.REACT_APP_API_URL || 'https://meal-planner-app-mve2.onrender.com'}/auth/google?redirect=${encodeURIComponent(redirectUrl)}`;
   };
 
