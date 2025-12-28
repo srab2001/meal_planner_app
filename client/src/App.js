@@ -88,11 +88,14 @@ function App() {
   // Handler: Login - MUST be defined before useEffect that calls it
   const handleLogin = (userData) => {
     console.log('🔐 handleLogin called, user:', userData?.email);
+    console.log('🔐 Current URL:', window.location.href);
+    console.log('🔐 Search params:', window.location.search);
     setUser(userData);
 
     // Check if user came from fitness app (returnTo=fitness in URL)
     const urlParams = new URLSearchParams(window.location.search);
     const returnTo = urlParams.get('returnTo');
+    console.log('🔐 returnTo value:', returnTo);
     if (returnTo === 'fitness') {
       console.log('🔐 User came from fitness app, redirecting back with SSO');
       // Clean up URL
