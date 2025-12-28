@@ -314,3 +314,26 @@ model pantry_item_events {
   @@index([user_id])
   @@index([created_at])
 }
+
+// ============================================
+// AUDIT LOGGING
+// ============================================
+
+model audit_log {
+  id            String   @id @default(uuid())
+  user_id       String?
+  household_id  String?
+  action        String   // create, update, delete, view, login, logout, etc.
+  resource_type String   // user, household, pantry_item, medical_profile, etc.
+  resource_id   String?
+  details       Json?    // Additional context (old/new values, IP, etc.)
+  ip_address    String?
+  user_agent    String?
+  created_at    DateTime @default(now())
+
+  @@index([user_id])
+  @@index([household_id])
+  @@index([action])
+  @@index([resource_type])
+  @@index([created_at])
+}

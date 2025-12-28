@@ -127,21 +127,68 @@ ENABLE_MEDICAL_GUARDRAILS=true
 | Role | Scope | Permissions |
 |------|-------|-------------|
 | `admin` | Global | All operations, all households |
-| `household_admin` | Household | Manage members, view all data |
-| `member` | Household | Full CRUD on own data |
+| `household_admin` | Household | Manage members, invites, view all data |
+| `member` | Household | Full CRUD on own data, pantry, compliance |
 | `viewer` | Household | Read-only access |
 
-### Permission Check Pattern
-```typescript
-async function checkPermission(userId: string, householdId: string, requiredRole: string) {
-  const membership = await coreDb.household_memberships.findFirst({
-    where: { user_id: userId, household_id: householdId },
-    include: { role: true }
-  });
+### Role Hierarchy
+```
+owner > household_admin > admin > member > viewer
+```
+Higher roles include all permissions of lower roles.
 
-  if (!membership) throw new UnauthorizedError('Not a member');
-  if (!hasRole(membership.role, requiredRole)) throw new ForbiddenError('Insufficient role');
-}
+### Permission Helpers (src/lib/permissions.js)
+
+| Function | Description |
+|----------|-------------|
+| `canViewApp(userId, householdId, appId)` | Check if user can see app tile |
+| `canEditHousehold(userId, householdId)` | Check if user can manage members/invites |
+| `canDeleteHousehold(userId, householdId)` | Check if user can delete household |
+| `canInviteMembers(userId, householdId)` | Check if user can send invites |
+| `canChangeRoles(userId, householdId, targetUserId)` | Check if user can modify roles |
+| `canEditPantry(userId, householdId)` | Check if user can add/consume pantry items |
+| `canViewPantry(userId, householdId)` | Check if user can view pantry |
+| `canEditMedical(userId, householdId, targetUserId)` | Check if user can edit medical profile |
+| `canViewMedical(userId, householdId, targetUserId)` | Check if user can view medical profile |
+| `canCheckin(userId, householdId)` | Check if user can record compliance checkins |
+| `getVisibleApps(userId, householdId)` | Get list of apps user can access |
+
+### App Visibility Matrix
+
+| App | viewer | member | admin | household_admin | owner |
+|-----|--------|--------|-------|-----------------|-------|
+| meal-planner | Y | Y | Y | Y | Y |
+| fitness | Y | Y | Y | Y | Y |
+| coaching | Y | Y | Y | Y | Y |
+| pantry | Y | Y | Y | Y | Y |
+| compliance | Y | Y | Y | Y | Y |
+| household | Y | Y | Y | Y | Y |
+| medical | Y | Y | Y | Y | Y |
+| admin | - | - | - | - | - |
+
+Note: Admin app is only visible to global admins (checked via isGlobalAdmin).
+
+### Middleware Pattern
+```javascript
+const { requirePermission, canEditPantry } = require('../src/lib/permissions');
+
+// Use in route
+router.post('/items',
+  requirePermission(canEditPantry, req => [req.user.id, req.householdId]),
+  async (req, res) => { ... }
+);
+```
+
+### Permission Check Flow
+```
+1. Request arrives
+2. requireAuth middleware - verify JWT, attach req.user
+3. requirePermission middleware - call permission function
+   a. Check if global admin (bypass all)
+   b. Get user's household role from CORE DB
+   c. Compare against required role/permission
+4. If denied: 403 Forbidden + audit log entry
+5. If allowed: proceed to handler
 ```
 
 ---
@@ -201,12 +248,53 @@ export const mealDb = new PrismaClient();
 
 ---
 
+## Audit Logging
+
+### audit_log Table (CORE DB)
+```sql
+CREATE TABLE audit_log (
+  id UUID PRIMARY KEY,
+  user_id UUID,
+  household_id UUID,
+  action VARCHAR(50),        -- create, update, delete, login, etc.
+  resource_type VARCHAR(50), -- user, household, pantry_item, etc.
+  resource_id UUID,
+  details JSONB,             -- old/new values, context
+  ip_address VARCHAR(45),
+  user_agent TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+### Logged Actions
+| Action | Resource Type | When |
+|--------|---------------|------|
+| login | session | User logs in |
+| logout | session | User logs out |
+| create | * | New record created |
+| update | * | Record modified |
+| delete | * | Record deleted |
+| permission_denied | * | Access denied |
+| role_change | user_role | Role modified |
+| invite_sent | invite | Invite created |
+| invite_accepted | invite | Invite accepted |
+
+### Audit Helper (src/lib/auditLog.js)
+```javascript
+const { logCreate, logUpdate, logDelete, logPermissionDenied } = require('./auditLog');
+
+// In route handler
+await logCreate(userId, householdId, 'pantry_item', item.id, { name: item.name }, req);
+```
+
+---
+
 ## Key Constraints
 
 1. **No cross-DB joins** - Query one DB, pass IDs to second
 2. **Household context always required** - Every API includes household_id
 3. **RBAC on every route** - Check permissions before data access
-4. **Audit logging** - Track all data modifications
+4. **Audit logging** - Track all data modifications in CORE DB
 5. **Environment isolation** - Never mix dev/preview/production
 
 ---
@@ -322,5 +410,5 @@ See: `/docs/integration/meal-fitness-core.md`
 
 ---
 
-**Version:** 1.2
+**Version:** 1.3
 **Maintained By:** Development Team

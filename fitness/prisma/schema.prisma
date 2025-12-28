@@ -64,6 +64,7 @@ model fitness_workouts {
   
   created_at            DateTime @default(now()) @db.Timestamptz(6)
   workout_exercises     fitness_workout_exercises[]
+  workout_items         workout_items[]
 
   @@index([user_id], map: "idx_fitness_workouts_user_id")
   @@index([workout_date], map: "idx_fitness_workouts_date")
@@ -138,4 +139,76 @@ model admin_interview_questions {
   @@map("admin_interview_questions")
   @@index([is_active], map: "idx_admin_questions_active")
   @@index([order_position], map: "idx_admin_questions_position")
+}
+
+// ============================================
+// WORKOUT SMS FEATURE
+// ============================================
+
+/// User phone numbers for SMS notifications
+model user_phones {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String   @unique @db.Uuid
+  phone_number String   @db.VarChar(20) // E.164 format: +1234567890
+  is_verified  Boolean  @default(false)
+  verified_at  DateTime? @db.Timestamptz(6)
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([user_id], map: "idx_user_phones_user_id")
+  @@index([phone_number], map: "idx_user_phones_number")
+}
+
+/// Workout items - individual exercises with completion tracking for SMS check-off
+model workout_items {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workout_id      String    @db.Uuid
+  exercise_name   String    @db.VarChar(255)
+  section         String?   @db.VarChar(50) // "warm_up", "main", "cool_down", etc.
+  item_order      Int       @default(0)
+  sets            Int?
+  reps            String?   @db.VarChar(50) // "10-12" or "30 seconds"
+  weight          String?   @db.VarChar(50) // "bodyweight" or "20 lbs"
+  notes           String?
+  is_completed    Boolean   @default(false)
+  completed_at    DateTime? @db.Timestamptz(6)
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  workout         fitness_workouts @relation(fields: [workout_id], references: [id], onDelete: Cascade)
+
+  @@index([workout_id], map: "idx_workout_items_workout_id")
+  @@index([is_completed], map: "idx_workout_items_completed")
+}
+
+/// Share tokens for SMS workout links
+/// Allows unauthenticated access to check-off workout items
+model workout_share_tokens {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workout_id      String    @db.Uuid
+  user_id         String    @db.Uuid
+  token           String    @unique @db.VarChar(64) // Secure random token
+  expires_at      DateTime  @db.Timestamptz(6)
+  is_used         Boolean   @default(false)
+  used_at         DateTime? @db.Timestamptz(6)
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([token], map: "idx_workout_share_tokens_token")
+  @@index([workout_id], map: "idx_workout_share_tokens_workout_id")
+  @@index([user_id], map: "idx_workout_share_tokens_user_id")
+  @@index([expires_at], map: "idx_workout_share_tokens_expires")
+}
+
+/// SMS delivery log for debugging and rate limiting
+model sms_log {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String   @db.Uuid
+  phone_number String   @db.VarChar(20)
+  message_type String   @db.VarChar(50) // "workout_link", "verification", etc.
+  status       String   @db.VarChar(20) // "sent", "delivered", "failed"
+  twilio_sid   String?  @db.VarChar(50) // Twilio message SID
+  error        String?
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([user_id], map: "idx_sms_log_user_id")
+  @@index([created_at], map: "idx_sms_log_created")
+  @@index([status], map: "idx_sms_log_status")
 }

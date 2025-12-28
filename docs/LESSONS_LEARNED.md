@@ -122,5 +122,67 @@
 
 ---
 
-**Version:** 1.0
+## Token & Security Lessons
+
+### Token Storage Strategy
+- **Decision:** Store tokens as-is (not hashed) in database
+- **Reasoning:** Share tokens are short-lived (24h) and random (256-bit)
+- **Trade-off:** Faster lookup vs slightly less secure at rest
+- **Alternative:** Store hash, require lookup by hash (slower but more secure)
+
+### Rate Limiting Implementation
+- **Pattern:** Use database counts within time window
+- **Query:** `COUNT(*) WHERE created_at > NOW() - INTERVAL`
+- **Consideration:** For high-volume, use Redis instead of DB queries
+
+### Phone Number Validation
+- **Format:** E.164 (`+[country][number]`)
+- **Validation:** Regex: `/^\+[1-9]\d{1,14}$/`
+- **Privacy:** Mask in API responses (show last 4 digits only)
+- **Never log:** Full phone numbers in production logs
+
+### Public Routes with Token Auth
+- **Pattern:** Create specific public routes with token validation
+- **Example:** `/api/fitness/sms/workout/check-off/:token`
+- **Validation:** Token lookup → expiration check → ownership check
+- **Important:** Don't expose user data beyond the specific resource
+
+---
+
+## SMS Integration Lessons
+
+### Twilio Setup
+- **Env Vars:** `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`
+- **Fail Fast:** Validate env vars on module load, not on first use
+- **Development:** Skip sending unless `ENABLE_SMS_DEV=true`
+- **Logging:** Log message SID but never log phone numbers
+
+### Rate Limiting for SMS
+- **Limit:** 5 SMS per user per hour (reasonable default)
+- **Storage:** Use same DB (sms_log table) for simplicity
+- **Response:** Return remaining quota to client
+
+---
+
+## RBAC Lessons
+
+### Permission Helper Pattern
+- **Location:** `src/lib/permissions.js`
+- **Pattern:** Async functions that return boolean
+- **Caching:** None - always check DB for fresh data
+- **Middleware:** `requirePermission(fn, getParams)` wrapper
+
+### App Visibility
+- **Approach:** Server returns visible app list based on RBAC
+- **Fallback:** Frontend shows all apps if API fails
+- **Admin app:** Only visible to global admins, checked separately
+
+### Audit Logging
+- **What to log:** All CRUD operations, permission denials, role changes
+- **What NOT to log:** Read operations (too noisy), sensitive data values
+- **Fail silently:** Audit log failures shouldn't break functionality
+
+---
+
+**Version:** 1.1
 **Maintained By:** Development Team

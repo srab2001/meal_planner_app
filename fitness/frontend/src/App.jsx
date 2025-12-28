@@ -1,10 +1,11 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, NavLink } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, NavLink, useParams } from 'react-router-dom';
 
 import CreateGoal from './components/CreateGoal';
 import AICoachQuestionnaire from './components/AICoachQuestionnaire';
 import WorkoutPlanResult from './components/WorkoutPlanResult';
 import GoalsTracker from './components/GoalsTracker';
 import Login from './components/Login';
+import WorkoutCheckOff from './components/WorkoutCheckOff';
 import { useAuth } from './hooks/useAuth';
 import './styles/asr-theme.css';
 import './App.css';
@@ -16,14 +17,15 @@ import './App.css';
  * 1. Create Fitness Goal (Screen A)
  * 2. AI Coach Questionnaire (Screen B) - 7 questions
  * 3. Workout Plan Result (Screen C) - Table format
+ *
+ * Additional Routes:
+ * - /workout/check-off/:token - Public workout check-off (no auth)
  */
-function App() {
-  const { user, token, loading, logout, setUser, setToken } = useAuth();
 
-  if (loading) {
-    return <div className="app-loading">Loading ASR Fitness Platform...</div>;
-  }
-
+/**
+ * Wrapper for authenticated routes
+ */
+function AuthenticatedApp({ user, token, logout, setUser, setToken }) {
   if (!user || !token) {
     return <Login onLoginSuccess={(newUser, newToken) => {
       setUser(newUser);
@@ -32,8 +34,7 @@ function App() {
   }
 
   return (
-    <Router>
-      <div className="asr-app">
+    <div className="asr-app">
         {/* ASR Header */}
         <header className="asr-header">
           <div className="asr-header__logo">
@@ -88,6 +89,36 @@ function App() {
           </Routes>
         </main>
       </div>
+  );
+}
+
+/**
+ * Main App with routing
+ */
+function App() {
+  const { user, token, loading, logout, setUser, setToken } = useAuth();
+
+  if (loading) {
+    return <div className="app-loading">Loading ASR Fitness Platform...</div>;
+  }
+
+  return (
+    <Router>
+      <Routes>
+        {/* Public route - Workout Check-off (no auth required) */}
+        <Route path="/workout/check-off/:token" element={<WorkoutCheckOff />} />
+
+        {/* All other routes require authentication */}
+        <Route path="/*" element={
+          <AuthenticatedApp
+            user={user}
+            token={token}
+            logout={logout}
+            setUser={setUser}
+            setToken={setToken}
+          />
+        } />
+      </Routes>
     </Router>
   );
 }

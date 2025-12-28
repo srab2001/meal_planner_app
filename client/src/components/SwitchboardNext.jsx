@@ -6,7 +6,7 @@ import './SwitchboardNext.css';
  *
  * Features:
  * - Household selector
- * - App tiles for all modules
+ * - App tiles for all modules (RBAC-filtered)
  * - CORE DB status counts
  * - Environment banner
  */
@@ -21,6 +21,7 @@ export default function SwitchboardNext({
 }) {
   const [households, setHouseholds] = useState([]);
   const [activeHousehold, setActiveHousehold] = useState(null);
+  const [visibleApps, setVisibleApps] = useState([]);
   const [statusCounts, setStatusCounts] = useState({
     pantryExpiring: 0,
     complianceMissed: 0,
@@ -45,10 +46,11 @@ export default function SwitchboardNext({
     }
   }, [user]);
 
-  // Fetch status counts when household changes
+  // Fetch status counts and visible apps when household changes
   useEffect(() => {
     if (activeHousehold) {
       fetchStatusCounts();
+      fetchVisibleApps();
     }
   }, [activeHousehold]);
 
@@ -97,6 +99,34 @@ export default function SwitchboardNext({
     }
   };
 
+  const fetchVisibleApps = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(
+        `${API_BASE}/api/core/visible-apps?household_id=${activeHousehold.id}`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setVisibleApps(data.apps || []);
+      } else {
+        // Fallback: show all apps if API fails
+        setVisibleApps([
+          'meal-planner', 'fitness', 'coaching', 'pantry',
+          'compliance', 'household', 'medical'
+        ]);
+      }
+    } catch (err) {
+      console.error('Failed to fetch visible apps:', err);
+      // Fallback: show all apps
+      setVisibleApps([
+        'meal-planner', 'fitness', 'coaching', 'pantry',
+        'compliance', 'household', 'medical'
+      ]);
+    }
+  };
+
   const handleHouseholdChange = (household) => {
     setActiveHousehold(household);
     localStorage.setItem('active_household_id', household.id);
@@ -120,15 +150,14 @@ export default function SwitchboardNext({
     window.location.href = `${API_BASE}/auth/google?redirect=${encodeURIComponent(redirectUrl)}`;
   };
 
-  // App definitions
-  const apps = [
+  // App definitions with RBAC visibility
+  const allApps = [
     {
       id: 'meal-planner',
       name: 'Meal Planner',
       description: 'AI-powered meal planning',
       icon: '🍽️',
-      color: '#5B2C6F',
-      available: true
+      color: '#5B2C6F'
     },
     {
       id: 'fitness',
@@ -136,7 +165,6 @@ export default function SwitchboardNext({
       description: 'Workout planning & tracking',
       icon: '💪',
       color: '#27ae60',
-      available: true,
       externalUrl: 'https://frontend-six-topaz-27.vercel.app'
     },
     {
@@ -144,8 +172,7 @@ export default function SwitchboardNext({
       name: 'AI Coach',
       description: 'Personalized health coaching',
       icon: '🎯',
-      color: '#9b59b6',
-      available: true
+      color: '#9b59b6'
     },
     {
       id: 'pantry',
@@ -153,7 +180,6 @@ export default function SwitchboardNext({
       description: 'Track food inventory',
       icon: '🥫',
       color: '#e67e22',
-      available: true,
       badge: statusCounts.pantryExpiring > 0 ? `${statusCounts.pantryExpiring} expiring` : null
     },
     {
@@ -162,7 +188,6 @@ export default function SwitchboardNext({
       description: 'Dietary compliance tracking',
       icon: '✓',
       color: '#3498db',
-      available: true,
       badge: statusCounts.complianceMissed > 0 ? `${statusCounts.complianceMissed} missed` : null
     },
     {
@@ -170,8 +195,7 @@ export default function SwitchboardNext({
       name: 'Household',
       description: 'Manage members & invites',
       icon: '👨‍👩‍👧‍👦',
-      color: '#1abc9c',
-      available: true
+      color: '#1abc9c'
     },
     {
       id: 'medical',
@@ -179,7 +203,6 @@ export default function SwitchboardNext({
       description: 'Health profiles & restrictions',
       icon: '🏥',
       color: '#e74c3c',
-      available: true,
       badge: statusCounts.constraintsCount > 0 ? `${statusCounts.constraintsCount} constraints` : null
     },
     {
@@ -187,11 +210,14 @@ export default function SwitchboardNext({
       name: 'Admin',
       description: 'System administration',
       icon: '🔐',
-      color: '#95a5a6',
-      available: user?.role === 'admin',
-      adminOnly: true
+      color: '#95a5a6'
     }
   ];
+
+  // Filter apps based on RBAC visibility
+  const apps = allApps
+    .filter(app => visibleApps.includes(app.id))
+    .map(app => ({ ...app, available: true }));
 
   const handleAppClick = (app) => {
     if (!app.available) return;
@@ -301,12 +327,11 @@ export default function SwitchboardNext({
         <h2>Choose Your App</h2>
 
         <div className="app-tiles">
-          {apps.filter(app => !app.adminOnly || app.available).map(app => (
+          {apps.map(app => (
             <button
               key={app.id}
-              className={`app-tile ${!app.available ? 'disabled' : ''}`}
+              className="app-tile"
               onClick={() => handleAppClick(app)}
-              disabled={!app.available}
               style={{ '--app-color': app.color }}
             >
               <span className="app-icon">{app.icon}</span>

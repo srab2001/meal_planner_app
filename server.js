@@ -18,11 +18,17 @@ const pgSession = require('connect-pg-simple')(session);
 // Import fitness routes
 const fitnessRoutes = require('./fitness/backend/routes/fitness');
 
+// Import fitness SMS routes
+const fitnessSmsRoutes = require('./fitness/backend/routes/sms');
+
 // Import nutrition routes (read-only meal data for fitness module)
 const nutritionRoutes = require('./routes/nutrition');
 
 // Import admin routes
 const adminRoutes = require('./routes/admin');
+
+// Import CORE DB routes
+const coreRoutes = require('./routes/core');
 
 // ============================================================================
 // RUN MIGRATIONS FIRST - BEFORE ANY EXPRESS SETUP
@@ -554,6 +560,9 @@ app.locals.openai = openai;
 // Protect all fitness routes with JWT authentication
 app.use('/api/fitness', requireAuth, fitnessRoutes);
 
+// SMS routes have their own auth handling for public check-off endpoints
+app.use('/api/fitness/sms', fitnessSmsRoutes);
+
 // ============================================================================
 // MOUNT NUTRITION ROUTES (Read-only meal data for fitness module)
 // ============================================================================
@@ -564,6 +573,12 @@ app.use('/api/nutrition', nutritionRoutes);
 // ============================================================================
 // Apply JWT authentication middleware to all admin routes
 app.use('/api/admin', requireAuth, adminRoutes);
+
+// ============================================================================
+// MOUNT CORE DB ROUTES (Households, RBAC, status counts)
+// ============================================================================
+// Core routes have their own auth handling for demo support
+app.use('/api/core', coreRoutes);
 
 // simple profile endpoint
 app.get('/api/profile', requireAuth, (req, res) => {

@@ -1,0 +1,312 @@
+/* WorkoutCheckOff - Mobile-first workout completion page */
+
+.checkoff-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  color: #fff;
+  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.checkoff-container.loading,
+.checkoff-container.error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.checkoff-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #ff9900;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.checkoff-error-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #e74c3c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  font-weight: bold;
+  margin-bottom: 16px;
+}
+
+.checkoff-hint {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  margin-top: 12px;
+}
+
+/* Header */
+.checkoff-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.checkoff-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #ff9900 0%, #e67e22 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.checkoff-header h1 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Workout Info */
+.checkoff-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.checkoff-date {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 14px;
+}
+
+.checkoff-type {
+  background: rgba(39, 174, 96, 0.2);
+  color: #2ecc71;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 14px;
+  text-transform: capitalize;
+}
+
+.checkoff-intensity {
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 14px;
+  text-transform: capitalize;
+}
+
+.checkoff-intensity.low { background: rgba(52, 152, 219, 0.2); color: #3498db; }
+.checkoff-intensity.medium { background: rgba(241, 196, 15, 0.2); color: #f1c40f; }
+.checkoff-intensity.high { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
+
+/* Progress */
+.checkoff-progress {
+  margin-bottom: 20px;
+}
+
+.checkoff-progress-bar {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.checkoff-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ff9900 0%, #27ae60 100%);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.checkoff-progress-text {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Success Message */
+.checkoff-success {
+  background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+  padding: 16px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  animation: celebrate 0.5s ease-out;
+}
+
+@keyframes celebrate {
+  0% { transform: scale(0.9); opacity: 0; }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.checkoff-success-icon {
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/* Sections */
+.checkoff-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.checkoff-section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  text-transform: capitalize;
+  margin: 0 0 12px 0;
+  padding-left: 4px;
+  border-left: 3px solid #ff9900;
+}
+
+.checkoff-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Item */
+.checkoff-item {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  width: 100%;
+  color: #fff;
+}
+
+.checkoff-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.checkoff-item:active {
+  transform: scale(0.98);
+}
+
+.checkoff-item.completed {
+  background: rgba(39, 174, 96, 0.15);
+  border-color: rgba(39, 174, 96, 0.3);
+}
+
+.checkoff-item.completed .checkoff-item-name {
+  text-decoration: line-through;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.checkoff-item:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+/* Item Check */
+.checkoff-item-check {
+  width: 28px;
+  height: 28px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.checkoff-item.completed .checkoff-item-check {
+  background: #27ae60;
+  border-color: #27ae60;
+}
+
+/* Item Content */
+.checkoff-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.checkoff-item-name {
+  display: block;
+  font-weight: 500;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+.checkoff-item-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.checkoff-item-details span {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.checkoff-item-loading {
+  color: rgba(255, 255, 255, 0.5);
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* Footer */
+.checkoff-footer {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 12px;
+}
+
+/* Responsive */
+@media (min-width: 600px) {
+  .checkoff-container {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 32px;
+  }
+
+  .checkoff-header h1 {
+    font-size: 24px;
+  }
+
+  .checkoff-item {
+    padding: 16px;
+  }
+}
