@@ -288,11 +288,39 @@ Every authenticated request:
 | App | Doc Path |
 |-----|----------|
 | Household | /docs/apps/household.md |
-| Medical | /docs/apps/medical.md (TODO) |
-| Pantry | /docs/apps/pantry.md (TODO) |
-| Compliance | /docs/apps/compliance.md (TODO) |
+| Medical | /docs/apps/medical.md |
+| Pantry | /docs/apps/pantry.md |
+| Compliance | /docs/apps/compliance.md |
 
 ---
 
-**Version:** 1.1
+## Guardrails Integration
+
+### Contract
+
+Meal and Fitness generation MUST fetch guardrails before AI generation:
+
+```
+GET /api/core/medical/guardrails?user_id=xxx
+```
+
+Response includes:
+- `constraints[]` - Dietary/medical constraints
+- `allergies[]` - Allergen list with severity
+- `conditions[]` - Active medical conditions
+- `restriction_rules[]` - Max values for nutrients
+
+### Flow
+
+1. Frontend requests meal/workout generation
+2. Backend calls guardrails API
+3. AI prompt includes constraints
+4. Results saved to MEAL/FITNESS DB with user_id/household_id
+5. Plan items created in CORE DB for compliance
+
+See: `/docs/integration/meal-fitness-core.md`
+
+---
+
+**Version:** 1.2
 **Maintained By:** Development Team

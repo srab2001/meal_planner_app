@@ -1,0 +1,52 @@
+.pantry-app { min-height: 100vh; background: #f5f5f5; }
+.pantry-app.loading { display: flex; justify-content: center; align-items: center; }
+.pantry-app .spinner { width: 40px; height: 40px; border: 3px solid #ddd; border-top-color: #e67e22; border-radius: 50%; animation: spin 1s linear infinite; }
+
+.pantry-header { display: flex; align-items: center; gap: 20px; padding: 20px 24px; background: linear-gradient(135deg, #e67e22 0%, #d35400 100%); color: white; }
+.pantry-header h1 { margin: 0; flex: 1; font-size: 24px; }
+.btn-back { background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 16px; border-radius: 8px; cursor: pointer; }
+.btn-add { background: white; color: #e67e22; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+
+.pantry-tabs { display: flex; gap: 4px; padding: 0 24px; background: white; border-bottom: 1px solid #eee; overflow-x: auto; }
+.pantry-tabs button { padding: 12px 16px; border: none; background: none; cursor: pointer; font-size: 14px; color: #666; border-bottom: 2px solid transparent; white-space: nowrap; }
+.pantry-tabs button.active { color: #e67e22; border-bottom-color: #e67e22; }
+.pantry-tabs .badge { background: #e67e22; color: white; font-size: 11px; padding: 2px 6px; border-radius: 10px; margin-left: 4px; }
+
+.add-form { display: flex; gap: 12px; padding: 16px 24px; background: white; flex-wrap: wrap; border-bottom: 1px solid #eee; }
+.add-form input, .add-form select { padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+.add-form input[type="text"] { flex: 1; min-width: 150px; }
+.add-form input[type="number"] { width: 80px; }
+.add-form button { background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+
+.pantry-content { padding: 24px; }
+.items-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+.item-card { background: white; border-radius: 12px; padding: 16px; border-top: 4px solid #ddd; }
+.item-card.category-produce { border-color: #27ae60; }
+.item-card.category-dairy { border-color: #3498db; }
+.item-card.category-meat { border-color: #e74c3c; }
+.item-card.category-pantry { border-color: #e67e22; }
+.item-card.category-frozen { border-color: #9b59b6; }
+.item-card.expired { opacity: 0.6; }
+
+.item-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
+.category { font-size: 11px; text-transform: uppercase; color: #999; }
+.expiry { font-size: 11px; padding: 2px 6px; border-radius: 4px; background: #eee; }
+.expiry.soon { background: #f1c40f; color: #333; }
+.expiry.expired { background: #e74c3c; color: white; }
+
+.item-card h3 { margin: 0 0 4px; font-size: 16px; }
+.quantity { margin: 0 0 12px; color: #666; font-size: 14px; }
+.item-actions { display: flex; gap: 8px; }
+.item-actions button { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 6px; background: white; cursor: pointer; font-size: 12px; }
+.item-actions button:hover { background: #f5f5f5; }
+
+.events-list { display: flex; flex-direction: column; gap: 8px; }
+.event-card { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: white; border-radius: 8px; }
+.event-type { font-size: 11px; padding: 4px 8px; border-radius: 4px; background: #eee; text-transform: capitalize; }
+.event-card.type-added .event-type { background: #27ae60; color: white; }
+.event-card.type-consumed .event-type { background: #3498db; color: white; }
+.event-card.type-wasted .event-type { background: #e74c3c; color: white; }
+.event-item { flex: 1; font-weight: 500; }
+.event-qty { font-weight: 600; }
+.event-time { font-size: 12px; color: #999; }
+.empty { text-align: center; color: #999; padding: 40px; grid-column: 1 / -1; }

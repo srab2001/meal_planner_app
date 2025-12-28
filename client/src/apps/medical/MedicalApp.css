@@ -1,0 +1,52 @@
+.medical-app { min-height: 100vh; background: #f5f5f5; }
+.medical-app.loading { display: flex; justify-content: center; align-items: center; }
+.medical-app .spinner { width: 40px; height: 40px; border: 3px solid #ddd; border-top-color: #e74c3c; border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.medical-header { display: flex; align-items: center; gap: 20px; padding: 20px 24px; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; }
+.medical-header h1 { margin: 0; font-size: 24px; }
+.btn-back { background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 16px; border-radius: 8px; cursor: pointer; }
+
+.medical-tabs { display: flex; gap: 4px; padding: 0 24px; background: white; border-bottom: 1px solid #eee; }
+.medical-tabs button { padding: 12px 20px; border: none; background: none; cursor: pointer; font-size: 14px; color: #666; border-bottom: 2px solid transparent; position: relative; }
+.medical-tabs button.active { color: #e74c3c; border-bottom-color: #e74c3c; }
+.medical-tabs .badge { background: #e74c3c; color: white; font-size: 11px; padding: 2px 6px; border-radius: 10px; margin-left: 6px; }
+
+.medical-content { padding: 24px; max-width: 800px; margin: 0 auto; }
+
+.profile-form { background: white; padding: 24px; border-radius: 12px; }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; margin-bottom: 6px; font-weight: 600; color: #333; }
+.form-group input, .form-group select { width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.btn-save { background: #e74c3c; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+
+.list-section { background: white; padding: 24px; border-radius: 12px; }
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.section-header h2 { margin: 0; font-size: 18px; }
+.section-header button { background: #27ae60; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
+.section-desc { color: #666; font-size: 14px; margin-bottom: 16px; }
+
+.add-form { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.add-form input { flex: 1; min-width: 200px; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; }
+.add-form select { padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; }
+.add-form button { background: #5B2C6F; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+
+.items-list { display: flex; flex-direction: column; gap: 12px; }
+.item-card, .constraint-card { display: flex; justify-content: space-between; align-items: center; padding: 16px; border-radius: 8px; border-left: 4px solid #ddd; background: #fafafa; }
+.item-card.severity-mild { border-color: #f1c40f; }
+.item-card.severity-moderate { border-color: #e67e22; }
+.item-card.severity-severe { border-color: #e74c3c; }
+.item-card.severity-life-threatening { border-color: #8e44ad; }
+.item-card.status-active { border-color: #e74c3c; }
+.item-card.status-managed { border-color: #27ae60; }
+.item-card.status-resolved { border-color: #95a5a6; }
+.constraint-card.type-medical { border-color: #e74c3c; }
+.constraint-card.type-dietary { border-color: #3498db; }
+
+.item-info, .constraint-info { display: flex; align-items: center; gap: 12px; }
+.item-info h4, .constraint-info h4 { margin: 0; text-transform: capitalize; }
+.severity, .status, .type { font-size: 12px; padding: 4px 8px; border-radius: 12px; background: #eee; text-transform: capitalize; }
+.constraint-info .value { font-size: 12px; color: #666; }
+.btn-delete { background: #e74c3c; color: white; border: none; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; font-size: 18px; }
+.empty { color: #999; text-align: center; padding: 24px; }
