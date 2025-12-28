@@ -184,5 +184,40 @@
 
 ---
 
-**Version:** 1.1
+## Testing Lessons
+
+### Jest Module Mocking
+- **Issue:** Mocking modules that are imported at module load time
+- **Solution:** Use `moduleNameMapper` in jest.config.js for consistent mocks
+- **Pattern:** Create mock files in `__tests__/__mocks__/` directory
+- **Example:** `'^../prisma/generated/client$': '<rootDir>/__tests__/__mocks__/prismaClient.js'`
+
+### Unit vs Integration Tests
+- **Unit tests:** Pure functions (validation, formatting, URL generation)
+- **Integration tests:** Database interactions, API endpoints
+- **Decision:** Focus unit tests on pure functions, use integration tests for DB
+
+### Coverage for Generated Files
+- **Issue:** Prisma generated client not available in test environment
+- **Fix:** Add to .gitignore: `coverage/`
+- **Prevention:** Exclude generated directories from coverage reports
+
+---
+
+## Event Logging Lessons
+
+### Privacy-Safe Logging
+- **Pattern:** Mask IDs (show last 4 chars only)
+- **Never log:** Full tokens, phone numbers, sensitive data
+- **Always log:** Event type, timestamp, masked references
+- **Example:** `userId: '***abc1'` instead of full UUID
+
+### Structured Event Format
+- **Format:** JSON objects with consistent structure
+- **Fields:** timestamp, event, userId (masked), workoutId (masked), metadata
+- **Output:** `console.log('[EVENT]', JSON.stringify(logEntry))`
+
+---
+
+**Version:** 1.2
 **Maintained By:** Development Team

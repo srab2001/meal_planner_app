@@ -127,7 +127,8 @@ Response:
     "cool down": [...]
   },
   "totalItems": 12,
-  "completedItems": 5
+  "completedItems": 5,
+  "isOwner": true
 }
 ```
 
@@ -145,6 +146,23 @@ Response:
   "success": true,
   "item": { "id": "uuid", "completed": true, "completedAt": "2025-12-28T10:30:00Z" },
   "progress": { "total": 12, "completed": 6 }
+}
+```
+
+**POST /api/fitness/sms/workout/check-off/:token/bulk**
+Bulk operations (owner only).
+
+Request:
+```json
+{ "action": "mark_all_done" }  // or "clear_all"
+```
+
+Response:
+```json
+{
+  "success": true,
+  "action": "mark_all_done",
+  "progress": { "total": 12, "completed": 12 }
 }
 ```
 
@@ -213,7 +231,39 @@ FRONTEND_URL=https://frontend-six-topaz-27.vercel.app
 ### Frontend
 - `fitness/frontend/src/components/WorkoutCheckOff.jsx` - Check-off page
 - `fitness/frontend/src/components/WorkoutCheckOff.css` - Styles
+- `fitness/frontend/src/components/WorkoutPlanResult.jsx` - SMS toggle UI
 - `fitness/frontend/src/App.jsx` - Route registration
+
+---
+
+## Event Logging
+
+Events are logged without exposing sensitive data (tokens, phone numbers):
+
+| Event | When Logged |
+|-------|-------------|
+| `workout_link_created` | Share token generated |
+| `sms_requested` | SMS send initiated |
+| `sms_sent` | SMS delivered successfully |
+| `sms_failed` | SMS delivery failed |
+| `item_checked` | Exercise marked complete |
+| `item_unchecked` | Exercise marked incomplete |
+| `bulk_mark_complete` | Owner marked all done |
+| `bulk_clear_all` | Owner cleared all |
+| `token_validated` | Valid token access |
+| `token_expired` | Expired token rejected |
+| `token_invalid` | Invalid token rejected |
+
+---
+
+## Testing
+
+### Unit Tests
+Located in `fitness/backend/__tests__/`:
+- `workoutToken.test.js` - Token validation, URL generation
+- `sms.test.js` - Phone validation, formatting, rate limits
+
+Run tests: `cd fitness/backend && npm test`
 
 ---
 
@@ -227,5 +277,6 @@ FRONTEND_URL=https://frontend-six-topaz-27.vercel.app
 
 ---
 
-**Version:** 1.0
+**Version:** 1.1
 **Created:** December 28, 2025
+**Updated:** December 28, 2025 - Added owner controls, bulk operations, event logging, tests
