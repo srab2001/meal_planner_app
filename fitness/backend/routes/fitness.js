@@ -1179,8 +1179,8 @@ router.post('/goals', requireAuth, async (req, res) => {
       });
     }
 
-    // Validate target_value if provided
-    if (target_value !== undefined && (typeof target_value !== 'number' || target_value <= 0)) {
+    // Validate target_value if provided (allow null/undefined to skip)
+    if (target_value !== undefined && target_value !== null && (typeof target_value !== 'number' || target_value <= 0)) {
       return res.status(400).json({
         error: 'invalid_target_value',
         message: 'target_value must be a positive number',
