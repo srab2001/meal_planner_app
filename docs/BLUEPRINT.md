@@ -1,0 +1,215 @@
+# ASR Health Portal - Architecture Blueprint
+
+**Project:** ASR Health Portal Next (Parallel Build)
+**Version:** 1.0
+**Last Updated:** December 28, 2025
+
+---
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         FRONTEND                                 │
+│                    Vercel: asr-health-portal-next               │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐            │
+│  │Switchboard│ │ Household │ │  Medical │ │  Pantry  │           │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘            │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐            │
+│  │Compliance│ │   Meal   │ │ Fitness  │ │  Admin   │            │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘            │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                    ┌─────────┴─────────┐
+                    ▼                   ▼
+┌─────────────────────────┐   ┌─────────────────────────┐
+│       CORE DB           │   │       MEAL DB           │
+│   Neon: core_db_next    │   │  Render: meal_db_next   │
+│                         │   │                         │
+│ • Users & Identity      │   │ • Flyer data            │
+│ • Roles & RBAC          │   │ • Scraped items         │
+│ • Households            │   │ • Meal generations      │
+│ • Medical profiles      │   │ • Shopping lists        │
+│ • Restrictions          │   │ • Price comparisons     │
+│ • Pantry                │   │ • Meal logs             │
+│ • Compliance            │   │                         │
+└─────────────────────────┘   └─────────────────────────┘
+```
+
+---
+
+## Database Responsibilities
+
+### CORE DB (Neon: core_db_next)
+**System of Record** - All identity, authorization, and domain data
+
+| Table | Purpose |
+|-------|---------|
+| `users` | User identity, OAuth, profile |
+| `roles` | Role definitions (admin, household_admin, member, viewer) |
+| `user_roles` | User-to-role assignments (per household) |
+| `households` | Household groups |
+| `household_memberships` | User-to-household relationships |
+| `invites` | Pending household invitations |
+| `medical_profiles` | User health profiles |
+| `allergies` | Allergy records |
+| `medical_conditions` | Health conditions |
+| `restriction_rules` | Guardrail rules for medical conditions |
+| `user_constraints` | User-specific dietary/medical constraints |
+| `plans` | Meal/fitness plans |
+| `plan_items` | Individual plan entries |
+| `checkins` | Daily check-ins |
+| `pantries` | Household pantry containers |
+| `pantry_items` | Items in pantry |
+| `pantry_item_events` | Add/remove/expire events |
+
+### MEAL DB (Render: meal_db_next)
+**Meal-Heavy Operations** - High-volume meal data
+
+| Table | Purpose |
+|-------|---------|
+| `flyers` | Store flyer metadata |
+| `flyer_items` | Scraped flyer items |
+| `stores` | Store locations |
+| `meal_generations` | AI meal plan generations |
+| `shopping_lists` | Generated shopping lists |
+| `price_comparisons` | Price comparison results |
+| `meal_logs` | Generation logs and analytics |
+
+---
+
+## App List
+
+| App | Status | Database | Description |
+|-----|--------|----------|-------------|
+| **Switchboard** | Redesign | CORE | Portal home, app launcher, auth |
+| **Household** | New | CORE | Manage household members, invites |
+| **Medical** | New | CORE | Health profiles, restrictions, guardrails |
+| **Pantry** | New | CORE | Track pantry items, expiration |
+| **Compliance** | New | CORE | Dietary compliance tracking |
+| **Meal Planner** | Migrate | CORE + MEAL | AI meal planning, shopping lists |
+| **Fitness Coach** | Migrate | CORE + Fitness DB | Workout planning, goals |
+| **Admin** | Existing | CORE | User management, system admin |
+
+---
+
+## Environment Variables
+
+### CORE DB (Neon)
+```env
+CORE_DATABASE_URL=postgresql://...@core_db_next.neon.tech/neondb
+```
+
+### MEAL DB (Render)
+```env
+MEAL_DATABASE_URL=postgresql://...@render.com/meal_db_next
+```
+
+### OAuth (New App)
+```env
+GOOGLE_CLIENT_ID=<new-oauth-app-client-id>
+GOOGLE_CLIENT_SECRET=<new-oauth-app-client-secret>
+GOOGLE_CALLBACK_URL=https://asr-health-portal-next.vercel.app/auth/callback
+```
+
+### Feature Flags
+```env
+NEXT_PUBLIC_ENV=development|preview|production
+ENABLE_HOUSEHOLD_FEATURES=true
+ENABLE_MEDICAL_GUARDRAILS=true
+```
+
+---
+
+## RBAC Model
+
+### Roles
+| Role | Scope | Permissions |
+|------|-------|-------------|
+| `admin` | Global | All operations, all households |
+| `household_admin` | Household | Manage members, view all data |
+| `member` | Household | Full CRUD on own data |
+| `viewer` | Household | Read-only access |
+
+### Permission Check Pattern
+```typescript
+async function checkPermission(userId: string, householdId: string, requiredRole: string) {
+  const membership = await coreDb.household_memberships.findFirst({
+    where: { user_id: userId, household_id: householdId },
+    include: { role: true }
+  });
+
+  if (!membership) throw new UnauthorizedError('Not a member');
+  if (!hasRole(membership.role, requiredRole)) throw new ForbiddenError('Insufficient role');
+}
+```
+
+---
+
+## Cutover Approach
+
+### Phase 1: Parallel Build (No Production Impact)
+1. Create new cloud resources (Vercel, Neon, Render, OAuth)
+2. Build new apps in parallel repo
+3. Test with synthetic data only
+4. No production database connections
+
+### Phase 2: Data Migration Prep
+1. Create migration scripts
+2. Test with production data copy
+3. Validate data integrity
+4. Document rollback procedures
+
+### Phase 3: Cutover
+1. Enable maintenance mode on production
+2. Run final data migration
+3. Update DNS/routing
+4. Validate functionality
+5. Monitor for issues
+
+### Phase 4: Rollback (if needed)
+1. Revert DNS/routing
+2. Disable maintenance mode
+3. Production restored
+4. Investigate issues
+
+---
+
+## Prisma Configuration
+
+### Multi-Schema Setup
+```
+prisma/
+├── core/
+│   └── schema.prisma    # CORE DB schema
+├── meal/
+│   └── schema.prisma    # MEAL DB schema
+└── fitness/
+    └── schema.prisma    # FITNESS DB schema (existing)
+```
+
+### Client Wrappers
+```typescript
+// src/lib/coreDb.ts
+import { PrismaClient } from '@prisma/client/core';
+export const coreDb = new PrismaClient();
+
+// src/lib/mealDb.ts
+import { PrismaClient } from '@prisma/client/meal';
+export const mealDb = new PrismaClient();
+```
+
+---
+
+## Key Constraints
+
+1. **No cross-DB joins** - Query one DB, pass IDs to second
+2. **Household context always required** - Every API includes household_id
+3. **RBAC on every route** - Check permissions before data access
+4. **Audit logging** - Track all data modifications
+5. **Environment isolation** - Never mix dev/preview/production
+
+---
+
+**Version:** 1.0
+**Maintained By:** Development Team
