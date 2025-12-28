@@ -211,5 +211,88 @@ export const mealDb = new PrismaClient();
 
 ---
 
-**Version:** 1.0
+## Authentication Flow
+
+### Login Provisioning
+
+```
+1. User clicks "Sign in with Google"
+2. Redirect to /auth/google → Google OAuth
+3. OAuth callback with token
+4. Backend: provisionUserOnLogin()
+   a. Upsert user in CORE DB by email
+   b. If first login:
+      - Create household
+      - Create membership (role: owner)
+      - Assign default roles
+   c. Return user + household
+5. Set auth_token cookie
+6. Set active_household_id cookie
+7. Redirect to switchboard
+```
+
+### Household Resolution
+
+```
+Every authenticated request:
+1. Middleware: requireAuth
+   - Extract token from Authorization header or cookie
+   - Verify JWT
+   - Attach req.user
+
+2. Middleware: requireHouseholdContext
+   - Get household_id from X-Household-ID header or cookie
+   - Lookup membership in CORE DB
+   - Verify user is member of household
+   - Attach req.household, req.householdRole
+
+3. Middleware: requireRole (optional)
+   - Check req.householdRole against allowed roles
+   - Global admin bypasses all checks
+```
+
+### Token Storage
+
+| Token | Storage | Purpose |
+|-------|---------|---------|
+| auth_token | httpOnly cookie | JWT authentication |
+| active_household_id | httpOnly cookie | Current household context |
+| user | localStorage | UI display (non-sensitive) |
+
+---
+
+## Switchboard Behavior
+
+### Features
+- Household selector dropdown
+- App tiles with status badges
+- Environment banner (preview warning)
+- CORE DB status counts
+
+### Status Counts (from CORE DB)
+- Pantry items expiring soon
+- Compliance items missed
+- Active medical constraints
+
+### App Tiles
+| App | Badge Source |
+|-----|--------------|
+| Pantry | pantry_items WHERE expiration_date < NOW() + 7 days |
+| Compliance | checkins missed in last 7 days |
+| Medical | user_constraints WHERE is_active = true |
+
+---
+
+## App Documentation
+
+| App | Doc Path |
+|-----|----------|
+| Household | /docs/apps/household.md |
+| Medical | /docs/apps/medical.md (TODO) |
+| Pantry | /docs/apps/pantry.md (TODO) |
+| Compliance | /docs/apps/compliance.md (TODO) |
+
+---
+
+**Version:** 1.1
 **Maintained By:** Development Team

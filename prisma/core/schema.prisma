@@ -1,0 +1,316 @@
+// CORE DB Schema - System of Record
+// Database: Neon core_db_next
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../node_modules/@prisma/client/core"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("CORE_DATABASE_URL")
+}
+
+// ============================================
+// USERS & AUTHENTICATION
+// ============================================
+
+model users {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  display_name  String?
+  picture       String?
+  google_id     String?  @unique
+  status        String   @default("active") // active, suspended, deleted
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  last_login_at DateTime?
+
+  // Relations
+  user_roles             user_roles[]
+  household_memberships  household_memberships[]
+  invites_sent           invites[]               @relation("InviteSender")
+  medical_profile        medical_profiles?
+  user_constraints       user_constraints[]
+  checkins               checkins[]
+  pantry_item_events     pantry_item_events[]
+
+  @@index([email])
+  @@index([google_id])
+}
+
+// ============================================
+// ROLES & RBAC
+// ============================================
+
+model roles {
+  id          String   @id @default(uuid())
+  name        String   @unique // admin, household_admin, member, viewer
+  description String?
+  permissions Json     @default("[]") // Array of permission strings
+  created_at  DateTime @default(now())
+
+  user_roles user_roles[]
+}
+
+model user_roles {
+  id           String   @id @default(uuid())
+  user_id      String
+  role_id      String
+  household_id String?  // null for global roles like admin
+  created_at   DateTime @default(now())
+
+  user      users      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  role      roles      @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  household households? @relation(fields: [household_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, role_id, household_id])
+  @@index([user_id])
+  @@index([household_id])
+}
+
+// ============================================
+// HOUSEHOLDS
+// ============================================
+
+model households {
+  id         String   @id @default(uuid())
+  name       String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  memberships household_memberships[]
+  invites     invites[]
+  user_roles  user_roles[]
+  pantries    pantries[]
+  plans       plans[]
+
+  @@index([name])
+}
+
+model household_memberships {
+  id           String   @id @default(uuid())
+  user_id      String
+  household_id String
+  role         String   @default("member") // owner, admin, member, viewer
+  is_active    Boolean  @default(true)
+  joined_at    DateTime @default(now())
+
+  user      users      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  household households @relation(fields: [household_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, household_id])
+  @@index([user_id])
+  @@index([household_id])
+}
+
+model invites {
+  id           String    @id @default(uuid())
+  email        String
+  household_id String
+  invited_by   String
+  token        String    @unique @default(uuid())
+  role         String    @default("member")
+  status       String    @default("pending") // pending, accepted, expired, revoked
+  expires_at   DateTime
+  created_at   DateTime  @default(now())
+  accepted_at  DateTime?
+
+  household households @relation(fields: [household_id], references: [id], onDelete: Cascade)
+  sender    users      @relation("InviteSender", fields: [invited_by], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@index([token])
+  @@index([household_id])
+}
+
+// ============================================
+// MEDICAL PROFILES & RESTRICTIONS
+// ============================================
+
+model medical_profiles {
+  id                String   @id @default(uuid())
+  user_id           String   @unique
+  date_of_birth     DateTime?
+  height_cm         Decimal? @db.Decimal(5, 2)
+  weight_kg         Decimal? @db.Decimal(5, 2)
+  blood_type        String?
+  notes             String?
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  user              users                @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  allergies         allergies[]
+  medical_conditions medical_conditions[]
+}
+
+model allergies {
+  id                 String   @id @default(uuid())
+  medical_profile_id String
+  allergen           String   // peanuts, shellfish, dairy, etc.
+  severity           String   @default("moderate") // mild, moderate, severe, life-threatening
+  notes              String?
+  created_at         DateTime @default(now())
+
+  medical_profile medical_profiles @relation(fields: [medical_profile_id], references: [id], onDelete: Cascade)
+
+  @@index([medical_profile_id])
+  @@index([allergen])
+}
+
+model medical_conditions {
+  id                 String   @id @default(uuid())
+  medical_profile_id String
+  condition          String   // diabetes, hypertension, celiac, etc.
+  diagnosed_date     DateTime?
+  status             String   @default("active") // active, managed, resolved
+  notes              String?
+  created_at         DateTime @default(now())
+
+  medical_profile medical_profiles @relation(fields: [medical_profile_id], references: [id], onDelete: Cascade)
+
+  @@index([medical_profile_id])
+  @@index([condition])
+}
+
+model restriction_rules {
+  id              String   @id @default(uuid())
+  rule_key        String   @unique // diabetes_sugar, celiac_gluten, etc.
+  condition       String   // The medical condition this applies to
+  restriction     String   // What is restricted (sugar, gluten, sodium, etc.)
+  max_daily_value Decimal? @db.Decimal(10, 2)
+  unit            String?  // mg, g, %, etc.
+  description     String?
+  severity        String   @default("required") // suggested, required, critical
+  created_at      DateTime @default(now())
+
+  @@index([condition])
+  @@index([rule_key])
+}
+
+model user_constraints {
+  id          String   @id @default(uuid())
+  user_id     String
+  constraint_type String  // dietary, medical, preference
+  constraint_key  String  // no_pork, low_sodium, vegetarian
+  value       String?  // max value or description
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, constraint_key])
+  @@index([user_id])
+}
+
+// ============================================
+// PLANS & CHECKINS
+// ============================================
+
+model plans {
+  id           String   @id @default(uuid())
+  household_id String
+  name         String
+  plan_type    String   // meal, fitness, combined
+  start_date   DateTime
+  end_date     DateTime?
+  status       String   @default("active") // draft, active, completed, archived
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  household  households   @relation(fields: [household_id], references: [id], onDelete: Cascade)
+  plan_items plan_items[]
+
+  @@index([household_id])
+  @@index([start_date])
+}
+
+model plan_items {
+  id          String   @id @default(uuid())
+  plan_id     String
+  item_type   String   // meal, workout, task
+  scheduled_at DateTime
+  title       String
+  description String?
+  metadata    Json?    // Flexible data for different item types
+  status      String   @default("pending") // pending, completed, skipped
+  completed_at DateTime?
+  created_at  DateTime @default(now())
+
+  plan     plans      @relation(fields: [plan_id], references: [id], onDelete: Cascade)
+  checkins checkins[]
+
+  @@index([plan_id])
+  @@index([scheduled_at])
+}
+
+model checkins {
+  id           String   @id @default(uuid())
+  user_id      String
+  plan_item_id String?
+  checkin_type String   // meal_logged, workout_done, weight_logged, etc.
+  value        Json?    // Flexible data for different checkin types
+  notes        String?
+  created_at   DateTime @default(now())
+
+  user      users       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  plan_item plan_items? @relation(fields: [plan_item_id], references: [id], onDelete: SetNull)
+
+  @@index([user_id])
+  @@index([created_at])
+}
+
+// ============================================
+// PANTRY
+// ============================================
+
+model pantries {
+  id           String   @id @default(uuid())
+  household_id String
+  name         String   @default("Main Pantry")
+  location     String?  // kitchen, garage, basement
+  created_at   DateTime @default(now())
+
+  household    households     @relation(fields: [household_id], references: [id], onDelete: Cascade)
+  pantry_items pantry_items[]
+
+  @@index([household_id])
+}
+
+model pantry_items {
+  id              String    @id @default(uuid())
+  pantry_id       String
+  name            String
+  category        String?   // produce, dairy, meat, pantry, frozen
+  quantity        Decimal   @db.Decimal(10, 2)
+  unit            String?   // lbs, oz, count, etc.
+  purchase_date   DateTime?
+  expiration_date DateTime?
+  status          String    @default("available") // available, low, expired, consumed
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  pantry pantries             @relation(fields: [pantry_id], references: [id], onDelete: Cascade)
+  events pantry_item_events[]
+
+  @@index([pantry_id])
+  @@index([expiration_date])
+  @@index([status])
+}
+
+model pantry_item_events {
+  id            String   @id @default(uuid())
+  pantry_item_id String
+  user_id       String
+  event_type    String   // added, consumed, expired, adjusted
+  quantity_change Decimal? @db.Decimal(10, 2)
+  notes         String?
+  created_at    DateTime @default(now())
+
+  pantry_item pantry_items @relation(fields: [pantry_item_id], references: [id], onDelete: Cascade)
+  user        users        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([pantry_item_id])
+  @@index([user_id])
+  @@index([created_at])
+}

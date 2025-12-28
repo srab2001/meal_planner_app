@@ -1,0 +1,308 @@
+/* HouseholdApp Styles */
+
+.household-app {
+  min-height: 100vh;
+  background: #f5f5f5;
+}
+
+.household-app.loading,
+.household-app.error {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 40px;
+}
+
+.household-app .spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #ddd;
+  border-top-color: #5B2C6F;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Header */
+.household-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #5B2C6F 0%, #1a1a2e 100%);
+  color: white;
+}
+
+.btn-back {
+  background: rgba(255,255,255,0.2);
+  border: none;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-back:hover {
+  background: rgba(255,255,255,0.3);
+}
+
+.header-content {
+  flex: 1;
+}
+
+.header-content h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.header-content p {
+  margin: 4px 0 0;
+  opacity: 0.8;
+  font-size: 14px;
+}
+
+.btn-invite {
+  background: #27ae60;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn-invite:hover {
+  background: #219a52;
+}
+
+/* Invite Form */
+.invite-form-container {
+  padding: 20px 24px;
+  background: #fff;
+  border-bottom: 1px solid #eee;
+}
+
+.invite-form h3 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  color: #333;
+}
+
+.form-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.form-row input {
+  flex: 1;
+  min-width: 200px;
+  padding: 10px 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.form-row select {
+  padding: 10px 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+}
+
+.form-row button {
+  background: #5B2C6F;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.form-row button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Sections */
+.members-section,
+.invites-section {
+  padding: 24px;
+}
+
+.members-section h2,
+.invites-section h2 {
+  margin: 0 0 16px;
+  font-size: 18px;
+  color: #333;
+}
+
+/* Members List */
+.members-list,
+.invites-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.member-card,
+.invite-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.member-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #5B2C6F;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 18px;
+  overflow: hidden;
+}
+
+.member-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.member-info,
+.invite-info {
+  flex: 1;
+}
+
+.member-info h4,
+.invite-info h4 {
+  margin: 0;
+  font-size: 16px;
+  color: #333;
+}
+
+.member-info p,
+.invite-info p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #666;
+}
+
+.member-role select {
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 13px;
+  background: white;
+}
+
+.role-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.role-badge.role-owner {
+  background: #5B2C6F;
+  color: white;
+}
+
+.role-badge.role-admin {
+  background: #3498db;
+  color: white;
+}
+
+.role-badge.role-member {
+  background: #27ae60;
+  color: white;
+}
+
+.role-badge.role-viewer {
+  background: #95a5a6;
+  color: white;
+}
+
+.btn-remove,
+.btn-revoke {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.btn-remove:hover,
+.btn-revoke:hover {
+  background: #c0392b;
+}
+
+/* Read-only Notice */
+.readonly-notice {
+  margin: 24px;
+  padding: 16px;
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.readonly-notice p {
+  margin: 0;
+  color: #856404;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .household-header {
+    flex-wrap: wrap;
+  }
+
+  .header-content {
+    order: 3;
+    width: 100%;
+    margin-top: 12px;
+  }
+
+  .form-row {
+    flex-direction: column;
+  }
+
+  .form-row input,
+  .form-row select,
+  .form-row button {
+    width: 100%;
+  }
+
+  .member-card {
+    flex-wrap: wrap;
+  }
+
+  .member-role {
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .btn-remove {
+    width: 100%;
+    margin-top: 8px;
+  }
+}
