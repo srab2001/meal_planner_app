@@ -90,6 +90,9 @@ function App() {
     console.log('🔐 handleLogin called, user:', userData?.email);
     console.log('🔐 Current URL:', window.location.href);
     console.log('🔐 Search params:', window.location.search);
+
+    // Save user to localStorage FIRST (before checking returnTo)
+    localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
 
     // Check if user came from fitness app (returnTo=fitness in URL)
@@ -103,8 +106,10 @@ function App() {
       // Redirect to fitness app with auth token
       const token = localStorage.getItem('auth_token');
       const userStr = localStorage.getItem('user');
+      console.log('🔐 Token found:', !!token, 'User found:', !!userStr);
       if (token && userStr) {
         const params = new URLSearchParams({ token, user: userStr });
+        console.log('🔐 Redirecting to fitness app:', FITNESS_APP_URL);
         window.location.href = `${FITNESS_APP_URL}#auth=${params.toString()}`;
         return;
       }
