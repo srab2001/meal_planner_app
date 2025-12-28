@@ -27,6 +27,16 @@ const {
   checkRateLimit
 } = require('../lib/sms');
 
+const {
+  logLinkCreated,
+  logSmsRequested,
+  logSmsSent,
+  logSmsFailed,
+  logItemChecked,
+  logBulkOperation,
+  logTokenValidation
+} = require('../lib/eventLog');
+
 const router = express.Router();
 
 // JWT Secret
@@ -217,6 +227,9 @@ router.post('/send/:workoutId', requireAuth, async (req, res) => {
     // Generate share token
     const { token, expiresAt } = await generateShareToken(workoutId, userId);
 
+    // Log link creation
+    logLinkCreated(userId, workoutId);
+
     // Build share URL
     const baseUrl = process.env.FRONTEND_URL || 'https://frontend-six-topaz-27.vercel.app';
     const shareUrl = getShareUrl(token, baseUrl);
@@ -229,6 +242,9 @@ router.post('/send/:workoutId', requireAuth, async (req, res) => {
     // Ensure workout items exist (extract from workout_data if needed)
     await ensureWorkoutItems(workoutId, workout.workout_data);
 
+    // Log SMS request
+    logSmsRequested(userId, workoutId);
+
     // Send SMS
     const result = await sendWorkoutLinkSms(
       userId,
@@ -238,13 +254,15 @@ router.post('/send/:workoutId', requireAuth, async (req, res) => {
     );
 
     if (!result.success) {
+      logSmsFailed(userId, workoutId, result.error);
       return res.status(500).json({
         error: 'SMS failed',
         message: result.error
       });
     }
 
-    console.log(`[SMS] Workout link sent for ${workoutId} to ${userPhone.phone_number}`);
+    logSmsSent(userId, workoutId);
+    console.log(`[SMS] Workout link sent for ${workoutId}`);
 
     res.json({
       success: true,
@@ -342,11 +360,14 @@ router.get('/workout/check-off/:token', async (req, res) => {
     // Validate token
     const validation = await validateShareToken(token);
     if (!validation.valid) {
+      logTokenValidation(null, false, validation.error);
       return res.status(401).json({
         error: 'Invalid token',
         message: validation.error
       });
     }
+
+    logTokenValidation(validation.workoutId, true);
 
     const db = getDb();
 
@@ -383,6 +404,9 @@ router.get('/workout/check-off/:token', async (req, res) => {
       });
     }
 
+    // Check if token owner (for owner-only features)
+    const isOwner = workout.user_id === validation.userId;
+
     res.json({
       workoutId: workout.id,
       date: workout.workout_date,
@@ -390,7 +414,8 @@ router.get('/workout/check-off/:token', async (req, res) => {
       intensity: workout.intensity,
       sections,
       totalItems: workout.workout_items.length,
-      completedItems: workout.workout_items.filter(i => i.is_completed).length
+      completedItems: workout.workout_items.filter(i => i.is_completed).length,
+      isOwner
     });
   } catch (err) {
     console.error('[Check-off] Failed to get workout:', err.message);
@@ -445,6 +470,9 @@ router.post('/workout/check-off/:token', async (req, res) => {
       }
     });
 
+    // Log item check/uncheck
+    logItemChecked(validation.workoutId, itemId, completed !== false);
+
     // Get updated counts
     const workout = await db.workout_items.aggregate({
       where: { workout_id: validation.workoutId },
@@ -475,6 +503,95 @@ router.post('/workout/check-off/:token', async (req, res) => {
   } catch (err) {
     console.error('[Check-off] Failed to update item:', err.message);
     res.status(500).json({ error: 'Failed to update item' });
+  }
+});
+
+/**
+ * POST /api/fitness/workout/check-off/:token/bulk
+ * Bulk operations for workout items (owner only)
+ *
+ * Body: { action: 'mark_all_done' | 'clear_all' }
+ */
+router.post('/workout/check-off/:token/bulk', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { action } = req.body;
+
+    if (!action || !['mark_all_done', 'clear_all'].includes(action)) {
+      return res.status(400).json({ error: 'Invalid action. Use mark_all_done or clear_all' });
+    }
+
+    // Validate token
+    const validation = await validateShareToken(token);
+    if (!validation.valid) {
+      return res.status(401).json({
+        error: 'Invalid token',
+        message: validation.error
+      });
+    }
+
+    const db = getDb();
+
+    // Get workout to verify ownership
+    const workout = await db.fitness_workouts.findUnique({
+      where: { id: validation.workoutId }
+    });
+
+    if (!workout) {
+      return res.status(404).json({ error: 'Workout not found' });
+    }
+
+    // Verify owner
+    if (workout.user_id !== validation.userId) {
+      return res.status(403).json({ error: 'Only the workout owner can perform bulk operations' });
+    }
+
+    // Perform bulk operation
+    if (action === 'mark_all_done') {
+      await db.workout_items.updateMany({
+        where: { workout_id: validation.workoutId },
+        data: {
+          is_completed: true,
+          completed_at: new Date()
+        }
+      });
+      logBulkOperation(validation.userId, validation.workoutId, action);
+      console.log(`[Check-off] Marked all items done for workout`);
+    } else if (action === 'clear_all') {
+      await db.workout_items.updateMany({
+        where: { workout_id: validation.workoutId },
+        data: {
+          is_completed: false,
+          completed_at: null
+        }
+      });
+      logBulkOperation(validation.userId, validation.workoutId, action);
+      console.log(`[Check-off] Cleared all items for workout`);
+    }
+
+    // Get updated counts
+    const totalItems = await db.workout_items.count({
+      where: { workout_id: validation.workoutId }
+    });
+
+    const completedItems = await db.workout_items.count({
+      where: {
+        workout_id: validation.workoutId,
+        is_completed: true
+      }
+    });
+
+    res.json({
+      success: true,
+      action,
+      progress: {
+        total: totalItems,
+        completed: completedItems
+      }
+    });
+  } catch (err) {
+    console.error('[Check-off] Bulk operation failed:', err.message);
+    res.status(500).json({ error: 'Bulk operation failed' });
   }
 });
 

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { API_BASE, ENDPOINTS } from '../config/api';
 import './WorkoutPlanResult.css';
@@ -11,6 +11,7 @@ import './WorkoutPlanResult.css';
  * - Save workout to history
  * - Export to PDF
  * - Regenerate with tweaks
+ * - Text me my workout (SMS)
  */
 function WorkoutPlanResult({ user, token }) {
   const navigate = useNavigate();
@@ -26,6 +27,185 @@ function WorkoutPlanResult({ user, token }) {
   const [saveError, setSaveError] = useState(null);
   const [showTweakModal, setShowTweakModal] = useState(false);
   const [tweakNotes, setTweakNotes] = useState('');
+
+  // SMS Feature State
+  const [smsEnabled, setSmsEnabled] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [savedPhone, setSavedPhone] = useState(null);
+  const [smsSending, setSmsSending] = useState(false);
+  const [smsSuccess, setSmsSuccess] = useState(false);
+  const [smsError, setSmsError] = useState(null);
+  const [savedWorkoutId, setSavedWorkoutId] = useState(null);
+
+  // Load saved phone on mount
+  useEffect(() => {
+    loadSavedPhone();
+  }, []);
+
+  const loadSavedPhone = async () => {
+    try {
+      // Try localStorage first
+      const localPhone = localStorage.getItem('userPhone');
+      if (localPhone) {
+        setSavedPhone(localPhone);
+        setPhoneNumber(localPhone);
+      }
+
+      // Then try API if authenticated
+      if (token && !token.startsWith('demo-token-')) {
+        const response = await fetch(`${API_BASE}/api/fitness/sms/phone`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.phone) {
+            setSavedPhone(data.phone);
+            // Don't overwrite if user already typed something
+            if (!phoneNumber) setPhoneNumber(data.phone);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load saved phone:', err);
+    }
+  };
+
+  // Format phone for display (US format)
+  const formatPhoneDisplay = (phone) => {
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length === 10) {
+      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+    }
+    if (cleaned.length === 11 && cleaned.startsWith('1')) {
+      return `(${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7)}`;
+    }
+    return phone;
+  };
+
+  // Handle SMS send
+  const handleSendSms = async () => {
+    if (!phoneNumber.trim()) {
+      setSmsError('Please enter a phone number');
+      return;
+    }
+
+    // Validate phone format (basic)
+    const cleaned = phoneNumber.replace(/\D/g, '');
+    if (cleaned.length < 10) {
+      setSmsError('Please enter a valid 10-digit phone number');
+      return;
+    }
+
+    // Save workout first if not saved
+    let workoutId = savedWorkoutId;
+    if (!workoutId) {
+      try {
+        setSmsSending(true);
+        setSmsError(null);
+
+        // Save workout to get ID
+        const rowsToSave = editableRows.length > 0 ? editableRows : parseWorkoutToRows();
+        const daysMap = {};
+        rowsToSave.forEach((row) => {
+          const dayKey = row.dayGroup || row.day || 'Day 1';
+          if (!daysMap[dayKey]) {
+            daysMap[dayKey] = { day: dayKey, exercises: [] };
+          }
+          daysMap[dayKey].exercises.push({
+            location: row.location,
+            exercise: row.exercise,
+            sets: row.sets,
+            reps: row.reps,
+            weight: row.weight,
+          });
+        });
+
+        const workoutData = {
+          days: Object.values(daysMap),
+          summary: workout?.summary || {},
+          closeout: workout?.closeout,
+        };
+
+        const saveResponse = await fetch(`${API_BASE}${ENDPOINTS.WORKOUTS}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            workout_date: new Date().toISOString().split('T')[0],
+            workout_type: 'ai-generated',
+            duration_minutes: parseInt(workout?.summary?.total_duration) || 60,
+            notes: `AI-generated workout for goal: ${goalName || 'Custom'}`,
+            workout_data: JSON.stringify(workoutData),
+            goal_id: goalId,
+          }),
+        });
+
+        if (!saveResponse.ok) {
+          throw new Error('Failed to save workout');
+        }
+
+        const saveData = await saveResponse.json();
+        workoutId = saveData.workout?.id || saveData.id;
+        setSavedWorkoutId(workoutId);
+      } catch (err) {
+        setSmsError('Please save the workout first');
+        setSmsSending(false);
+        return;
+      }
+    }
+
+    try {
+      // Format phone to E.164
+      let formattedPhone = cleaned;
+      if (cleaned.length === 10) {
+        formattedPhone = `+1${cleaned}`;
+      } else if (cleaned.length === 11 && cleaned.startsWith('1')) {
+        formattedPhone = `+${cleaned}`;
+      }
+
+      // Save phone to profile
+      await fetch(`${API_BASE}/api/fitness/sms/phone`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ phone: formattedPhone }),
+      });
+
+      // Save to localStorage as backup
+      localStorage.setItem('userPhone', formattedPhone);
+
+      // Send SMS
+      const response = await fetch(`${API_BASE}/api/fitness/sms/send/${workoutId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || data.error || 'Failed to send text');
+      }
+
+      setSmsSuccess(true);
+      setSmsError(null);
+      setSavedPhone(formattedPhone);
+
+      // Clear success after 5 seconds
+      setTimeout(() => setSmsSuccess(false), 5000);
+    } catch (err) {
+      console.error('SMS send error:', err);
+      setSmsError(err.message);
+    } finally {
+      setSmsSending(false);
+    }
+  };
 
   // Parse workout data into table rows
   const parseWorkoutToRows = () => {
@@ -571,6 +751,72 @@ function WorkoutPlanResult({ user, token }) {
             <p>{workout.closeout.notes}</p>
           </div>
         )}
+
+        {/* SMS Feature - Text Me My Workout */}
+        <div className="workout-result__sms-section">
+          <div className="workout-result__sms-toggle">
+            <label className="workout-result__toggle-label">
+              <input
+                type="checkbox"
+                checked={smsEnabled}
+                onChange={(e) => {
+                  setSmsEnabled(e.target.checked);
+                  setSmsSuccess(false);
+                  setSmsError(null);
+                }}
+              />
+              <span className="workout-result__toggle-slider"></span>
+              <span className="workout-result__toggle-text">Text me my workout</span>
+            </label>
+          </div>
+
+          {smsEnabled && (
+            <div className="workout-result__sms-form">
+              <div className="workout-result__sms-input-group">
+                <input
+                  type="tel"
+                  className="workout-result__sms-input"
+                  placeholder="(555) 123-4567"
+                  value={phoneNumber}
+                  onChange={(e) => {
+                    setPhoneNumber(e.target.value);
+                    setSmsError(null);
+                  }}
+                  disabled={smsSending}
+                />
+                <button
+                  className="workout-result__sms-send-btn"
+                  onClick={handleSendSms}
+                  disabled={smsSending || !phoneNumber.trim()}
+                >
+                  {smsSending ? (
+                    <span className="workout-result__sms-spinner"></span>
+                  ) : (
+                    'Send text'
+                  )}
+                </button>
+              </div>
+
+              {smsSuccess && (
+                <div className="workout-result__sms-success">
+                  Text sent! Check your phone for the workout link.
+                </div>
+              )}
+
+              {smsError && (
+                <div className="workout-result__sms-error">
+                  {smsError}
+                </div>
+              )}
+
+              {savedPhone && !smsSuccess && (
+                <p className="workout-result__sms-hint">
+                  Previously used: {formatPhoneDisplay(savedPhone)}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Action Buttons */}
         <div className="workout-result__actions">

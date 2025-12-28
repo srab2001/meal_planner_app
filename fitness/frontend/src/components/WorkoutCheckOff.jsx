@@ -8,6 +8,7 @@ import './WorkoutCheckOff.css';
  *
  * Accessed via SMS link with token. No authentication required.
  * Users can check off exercises as they complete them.
+ * Owners get additional controls: Mark all done, Clear all.
  */
 export default function WorkoutCheckOff() {
   const { token } = useParams();
@@ -15,6 +16,7 @@ export default function WorkoutCheckOff() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [updating, setUpdating] = useState(null); // itemId being updated
+  const [bulkUpdating, setBulkUpdating] = useState(false);
 
   useEffect(() => {
     fetchWorkout();
@@ -71,6 +73,79 @@ export default function WorkoutCheckOff() {
       console.error('Toggle failed:', err);
     } finally {
       setUpdating(null);
+    }
+  };
+
+  // Mark all items as done (owner only)
+  const markAllDone = async () => {
+    if (!workout.isOwner) return;
+    setBulkUpdating(true);
+
+    try {
+      const response = await fetch(`${API_BASE}/api/fitness/sms/workout/check-off/${token}/bulk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'mark_all_done' })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to mark all done');
+      }
+
+      // Update local state - mark all complete
+      setWorkout(prev => {
+        const updated = { ...prev };
+        const now = new Date().toISOString();
+        for (const section of Object.keys(updated.sections)) {
+          updated.sections[section] = updated.sections[section].map(item => ({
+            ...item,
+            completed: true,
+            completedAt: now
+          }));
+        }
+        updated.completedItems = updated.totalItems;
+        return updated;
+      });
+    } catch (err) {
+      console.error('Mark all done failed:', err);
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
+
+  // Clear all completions (owner only)
+  const clearAll = async () => {
+    if (!workout.isOwner) return;
+    setBulkUpdating(true);
+
+    try {
+      const response = await fetch(`${API_BASE}/api/fitness/sms/workout/check-off/${token}/bulk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'clear_all' })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to clear all');
+      }
+
+      // Update local state - clear all completions
+      setWorkout(prev => {
+        const updated = { ...prev };
+        for (const section of Object.keys(updated.sections)) {
+          updated.sections[section] = updated.sections[section].map(item => ({
+            ...item,
+            completed: false,
+            completedAt: null
+          }));
+        }
+        updated.completedItems = 0;
+        return updated;
+      });
+    } catch (err) {
+      console.error('Clear all failed:', err);
+    } finally {
+      setBulkUpdating(false);
     }
   };
 
@@ -140,6 +215,26 @@ export default function WorkoutCheckOff() {
         <div className="checkoff-success">
           <span className="checkoff-success-icon">&#10003;</span>
           <span>Great job! Workout complete!</span>
+        </div>
+      )}
+
+      {/* Owner Controls */}
+      {workout.isOwner && (
+        <div className="checkoff-owner-controls">
+          <button
+            className="checkoff-owner-btn checkoff-owner-btn--done"
+            onClick={markAllDone}
+            disabled={bulkUpdating || allComplete}
+          >
+            {bulkUpdating ? '...' : 'Mark All Done'}
+          </button>
+          <button
+            className="checkoff-owner-btn checkoff-owner-btn--clear"
+            onClick={clearAll}
+            disabled={bulkUpdating || workout.completedItems === 0}
+          >
+            {bulkUpdating ? '...' : 'Clear All'}
+          </button>
         </div>
       )}
 

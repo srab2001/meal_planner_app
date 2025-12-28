@@ -28,9 +28,9 @@ function validateEnvironment() {
   
   if (missing.length > 0) {
     throw new Error(
-      `Missing required environment variables for Fitness app:\n` +
+      'Missing required environment variables for Fitness app:\n' +
       `  ${missing.join(', ')}\n\n` +
-      `Run 'cd fitness && ./env-sync.sh' to populate from master.env`
+      'Run \'cd fitness && ./env-sync.sh\' to populate from master.env'
     );
   }
   
@@ -145,7 +145,7 @@ app.use((req, res) => {
 });
 
 // Global error handler
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   console.error('Error:', err);
   
   const statusCode = err.statusCode || 500;
@@ -173,13 +173,13 @@ async function start() {
     app.listen(PORT, () => {
       console.log(`🏃 Fitness Backend running on http://localhost:${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/health`);
-      console.log(`\nAPI Endpoints:`);
-      console.log(`  GET    /api/fitness/profile`);
-      console.log(`  POST   /api/fitness/profile`);
-      console.log(`  GET    /api/fitness/workouts`);
-      console.log(`  POST   /api/fitness/workouts`);
-      console.log(`  GET    /api/fitness/goals`);
-      console.log(`  POST   /api/fitness/goals\n`);
+      console.log('\nAPI Endpoints:');
+      console.log('  GET    /api/fitness/profile');
+      console.log('  POST   /api/fitness/profile');
+      console.log('  GET    /api/fitness/workouts');
+      console.log('  POST   /api/fitness/workouts');
+      console.log('  GET    /api/fitness/goals');
+      console.log('  POST   /api/fitness/goals\n');
     });
   } catch (error) {
     console.error('❌ Failed to start server:');
