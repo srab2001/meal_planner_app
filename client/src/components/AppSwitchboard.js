@@ -109,6 +109,14 @@ export default function AppSwitchboard({ onSelectApp, user, onLogout, onLogin })
       comingSoon: false,
       externalUrl: 'https://frontend-six-topaz-27.vercel.app'
     },
+    {
+      id: 'local-store-finder',
+      name: 'Store Finder',
+      description: 'Compare prices across local retail stores',
+      icon: '🏪',
+      color: '#16a34a',
+      available: true
+    },
     // Admin panel - always shown, but requires login + admin role
     {
       id: 'admin',

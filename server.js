@@ -713,6 +713,117 @@ Return ONLY valid JSON in this exact format:
   }
 });
 
+// ============================================================================
+// LOCAL STORE FINDER API
+// ============================================================================
+
+// Get stores by type
+app.get('/api/local-store-finder/stores', requireAuth, async (req, res) => {
+  try {
+    const { store_type } = req.query;
+    if (!store_type) {
+      return res.status(400).json({ error: 'store_type parameter is required' });
+    }
+    const stores = await prisma.$queryRaw`
+      SELECT id, name, store_type, base_url, search_url_template, source
+      FROM stores WHERE store_type = ${store_type}::store_type AND active = true
+      ORDER BY name
+    `;
+    res.json({ stores });
+  } catch (error) {
+    console.error('[Local Store Finder] Error fetching stores:', error);
+    res.status(500).json({ error: 'Failed to fetch stores' });
+  }
+});
+
+// Locate stores based on location and type
+app.post('/api/local-store-finder/locate-stores', requireAuth, async (req, res) => {
+  try {
+    const { storeType, locationText, latitude, longitude, intent } = req.body;
+    const user = req.user;
+    if (!storeType) {
+      return res.status(400).json({ error: 'storeType is required' });
+    }
+    const stores = await prisma.$queryRaw`
+      SELECT id, name, store_type, base_url, search_url_template, source
+      FROM stores WHERE store_type = ${storeType}::store_type AND active = true
+      ORDER BY name
+    `;
+    let sessionId = null;
+    try {
+      const sessionResult = await prisma.$queryRaw`
+        INSERT INTO lsf_search_sessions (user_id, user_email, store_type, location_text, latitude, longitude, intent_text, stores_returned)
+        VALUES (${user.id}::uuid, ${user.email}, ${storeType}, ${locationText || null}, ${latitude || null}, ${longitude || null}, ${intent || null}, ${stores.length})
+        RETURNING id
+      `;
+      sessionId = sessionResult[0]?.id;
+    } catch (logError) {
+      console.error('[Local Store Finder] Failed to log session:', logError.message);
+    }
+    res.json({
+      stores: stores.map(s => ({
+        id: s.id, name: s.name, store_type: s.store_type,
+        base_url: s.base_url, search_url_template: s.search_url_template, source: s.source
+      })),
+      sessionId
+    });
+  } catch (error) {
+    console.error('[Local Store Finder] Error locating stores:', error);
+    res.status(500).json({ error: 'Failed to locate stores' });
+  }
+});
+
+// Find products across stores (calls Python scraper)
+app.post('/api/local-store-finder/find', requireAuth, async (req, res) => {
+  try {
+    const { storeIds, query, sessionId } = req.body;
+    const user = req.user;
+    const startTime = Date.now();
+    if (!storeIds || !Array.isArray(storeIds) || storeIds.length === 0) {
+      return res.status(400).json({ error: 'storeIds array is required' });
+    }
+    if (storeIds.length > 3) {
+      return res.status(400).json({ error: 'Maximum 3 stores allowed per search' });
+    }
+    if (!query || typeof query !== 'string' || query.trim().length === 0) {
+      return res.status(400).json({ error: 'query is required' });
+    }
+    const stores = await prisma.$queryRaw`
+      SELECT id, name, base_url, search_url_template, source
+      FROM stores WHERE id = ANY(${storeIds}::uuid[]) AND active = true
+    `;
+    if (stores.length === 0) {
+      return res.status(404).json({ error: 'No valid stores found' });
+    }
+    const { runScraper } = require('./services/localStoreFinderScraper');
+    const { results, errors } = await runScraper(stores, query.trim());
+    const durationMs = Date.now() - startTime;
+    try {
+      const eventResult = await prisma.$queryRaw`
+        INSERT INTO lsf_search_events (session_id, user_id, user_email, query, store_ids, store_count, duration_ms)
+        VALUES (${sessionId || null}::uuid, ${user.id}::uuid, ${user.email}, ${query.trim()}, ${storeIds}::uuid[], ${stores.length}, ${durationMs})
+        RETURNING id
+      `;
+      const eventId = eventResult[0]?.id;
+      if (eventId && results.length > 0) {
+        for (const result of results) {
+          const success = result.price && result.price !== 'not available';
+          await prisma.$queryRaw`
+            INSERT INTO lsf_search_results (event_id, store_id, store_name, success, price, item_name, error_message)
+            VALUES (${eventId}::uuid, ${result.store_id}::uuid, ${result.store_name}, ${success}, ${result.price}, ${result.item_name}, ${result.notes || null})
+          `;
+        }
+      }
+    } catch (logError) {
+      console.error('[Local Store Finder] Failed to log search event:', logError.message);
+    }
+    res.json({ results, errors: errors.length > 0 ? errors : undefined, duration_ms: durationMs });
+  } catch (error) {
+    console.error('[Local Store Finder] Error in find:', error);
+    res.status(500).json({ error: 'Failed to search stores' });
+  }
+});
+
 // Helper function to validate that all recipe ingredients are in the shopping list
 function validateShoppingListCompleteness(mealPlanData, daysOfWeek) {
   const missingIngredients = [];

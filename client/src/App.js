@@ -29,6 +29,9 @@ import { IntegrationsApp } from './modules/integrations';
 // Fitness Module
 import { FitnessApp } from './modules/fitness';
 
+// Local Store Finder Module
+import { LocalStoreFinderApp } from './modules/local-store-finder';
+
 // Admin Module (AI Coach question management)
 import { AdminCoachPanel, AdminSwitchboard, UsersAdmin } from './modules/admin';
 
@@ -496,6 +499,16 @@ function App() {
           setCurrentView('login');
         }
         break;
+      case 'local-store-finder':
+        // Local Store Finder - requires authentication
+        const lsfToken = getToken();
+        if (lsfToken && user) {
+          setCurrentView('local-store-finder');
+        } else {
+          localStorage.setItem('redirect_after_login', 'local-store-finder');
+          setCurrentView('login');
+        }
+        break;
       case 'admin':
         // Admin panel - requires authentication and admin role
         const adminToken = getToken();
@@ -702,6 +715,15 @@ function App() {
       {/* Fitness Module */}
       {currentView === 'fitness' && (
         <FitnessApp
+          user={user}
+          onBack={() => setCurrentView('switchboard')}
+          onLogout={handleLogout}
+        />
+      )}
+
+      {/* Local Store Finder Module */}
+      {currentView === 'local-store-finder' && (
+        <LocalStoreFinderApp
           user={user}
           onBack={() => setCurrentView('switchboard')}
           onLogout={handleLogout}

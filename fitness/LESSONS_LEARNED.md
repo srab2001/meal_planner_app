@@ -495,224 +495,123 @@ const { PrismaClient } = require('../node_modules/@prisma/client');
 
 ---
 
-## 🔐 SSO & Authentication Issues (December 2025)
+---
 
-### Issue 10: OAuth Query Parameters Lost During URL Cleanup
+## 🏪 Local Store Finder Module (December 27, 2025)
 
-**Phase:** SSO Integration
-**Severity:** CRITICAL - SSO flow completely broken
+### Issue 10: Server.js Endpoints Reverted During Context Switch
+
+**Severity:** HIGH - Lost all implemented endpoints
 
 **Problem:**
-After Google OAuth completed, users were redirected back to the switchboard instead of the fitness app, even though `returnTo=fitness` was in the URL.
+After implementing Local Store Finder endpoints in server.js, the file was reverted during a context switch, losing all changes.
 
 **Root Cause:**
-When extracting the OAuth token from the URL hash, the code cleaned up the URL using:
-```javascript
-window.history.replaceState(null, '', window.location.pathname);
-```
-This removed the `?returnTo=fitness` query parameter that was needed for the SSO redirect.
+Long conversations can lose track of file changes when context is summarized. The summary mentioned endpoints were added but the actual file state wasn't preserved.
 
 **Solution:**
-Preserve query params when cleaning up the hash:
-```javascript
-window.history.replaceState(null, '', window.location.pathname + window.location.search);
-```
+Re-implemented all endpoints with logging in a single edit operation.
 
-**Files Affected:**
-- `client/src/App.js:175`
+**Prevention:**
+- Verify file state after context switches
+- Use `grep` to confirm expected patterns exist before proceeding
+- Commit changes incrementally to git
 
 ---
 
-### Issue 11: User Data Not Saved to localStorage Before SSO Redirect
+### Issue 11: Node.js to Python Inter-Process Communication
 
-**Phase:** SSO Integration
-**Severity:** CRITICAL - SSO redirect failed silently
+**Severity:** MEDIUM - Architecture decision
 
 **Problem:**
-Console showed:
-```
-🔐 returnTo value: fitness
-🔐 User came from fitness app, redirecting back with SSO
-🔐 No redirect stored, going to switchboard  ← Wrong path!
-```
+Need to call Python scraper from Node.js backend efficiently.
 
-The SSO redirect code was checking for user data in localStorage, but it wasn't saved yet.
-
-**Root Cause:**
-`handleLogin` was calling `setUser(userData)` (React state) but not saving to localStorage. Then it tried to read `localStorage.getItem('user')` which returned null.
-
+**Solution:**
+Used `child_process.spawn` with stdin/stdout JSON:
 ```javascript
-// Before (broken)
-const handleLogin = (userData) => {
-  setUser(userData);  // Only sets React state
-  // ...
-  const userStr = localStorage.getItem('user');  // Returns null!
-  if (token && userStr) { /* never executes */ }
+const python = spawn(PYTHON_PATH, [SCRAPER_ENTRY], {
+  stdio: ['pipe', 'pipe', 'pipe'],
+  env: { ...process.env, PYTHONUNBUFFERED: '1' }
+});
+
+python.stdin.write(JSON.stringify(input));
+python.stdin.end();
+
+python.stdout.on('data', (data) => { ... });
+```
+
+**Key Points:**
+- Use `PYTHONUNBUFFERED=1` for real-time output
+- Enforce timeout with `setTimeout` + `SIGTERM`/`SIGKILL`
+- Validate output schema before using results
+- Sanitize error messages for user display
+
+---
+
+### Issue 12: AI Price Normalization Without Invention
+
+**Severity:** HIGH - Data integrity
+
+**Problem:**
+AI normalizer could potentially invent prices that don't exist.
+
+**Solution:**
+Explicit prompt rules:
+```
+STRICT RULES:
+1. DO NOT invent or make up prices. Use EXACTLY the price from input, or set to "not available"
+2. Pick the BEST/most relevant hit per store
+```
+
+Plus validation:
+```javascript
+price: result.price || 'not available'
+```
+
+**Prevention:**
+- Use low temperature (0.1) for consistent output
+- Always fallback to original data on parse errors
+- Log actual scraped values for audit
+
+---
+
+### Issue 13: Database Logging Without Blocking Response
+
+**Severity:** LOW - User experience
+
+**Problem:**
+Logging to database shouldn't slow down API response.
+
+**Solution:**
+Wrap logging in try/catch, don't await in critical path:
+```javascript
+try {
+  await prisma.$queryRaw`INSERT INTO lsf_search_sessions ...`;
+} catch (logError) {
+  console.error('[Local Store Finder] Failed to log session:', logError.message);
+  // Continue without blocking response
 }
 ```
 
-**Solution:**
-Save user to localStorage FIRST, before checking returnTo:
-```javascript
-const handleLogin = (userData) => {
-  // Save to localStorage FIRST
-  localStorage.setItem('user', JSON.stringify(userData));
-  setUser(userData);
-
-  // Now this works
-  const userStr = localStorage.getItem('user');  // Has data!
-}
-```
-
-**Files Affected:**
-- `client/src/App.js:89-96`
-
 ---
 
-### Issue 12: Deployment-Specific URLs Break After Redeployment
+### Best Practices - Local Store Finder
 
-**Phase:** SSO Integration
-**Severity:** MEDIUM - Required manual URL updates
+**Do:**
+- ✅ Return one row per selected store, even on failure
+- ✅ Use "not available" for missing prices, never invent
+- ✅ Log all requests for analytics
+- ✅ Enforce max stores limit (3) at API level
+- ✅ Use smoke tests to verify endpoints
 
-**Problem:**
-Fitness app URL was hardcoded as a deployment-specific URL:
-```javascript
-const FITNESS_APP_URL = 'https://frontend-6zia26yng-stus-projects-458dd35a.vercel.app';
-```
-Each Vercel deployment creates a new URL, breaking SSO redirects.
-
-**Solution:**
-Use stable project URLs instead of deployment-specific URLs:
-```javascript
-// Stable URLs
-const FITNESS_APP_URL = 'https://frontend-six-topaz-27.vercel.app';
-const SWITCHBOARD_URL = 'https://meal-planner-gold-one.vercel.app';
-```
-
-**Prevention:**
-- Configure custom domains in Vercel for stable URLs
-- Use environment variables for app URLs
-- Document which URLs are deployment-specific vs stable
-
-**Files Affected:**
-- `client/src/App.js:86`
-- `client/src/components/AppSwitchboard.js:110`
-- `fitness/frontend/src/components/Login.jsx:22`
-
----
-
-### Issue 13: Vercel Root Directory Misconfiguration
-
-**Phase:** Deployment
-**Severity:** HIGH - Deployment failed repeatedly
-
-**Problem:**
-```
-npm error Missing script: "build"
-Error: Command "npm run build" exited with 1
-```
-
-**Root Cause:**
-Vercel was building from the project root (which has the backend package.json without a build script) instead of the `client` directory.
-
-**Solution:**
-1. Go to Vercel Dashboard → Project Settings
-2. Set **Root Directory** to `client`
-3. Redeploy
-
-Or re-link the project:
-```bash
-rm -rf .vercel
-vercel link  # Select project, configure root directory
-vercel --prod
-```
-
-**Prevention:**
-- Configure `vercel.json` with correct root directory
-- Use `.vercel/project.json` in the correct subdirectory
-- Document deployment requirements
-
----
-
-### Issue 14: Git Divergent Branches During Collaborative Development
-
-**Phase:** Deployment
-**Severity:** MEDIUM - Slowed deployment
-
-**Problem:**
-```
-hint: You have divergent branches and need to specify how to reconcile them.
-fatal: Need to specify how to reconcile divergent branches.
-```
-
-**Root Cause:**
-Multiple developers/environments making commits to the same branch without regular pulls/pushes.
-
-**Solution:**
-```bash
-# Option 1: Merge (preserves history)
-git pull origin branch-name --no-rebase
-
-# Option 2: Rebase (cleaner history)
-git pull origin branch-name --rebase
-
-# Option 3: Force reset to remote (discards local)
-git reset --hard origin/branch-name
-```
-
-**Prevention:**
-- Pull frequently before making changes
-- Use feature branches for parallel development
-- Configure default pull behavior: `git config pull.rebase true`
-
----
-
-## 🔄 SSO Flow Reference
-
-### Successful SSO Flow (Fitness App → Switchboard → Fitness App)
-
-```
-1. User on Fitness App clicks "Sign in via ASR Portal"
-   → Redirects to: https://switchboard.vercel.app?returnTo=fitness
-
-2. User on Switchboard clicks "Sign in with Google"
-   → handleGoogleLogin preserves returnTo in redirect URL
-   → Redirects to: /auth/google?redirect=.../switchboard?returnTo=fitness
-
-3. Google OAuth completes
-   → Backend redirects to: /switchboard?returnTo=fitness#token=xxx
-
-4. App.js useEffect runs:
-   a. Extracts token from hash, stores in localStorage
-   b. Cleans URL to: /switchboard?returnTo=fitness (preserves query params!)
-   c. Verifies token with /auth/user endpoint
-   d. Calls handleLogin(userData)
-
-5. handleLogin:
-   a. Saves user to localStorage (FIRST!)
-   b. Reads returnTo from URL → "fitness"
-   c. Gets token and user from localStorage
-   d. Redirects to: https://fitness.vercel.app#auth=token=xxx&user=...
-
-6. Fitness App useAuth hook:
-   a. Reads #auth= from URL hash
-   b. Parses token and user
-   c. Stores in localStorage
-   d. Sets authenticated state
-   e. Cleans URL hash
-```
-
-### Key Files for SSO
-
-| File | Purpose |
-|------|---------|
-| `client/src/App.js` | Main SSO logic, handleLogin, OAuth token extraction |
-| `client/src/components/AppSwitchboard.js` | Google login button, preserves returnTo |
-| `fitness/frontend/src/components/Login.jsx` | Fitness login, redirects to switchboard |
-| `fitness/frontend/src/hooks/useAuth.js` | Parses SSO token from URL hash |
+**Don't:**
+- ❌ Block results if one store fails
+- ❌ Trust AI to generate prices
+- ❌ Skip input validation
+- ❌ Leave logging errors unhandled
 
 ---
 
 **Document Version:** 1.1
-**Last Updated:** December 28, 2025
+**Last Updated:** December 27, 2025
 **Maintained By:** Development Team
