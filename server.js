@@ -30,6 +30,9 @@ const adminRoutes = require('./routes/admin');
 // Import CORE DB routes
 const coreRoutes = require('./routes/core');
 
+// Import Pantry routes
+const pantryRoutes = require('./routes/pantry');
+
 // ============================================================================
 // RUN MIGRATIONS FIRST - BEFORE ANY EXPRESS SETUP
 // ============================================================================
@@ -579,6 +582,11 @@ app.use('/api/admin', requireAuth, adminRoutes);
 // ============================================================================
 // Core routes have their own auth handling for demo support
 app.use('/api/core', coreRoutes);
+
+// ============================================================================
+// MOUNT PANTRY ROUTES
+// ============================================================================
+app.use('/api/core/pantry', requireAuth, pantryRoutes);
 
 // simple profile endpoint
 app.get('/api/profile', requireAuth, (req, res) => {
