@@ -23,7 +23,7 @@ Food inventory management with expiration tracking and consumption/waste events.
 
 ## API Routes
 
-Base path: `/api/pantry`
+Base path: `/api/core/pantry`
 
 ### GET /items
 
