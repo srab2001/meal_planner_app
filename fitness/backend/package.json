@@ -13,6 +13,7 @@
     "migrate:reset": "prisma migrate reset --skip-generate --skip-seed",
     "generate": "prisma generate",
     "seed": "node scripts/seed-exercises.js",
+    "seed:sms": "node scripts/seed-sms-tables.js",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "studio": "prisma studio"
