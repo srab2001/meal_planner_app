@@ -10,7 +10,7 @@
  * Usage: DATABASE_URL="..." node scripts/seed-sms-tables.js
  */
 
-const { PrismaClient } = require('../prisma/generated/client');
+const { PrismaClient } = require('@prisma/client');
 const crypto = require('crypto');
 
 const prisma = new PrismaClient();
