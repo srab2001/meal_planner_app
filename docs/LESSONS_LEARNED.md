@@ -1,7 +1,7 @@
 # Lessons Learned - ASR Health Portal Next
 
 **Project:** ASR Health Portal - Parallel Build
-**Last Updated:** December 28, 2025
+**Last Updated:** December 29, 2025
 
 ---
 
@@ -63,7 +63,10 @@
 
 | Error | Root Cause | Fix | Prevention |
 |-------|------------|-----|------------|
-| (To be populated during development) | | | |
+| `Cannot find module '../prisma/generated/client'` | Prisma output changed from custom path to default | Change import to `@prisma/client` | Use standard imports |
+| `functions in index predicate must be marked IMMUTABLE` | Using `CURRENT_TIMESTAMP` in partial index WHERE clause | Remove non-IMMUTABLE function from index predicate | Only use IMMUTABLE functions in indexes |
+| `function uuid_generate_v4() does not exist` | Missing uuid-ossp extension after DB reset | Run `CREATE EXTENSION IF NOT EXISTS "uuid-ossp"` | Include extension creation in initial migration |
+| `function update_updated_at_column() does not exist` | Missing trigger function after DB reset | Ensure migration 001 runs completely or create function manually | Test migrations in fresh DB |
 
 ---
 
@@ -71,7 +74,8 @@
 
 | Error | Root Cause | Fix | Prevention |
 |-------|------------|-----|------------|
-| (To be populated during development) | | | |
+| `Access denied to this household` on pantry | Using Render DB `pool` instead of CORE DB for pantry | Use `getCoreDb()` from `src/lib/coreDb.js` | See `docs/ISOLATION.md` |
+| Pantry items not found | Tables created in wrong database (Render vs CORE) | Delete Render migration, use Prisma for CORE | Follow database ownership rules |
 
 ---
 

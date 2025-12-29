@@ -1,6 +1,9 @@
 /**
  * Pantry API Routes
  *
+ * IMPORTANT: Uses CORE DB (Neon) NOT Render DB
+ * See docs/ISOLATION.md for database isolation rules.
+ *
  * Endpoints for food inventory management:
  * - Items: CRUD operations for pantry items
  * - Events: Track consumption, waste, and adjustments
@@ -9,7 +12,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { pool } = require('../db');
+const { getCoreDb, getHouseholdContext } = require('../src/lib/coreDb');
 
 // Middleware to verify authentication
 const verifyAuth = (req, res, next) => {
@@ -19,21 +22,50 @@ const verifyAuth = (req, res, next) => {
   next();
 };
 
-// Get or create household's pantry
-const getOrCreatePantry = async (householdId) => {
-  let result = await pool.query(
-    'SELECT * FROM pantries WHERE household_id = $1',
-    [householdId]
-  );
+// Middleware to verify household access (RBAC)
+const verifyHouseholdAccess = async (req, res, next) => {
+  const householdId = req.headers['x-household-id'] || req.query.household_id || req.body.household_id;
 
-  if (result.rows.length === 0) {
-    result = await pool.query(
-      'INSERT INTO pantries (household_id) VALUES ($1) RETURNING *',
-      [householdId]
-    );
+  if (!householdId) {
+    return res.status(400).json({ error: 'household_id is required' });
   }
 
-  return result.rows[0];
+  const db = getCoreDb();
+  const membership = await db.household_memberships.findFirst({
+    where: {
+      user_id: req.user.id,
+      household_id: householdId,
+      is_active: true
+    }
+  });
+
+  if (!membership) {
+    return res.status(403).json({ error: 'Access denied to this household' });
+  }
+
+  req.householdId = householdId;
+  req.householdRole = membership.role;
+  next();
+};
+
+// Get or create household's pantry
+const getOrCreatePantry = async (householdId) => {
+  const db = getCoreDb();
+
+  let pantry = await db.pantries.findFirst({
+    where: { household_id: householdId }
+  });
+
+  if (!pantry) {
+    pantry = await db.pantries.create({
+      data: {
+        household_id: householdId,
+        name: 'Main Pantry'
+      }
+    });
+  }
+
+  return pantry;
 };
 
 // ============================================================================
@@ -45,52 +77,52 @@ const getOrCreatePantry = async (householdId) => {
  * List all pantry items with optional filters
  * Query params: household_id, category, status, expiring_within (days), search
  */
-router.get('/items', verifyAuth, async (req, res) => {
+router.get('/items', verifyAuth, verifyHouseholdAccess, async (req, res) => {
   try {
-    const { household_id, category, status, expiring_within, search } = req.query;
+    const { category, status, expiring_within, search } = req.query;
+    const db = getCoreDb();
 
-    if (!household_id) {
-      return res.status(400).json({ error: 'household_id is required' });
-    }
+    const pantry = await getOrCreatePantry(req.householdId);
 
-    const pantry = await getOrCreatePantry(household_id);
-
-    let query = `
-      SELECT * FROM pantry_items
-      WHERE pantry_id = $1
-    `;
-    const params = [pantry.id];
-    let paramIndex = 2;
+    // Build where clause
+    const where = { pantry_id: pantry.id };
 
     if (category) {
-      query += ` AND category = $${paramIndex}`;
-      params.push(category);
-      paramIndex++;
+      where.category = category;
     }
 
     if (status) {
-      query += ` AND status = $${paramIndex}`;
-      params.push(status);
-      paramIndex++;
+      where.status = status;
     }
 
     if (expiring_within) {
-      query += ` AND expiration_date IS NOT NULL AND expiration_date <= CURRENT_DATE + INTERVAL '${parseInt(expiring_within)} days' AND status = 'active'`;
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + parseInt(expiring_within));
+      where.expiration_date = {
+        lte: expiryDate,
+        not: null
+      };
+      where.status = { not: 'expired' };
     }
 
     if (search) {
-      query += ` AND (LOWER(name) LIKE $${paramIndex} OR LOWER(brand) LIKE $${paramIndex})`;
-      params.push(`%${search.toLowerCase()}%`);
-      paramIndex++;
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { brand: { contains: search, mode: 'insensitive' } }
+      ];
     }
 
-    query += ' ORDER BY expiration_date ASC NULLS LAST, name ASC';
-
-    const result = await pool.query(query, params);
+    const items = await db.pantry_items.findMany({
+      where,
+      orderBy: [
+        { expiration_date: 'asc' },
+        { name: 'asc' }
+      ]
+    });
 
     res.json({
-      items: result.rows,
-      count: result.rows.length,
+      items,
+      count: items.length,
       pantry_id: pantry.id
     });
   } catch (error) {
@@ -103,14 +135,14 @@ router.get('/items', verifyAuth, async (req, res) => {
  * POST /api/core/pantry/items
  * Add a new item to the pantry
  */
-router.post('/items', verifyAuth, async (req, res) => {
+router.post('/items', verifyAuth, verifyHouseholdAccess, async (req, res) => {
   try {
-    const householdId = req.headers['x-household-id'] || req.body.household_id;
-
-    if (!householdId) {
-      return res.status(400).json({ error: 'household_id is required' });
+    // Check write permissions
+    if (!['owner', 'admin', 'member'].includes(req.householdRole)) {
+      return res.status(403).json({ error: 'Insufficient permissions' });
     }
 
+    const db = getCoreDb();
     const {
       name,
       brand,
@@ -127,24 +159,37 @@ router.post('/items', verifyAuth, async (req, res) => {
       return res.status(400).json({ error: 'Item name is required' });
     }
 
-    const pantry = await getOrCreatePantry(householdId);
+    const pantry = await getOrCreatePantry(req.householdId);
 
-    const result = await pool.query(
-      `INSERT INTO pantry_items
-       (pantry_id, name, brand, category, quantity, unit, purchase_date, expiration_date, notes, barcode, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-       RETURNING *`,
-      [pantry.id, name, brand, category, quantity, unit, purchase_date || null, expiration_date || null, notes, barcode, req.user.id]
-    );
+    const item = await db.pantry_items.create({
+      data: {
+        pantry_id: pantry.id,
+        name,
+        brand,
+        category,
+        quantity: parseFloat(quantity),
+        unit,
+        purchase_date: purchase_date ? new Date(purchase_date) : null,
+        expiration_date: expiration_date ? new Date(expiration_date) : null,
+        notes,
+        barcode,
+        status: 'available'
+      }
+    });
 
     // Log the add event
-    await pool.query(
-      `INSERT INTO pantry_events (pantry_id, item_id, item_name, event_type, quantity_change, unit, created_by)
-       VALUES ($1, $2, $3, 'added', $4, $5, $6)`,
-      [pantry.id, result.rows[0].id, name, quantity, unit, req.user.id]
-    );
+    await db.pantry_item_events.create({
+      data: {
+        pantry_item_id: item.id,
+        user_id: req.user.id,
+        event_type: 'add',
+        quantity_change: parseFloat(quantity),
+        unit,
+        notes: `Added ${quantity} ${unit} of ${name}`
+      }
+    });
 
-    res.status(201).json({ item: result.rows[0] });
+    res.status(201).json({ item });
   } catch (error) {
     console.error('Error adding pantry item:', error);
     res.status(500).json({ error: 'Failed to add pantry item' });
@@ -158,17 +203,37 @@ router.post('/items', verifyAuth, async (req, res) => {
 router.get('/items/:id', verifyAuth, async (req, res) => {
   try {
     const { id } = req.params;
+    const db = getCoreDb();
 
-    const result = await pool.query(
-      'SELECT * FROM pantry_items WHERE id = $1',
-      [id]
-    );
+    const item = await db.pantry_items.findUnique({
+      where: { id },
+      include: {
+        pantry: true,
+        events: {
+          orderBy: { created_at: 'desc' },
+          take: 10
+        }
+      }
+    });
 
-    if (result.rows.length === 0) {
+    if (!item) {
       return res.status(404).json({ error: 'Item not found' });
     }
 
-    res.json({ item: result.rows[0] });
+    // Verify household access
+    const membership = await db.household_memberships.findFirst({
+      where: {
+        user_id: req.user.id,
+        household_id: item.pantry.household_id,
+        is_active: true
+      }
+    });
+
+    if (!membership) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    res.json({ item });
   } catch (error) {
     console.error('Error fetching pantry item:', error);
     res.status(500).json({ error: 'Failed to fetch pantry item' });
@@ -182,6 +247,31 @@ router.get('/items/:id', verifyAuth, async (req, res) => {
 router.put('/items/:id', verifyAuth, async (req, res) => {
   try {
     const { id } = req.params;
+    const db = getCoreDb();
+
+    // Get current item
+    const current = await db.pantry_items.findUnique({
+      where: { id },
+      include: { pantry: true }
+    });
+
+    if (!current) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+
+    // Verify household access
+    const membership = await db.household_memberships.findFirst({
+      where: {
+        user_id: req.user.id,
+        household_id: current.pantry.household_id,
+        is_active: true
+      }
+    });
+
+    if (!membership || !['owner', 'admin', 'member'].includes(membership.role)) {
+      return res.status(403).json({ error: 'Insufficient permissions' });
+    }
+
     const {
       name,
       brand,
@@ -191,44 +281,44 @@ router.put('/items/:id', verifyAuth, async (req, res) => {
       purchase_date,
       expiration_date,
       status,
-      notes
+      notes,
+      barcode
     } = req.body;
 
-    // Get current item for event logging
-    const current = await pool.query('SELECT * FROM pantry_items WHERE id = $1', [id]);
-    if (current.rows.length === 0) {
-      return res.status(404).json({ error: 'Item not found' });
-    }
-    const oldItem = current.rows[0];
+    // Build update data (only include provided fields)
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (brand !== undefined) updateData.brand = brand;
+    if (category !== undefined) updateData.category = category;
+    if (quantity !== undefined) updateData.quantity = parseFloat(quantity);
+    if (unit !== undefined) updateData.unit = unit;
+    if (purchase_date !== undefined) updateData.purchase_date = purchase_date ? new Date(purchase_date) : null;
+    if (expiration_date !== undefined) updateData.expiration_date = expiration_date ? new Date(expiration_date) : null;
+    if (status !== undefined) updateData.status = status;
+    if (notes !== undefined) updateData.notes = notes;
+    if (barcode !== undefined) updateData.barcode = barcode;
 
-    const result = await pool.query(
-      `UPDATE pantry_items SET
-        name = COALESCE($1, name),
-        brand = COALESCE($2, brand),
-        category = COALESCE($3, category),
-        quantity = COALESCE($4, quantity),
-        unit = COALESCE($5, unit),
-        purchase_date = COALESCE($6, purchase_date),
-        expiration_date = COALESCE($7, expiration_date),
-        status = COALESCE($8, status),
-        notes = COALESCE($9, notes),
-        updated_at = CURRENT_TIMESTAMP
-       WHERE id = $10
-       RETURNING *`,
-      [name, brand, category, quantity, unit, purchase_date, expiration_date, status, notes, id]
-    );
+    const item = await db.pantry_items.update({
+      where: { id },
+      data: updateData
+    });
 
     // Log adjustment event if quantity changed
-    if (quantity !== undefined && quantity !== oldItem.quantity) {
-      const quantityChange = quantity - parseFloat(oldItem.quantity);
-      await pool.query(
-        `INSERT INTO pantry_events (pantry_id, item_id, item_name, event_type, quantity_change, unit, notes, created_by)
-         VALUES ($1, $2, $3, 'adjusted', $4, $5, $6, $7)`,
-        [oldItem.pantry_id, id, oldItem.name, quantityChange, oldItem.unit, `Adjusted from ${oldItem.quantity} to ${quantity}`, req.user.id]
-      );
+    if (quantity !== undefined && parseFloat(quantity) !== parseFloat(current.quantity)) {
+      const quantityChange = parseFloat(quantity) - parseFloat(current.quantity);
+      await db.pantry_item_events.create({
+        data: {
+          pantry_item_id: id,
+          user_id: req.user.id,
+          event_type: 'adjust',
+          quantity_change: quantityChange,
+          unit: current.unit,
+          notes: `Adjusted from ${current.quantity} to ${quantity}`
+        }
+      });
     }
 
-    res.json({ item: result.rows[0] });
+    res.json({ item });
   } catch (error) {
     console.error('Error updating pantry item:', error);
     res.status(500).json({ error: 'Failed to update pantry item' });
@@ -242,22 +332,35 @@ router.put('/items/:id', verifyAuth, async (req, res) => {
 router.delete('/items/:id', verifyAuth, async (req, res) => {
   try {
     const { id } = req.params;
+    const db = getCoreDb();
 
-    // Get item for event logging
-    const current = await pool.query('SELECT * FROM pantry_items WHERE id = $1', [id]);
-    if (current.rows.length === 0) {
+    // Get item for verification and event logging
+    const item = await db.pantry_items.findUnique({
+      where: { id },
+      include: { pantry: true }
+    });
+
+    if (!item) {
       return res.status(404).json({ error: 'Item not found' });
     }
-    const item = current.rows[0];
 
-    // Log removal event
-    await pool.query(
-      `INSERT INTO pantry_events (pantry_id, item_id, item_name, event_type, quantity_change, unit, created_by)
-       VALUES ($1, $2, $3, 'removed', $4, $5, $6)`,
-      [item.pantry_id, id, item.name, -parseFloat(item.quantity), item.unit, req.user.id]
-    );
+    // Verify household access
+    const membership = await db.household_memberships.findFirst({
+      where: {
+        user_id: req.user.id,
+        household_id: item.pantry.household_id,
+        is_active: true
+      }
+    });
 
-    await pool.query('DELETE FROM pantry_items WHERE id = $1', [id]);
+    if (!membership || !['owner', 'admin', 'member'].includes(membership.role)) {
+      return res.status(403).json({ error: 'Insufficient permissions' });
+    }
+
+    // Delete item (cascades to events via Prisma schema)
+    await db.pantry_items.delete({
+      where: { id }
+    });
 
     res.json({ success: true, message: 'Item removed' });
   } catch (error) {
@@ -275,39 +378,59 @@ router.delete('/items/:id', verifyAuth, async (req, res) => {
  * Get pantry events (consumption, waste, adjustments)
  * Query params: household_id, event_type, limit
  */
-router.get('/events', verifyAuth, async (req, res) => {
+router.get('/events', verifyAuth, verifyHouseholdAccess, async (req, res) => {
   try {
-    const { household_id, event_type, limit = 50 } = req.query;
+    const { event_type, limit = 50 } = req.query;
+    const db = getCoreDb();
 
-    if (!household_id) {
-      return res.status(400).json({ error: 'household_id is required' });
-    }
+    const pantry = await getOrCreatePantry(req.householdId);
 
-    const pantry = await getOrCreatePantry(household_id);
+    // Get all item IDs for this pantry
+    const pantryItems = await db.pantry_items.findMany({
+      where: { pantry_id: pantry.id },
+      select: { id: true }
+    });
+    const itemIds = pantryItems.map(i => i.id);
 
-    let query = `
-      SELECT e.*, u.name as created_by_name, u.email as created_by_email
-      FROM pantry_events e
-      LEFT JOIN users u ON e.created_by = u.id
-      WHERE e.pantry_id = $1
-    `;
-    const params = [pantry.id];
-    let paramIndex = 2;
+    // Build where clause
+    const where = {
+      pantry_item_id: { in: itemIds }
+    };
 
     if (event_type) {
-      query += ` AND e.event_type = $${paramIndex}`;
-      params.push(event_type);
-      paramIndex++;
+      where.event_type = event_type;
     }
 
-    query += ` ORDER BY e.created_at DESC LIMIT $${paramIndex}`;
-    params.push(parseInt(limit));
+    const events = await db.pantry_item_events.findMany({
+      where,
+      include: {
+        pantry_item: {
+          select: { name: true, category: true }
+        },
+        user: {
+          select: { display_name: true, email: true }
+        }
+      },
+      orderBy: { created_at: 'desc' },
+      take: parseInt(limit)
+    });
 
-    const result = await pool.query(query, params);
+    // Format for frontend compatibility
+    const formattedEvents = events.map(e => ({
+      id: e.id,
+      item_id: e.pantry_item_id,
+      item_name: e.pantry_item?.name || 'Unknown',
+      event_type: e.event_type,
+      quantity_change: e.quantity_change ? parseFloat(e.quantity_change) : 0,
+      unit: e.unit,
+      notes: e.notes,
+      created_by_name: e.user?.display_name || e.user?.email,
+      created_at: e.created_at
+    }));
 
     res.json({
-      events: result.rows,
-      count: result.rows.length
+      events: formattedEvents,
+      count: formattedEvents.length
     });
   } catch (error) {
     console.error('Error fetching pantry events:', error);
@@ -322,54 +445,93 @@ router.get('/events', verifyAuth, async (req, res) => {
 router.post('/items/:id/events', verifyAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const householdId = req.headers['x-household-id'];
+    const db = getCoreDb();
+
     const {
-      event_type, // consumed, wasted, adjusted
+      event_type, // consume, waste, adjust
       quantity_change,
-      reason,
-      notes
+      notes,
+      related_plan_item_id
     } = req.body;
 
-    if (!event_type || !['consumed', 'wasted', 'adjusted'].includes(event_type)) {
-      return res.status(400).json({ error: 'Valid event_type is required (consumed, wasted, adjusted)' });
+    // Normalize event type (support legacy names)
+    const normalizedType = event_type === 'consumed' ? 'consume' :
+                          event_type === 'wasted' ? 'waste' :
+                          event_type === 'adjusted' ? 'adjust' :
+                          event_type;
+
+    if (!normalizedType || !['consume', 'waste', 'adjust', 'add'].includes(normalizedType)) {
+      return res.status(400).json({ error: 'Valid event_type is required (consume, waste, adjust, add)' });
     }
 
     // Get current item
-    const current = await pool.query('SELECT * FROM pantry_items WHERE id = $1', [id]);
-    if (current.rows.length === 0) {
+    const item = await db.pantry_items.findUnique({
+      where: { id },
+      include: { pantry: true }
+    });
+
+    if (!item) {
       return res.status(404).json({ error: 'Item not found' });
     }
-    const item = current.rows[0];
+
+    // Verify household access
+    const membership = await db.household_memberships.findFirst({
+      where: {
+        user_id: req.user.id,
+        household_id: item.pantry.household_id,
+        is_active: true
+      }
+    });
+
+    if (!membership || !['owner', 'admin', 'member'].includes(membership.role)) {
+      return res.status(403).json({ error: 'Insufficient permissions' });
+    }
 
     // Calculate new quantity
     const change = parseFloat(quantity_change) || 0;
     const newQuantity = Math.max(0, parseFloat(item.quantity) + change);
 
-    // Update item quantity
+    // Determine new status
     let newStatus = item.status;
     if (newQuantity === 0) {
-      newStatus = event_type === 'wasted' ? 'wasted' : 'consumed';
+      newStatus = normalizedType === 'waste' ? 'wasted' : 'consumed';
     } else if (newQuantity < 1) {
       newStatus = 'low';
     } else {
-      newStatus = 'active';
+      newStatus = 'available';
     }
 
-    await pool.query(
-      `UPDATE pantry_items SET quantity = $1, status = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3`,
-      [newQuantity, newStatus, id]
-    );
+    // Update item quantity
+    await db.pantry_items.update({
+      where: { id },
+      data: {
+        quantity: newQuantity,
+        status: newStatus
+      }
+    });
 
     // Log the event
-    const eventResult = await pool.query(
-      `INSERT INTO pantry_events (pantry_id, item_id, item_name, event_type, quantity_change, unit, reason, notes, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       RETURNING *`,
-      [item.pantry_id, id, item.name, event_type, change, item.unit, reason, notes, req.user.id]
-    );
+    const event = await db.pantry_item_events.create({
+      data: {
+        pantry_item_id: id,
+        user_id: req.user.id,
+        event_type: normalizedType,
+        quantity_change: change,
+        unit: item.unit,
+        notes,
+        related_plan_item_id
+      }
+    });
 
     res.status(201).json({
-      event: eventResult.rows[0],
+      event: {
+        id: event.id,
+        item_id: id,
+        item_name: item.name,
+        event_type: event.event_type,
+        quantity_change: change,
+        created_at: event.created_at
+      },
       item: {
         id: item.id,
         name: item.name,
@@ -391,29 +553,31 @@ router.post('/items/:id/events', verifyAuth, async (req, res) => {
  * GET /api/core/pantry/reports/expiring
  * Get items expiring within specified days
  */
-router.get('/reports/expiring', verifyAuth, async (req, res) => {
+router.get('/reports/expiring', verifyAuth, verifyHouseholdAccess, async (req, res) => {
   try {
-    const { household_id, days = 7 } = req.query;
+    const { days = 7 } = req.query;
+    const db = getCoreDb();
 
-    if (!household_id) {
-      return res.status(400).json({ error: 'household_id is required' });
-    }
+    const pantry = await getOrCreatePantry(req.householdId);
 
-    const pantry = await getOrCreatePantry(household_id);
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + parseInt(days));
 
-    const result = await pool.query(
-      `SELECT * FROM pantry_items
-       WHERE pantry_id = $1
-         AND status = 'active'
-         AND expiration_date IS NOT NULL
-         AND expiration_date <= CURRENT_DATE + INTERVAL '${parseInt(days)} days'
-       ORDER BY expiration_date ASC`,
-      [pantry.id]
-    );
+    const items = await db.pantry_items.findMany({
+      where: {
+        pantry_id: pantry.id,
+        status: 'available',
+        expiration_date: {
+          lte: expiryDate,
+          not: null
+        }
+      },
+      orderBy: { expiration_date: 'asc' }
+    });
 
     res.json({
-      items: result.rows,
-      count: result.rows.length,
+      items,
+      count: items.length,
       days: parseInt(days)
     });
   } catch (error) {
@@ -426,54 +590,66 @@ router.get('/reports/expiring', verifyAuth, async (req, res) => {
  * GET /api/core/pantry/reports/waste
  * Get waste statistics
  */
-router.get('/reports/waste', verifyAuth, async (req, res) => {
+router.get('/reports/waste', verifyAuth, verifyHouseholdAccess, async (req, res) => {
   try {
-    const { household_id, start_date, end_date } = req.query;
+    const { start_date, end_date } = req.query;
+    const db = getCoreDb();
 
-    if (!household_id) {
-      return res.status(400).json({ error: 'household_id is required' });
-    }
+    const pantry = await getOrCreatePantry(req.householdId);
 
-    const pantry = await getOrCreatePantry(household_id);
+    // Get all item IDs for this pantry
+    const pantryItems = await db.pantry_items.findMany({
+      where: { pantry_id: pantry.id },
+      select: { id: true }
+    });
+    const itemIds = pantryItems.map(i => i.id);
 
-    let query = `
-      SELECT
-        COUNT(*) as waste_events,
-        SUM(ABS(quantity_change)) as total_quantity_wasted,
-        reason,
-        DATE_TRUNC('day', created_at) as date
-      FROM pantry_events
-      WHERE pantry_id = $1 AND event_type = 'wasted'
-    `;
-    const params = [pantry.id];
-    let paramIndex = 2;
+    // Build where clause for waste events
+    const where = {
+      pantry_item_id: { in: itemIds },
+      event_type: 'waste'
+    };
 
     if (start_date) {
-      query += ` AND created_at >= $${paramIndex}`;
-      params.push(start_date);
-      paramIndex++;
+      where.created_at = { ...where.created_at, gte: new Date(start_date) };
     }
-
     if (end_date) {
-      query += ` AND created_at <= $${paramIndex}`;
-      params.push(end_date);
-      paramIndex++;
+      where.created_at = { ...where.created_at, lte: new Date(end_date) };
     }
 
-    query += ' GROUP BY reason, DATE_TRUNC(\'day\', created_at) ORDER BY date DESC';
+    const wasteEvents = await db.pantry_item_events.findMany({
+      where,
+      include: {
+        pantry_item: {
+          select: { name: true, category: true }
+        }
+      },
+      orderBy: { created_at: 'desc' }
+    });
 
-    const result = await pool.query(query, params);
-
-    // Get total waste count
-    const totalResult = await pool.query(
-      `SELECT COUNT(*) as total_events, SUM(ABS(quantity_change)) as total_wasted
-       FROM pantry_events WHERE pantry_id = $1 AND event_type = 'wasted'`,
-      [pantry.id]
+    // Calculate totals
+    const totalEvents = wasteEvents.length;
+    const totalWasted = wasteEvents.reduce((sum, e) =>
+      sum + Math.abs(parseFloat(e.quantity_change) || 0), 0
     );
 
+    // Group by date for breakdown
+    const breakdown = {};
+    wasteEvents.forEach(e => {
+      const date = e.created_at.toISOString().split('T')[0];
+      if (!breakdown[date]) {
+        breakdown[date] = { date, events: 0, quantity: 0 };
+      }
+      breakdown[date].events++;
+      breakdown[date].quantity += Math.abs(parseFloat(e.quantity_change) || 0);
+    });
+
     res.json({
-      breakdown: result.rows,
-      totals: totalResult.rows[0]
+      breakdown: Object.values(breakdown),
+      totals: {
+        total_events: totalEvents,
+        total_wasted: totalWasted
+      }
     });
   } catch (error) {
     console.error('Error fetching waste report:', error);
