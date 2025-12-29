@@ -130,7 +130,7 @@ async function runMigrationsSync() {
     } else {
       try {
         const { execSync } = require('child_process');
-        execSync('npx prisma db push --schema prisma/core/schema.prisma --skip-generate', {
+        execSync('npx prisma db push --schema prisma/core/schema.prisma --skip-generate --accept-data-loss', {
           stdio: 'inherit',
           env: { ...process.env }
         });
