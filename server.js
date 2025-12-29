@@ -122,6 +122,26 @@ async function runMigrationsSync() {
       console.log('[FITNESS] ℹ️  Server will continue starting...');
     }
 
+    // Push CORE DB schema (households, pantry, users, roles)
+    console.log('[CORE DB] 🏠 Pushing CORE database schema...');
+    if (!process.env.CORE_DATABASE_URL) {
+      console.error('[CORE DB] ⚠️  CORE_DATABASE_URL not set - skipping CORE schema push');
+      console.log('[CORE DB] ℹ️  Household and Pantry features will not work without CORE DB');
+    } else {
+      try {
+        const { execSync } = require('child_process');
+        execSync('npx prisma db push --schema prisma/core/schema.prisma --skip-generate', {
+          stdio: 'inherit',
+          env: { ...process.env }
+        });
+        console.log('[CORE DB] ✅ CORE schema pushed successfully');
+      } catch (coreError) {
+        console.error('[CORE DB] ⚠️  CORE schema push failed (non-fatal):', coreError.message);
+        console.log('[CORE DB] ℹ️  This may be expected if schema was already applied');
+        console.log('[CORE DB] ℹ️  Server will continue starting...');
+      }
+    }
+
     return true;
   } catch (error) {
     console.error('[MIGRATIONS] ❌ Migration execution failed:', error.message);
