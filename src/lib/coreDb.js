@@ -5,7 +5,8 @@
  * Uses Neon PostgreSQL (core_db_next).
  */
 
-const { PrismaClient } = require('@prisma/client');
+// Import from the CORE DB specific Prisma client output location
+const { PrismaClient } = require('@prisma/client/core');
 
 // Singleton instance
 let coreDbInstance = null;
