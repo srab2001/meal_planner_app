@@ -6,7 +6,7 @@
  */
 
 // Import from the CORE DB specific Prisma client output location
-const { PrismaClient } = require('@prisma/client/core');
+const { PrismaClient } = require('../../prisma/generated/core-client');
 
 // Singleton instance
 let coreDbInstance = null;
