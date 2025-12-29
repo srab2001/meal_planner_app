@@ -479,3 +479,71 @@ model admin_interview_questions {
   @@index([order_position], map: "idx_admin_questions_position")
   @@index([plan_type], map: "idx_admin_questions_plan_type")
 }
+
+// ============================================================================
+// PANTRY MODELS
+// ============================================================================
+
+/// Pantries - one per household for food inventory tracking
+model pantries {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  household_id String   @unique @db.Uuid
+  name         String   @default("Main Pantry") @db.VarChar(100)
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime @default(now()) @db.Timestamptz(6)
+
+  items  pantry_items[]
+  events pantry_events[]
+
+  @@index([household_id], map: "idx_pantries_household")
+}
+
+/// Pantry items - food inventory with expiration tracking
+model pantry_items {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pantry_id       String    @db.Uuid
+  name            String    @db.VarChar(200)
+  brand           String?   @db.VarChar(100)
+  category        String    @default("pantry") @db.VarChar(50) // produce, dairy, meat, pantry, frozen, beverages, other
+  quantity        Decimal   @default(1) @db.Decimal(10, 2)
+  unit            String    @default("count") @db.VarChar(20) // count, lbs, oz, kg, g, L, mL, cups
+  purchase_date   DateTime? @db.Date
+  expiration_date DateTime? @db.Date
+  status          String    @default("active") @db.VarChar(20) // active, low, expired, consumed, wasted
+  notes           String?   @db.Text
+  barcode         String?   @db.VarChar(50)
+  created_by      String?   @db.Uuid
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime  @default(now()) @db.Timestamptz(6)
+
+  pantry pantries @relation(fields: [pantry_id], references: [id], onDelete: Cascade)
+  events pantry_events[]
+
+  @@index([pantry_id], map: "idx_pantry_items_pantry")
+  @@index([expiration_date], map: "idx_pantry_items_expiration")
+  @@index([category], map: "idx_pantry_items_category")
+  @@index([status], map: "idx_pantry_items_status")
+}
+
+/// Pantry events - consumption, waste, and adjustment tracking
+model pantry_events {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pantry_id       String   @db.Uuid
+  item_id         String?  @db.Uuid
+  item_name       String   @db.VarChar(200) // Store name for history even if item deleted
+  event_type      String   @db.VarChar(20) // consumed, wasted, adjusted, added, removed
+  quantity_change Decimal  @db.Decimal(10, 2) // negative for consumed/wasted, positive for added
+  unit            String?  @db.VarChar(20)
+  reason          String?  @db.Text // For waste: expired, spoiled, damaged, other
+  notes           String?  @db.Text
+  created_by      String?  @db.Uuid
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  pantry pantries      @relation(fields: [pantry_id], references: [id], onDelete: Cascade)
+  item   pantry_items? @relation(fields: [item_id], references: [id], onDelete: SetNull)
+
+  @@index([pantry_id], map: "idx_pantry_events_pantry")
+  @@index([item_id], map: "idx_pantry_events_item")
+  @@index([event_type], map: "idx_pantry_events_type")
+  @@index([created_at(sort: Desc)], map: "idx_pantry_events_created")
+}

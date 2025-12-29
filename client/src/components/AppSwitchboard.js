@@ -117,6 +117,14 @@ export default function AppSwitchboard({ onSelectApp, user, onLogout, onLogin })
       color: '#16a34a',
       available: true
     },
+    {
+      id: 'pantry',
+      name: 'Pantry',
+      description: 'Track food inventory and expiration dates',
+      icon: '🥫',
+      color: '#8b5cf6',
+      available: true
+    },
     // Admin panel - always shown, but requires login + admin role
     {
       id: 'admin',
