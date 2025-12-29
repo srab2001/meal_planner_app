@@ -127,7 +127,7 @@ CREATE TABLE IF NOT EXISTS discount_codes (
 
 CREATE INDEX idx_discount_codes_code ON discount_codes(code);
 CREATE INDEX idx_discount_codes_active ON discount_codes(active) WHERE active = TRUE;
-CREATE INDEX idx_discount_codes_valid_until ON discount_codes(valid_until) WHERE valid_until > CURRENT_TIMESTAMP;
+CREATE INDEX idx_discount_codes_valid_until ON discount_codes(valid_until);
 
 -- 7. Discount Usage Table
 CREATE TABLE IF NOT EXISTS discount_usage (
