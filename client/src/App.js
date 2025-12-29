@@ -33,6 +33,9 @@ import { FitnessApp } from './modules/fitness';
 // Local Store Finder Module
 import { LocalStoreFinderApp } from './modules/local-store-finder';
 
+// Pantry App
+import PantryApp from './apps/pantry/PantryApp';
+
 // Admin Module (AI Coach question management)
 import { AdminCoachPanel, AdminSwitchboard, UsersAdmin } from './modules/admin';
 
@@ -522,6 +525,16 @@ function App() {
           setCurrentView('login');
         }
         break;
+      case 'pantry':
+        // Pantry - requires authentication
+        const pantryToken = getToken();
+        if (pantryToken && user) {
+          setCurrentView('pantry');
+        } else {
+          localStorage.setItem('redirect_after_login', 'pantry');
+          setCurrentView('login');
+        }
+        break;
       case 'admin':
         // Admin panel - requires authentication and admin role
         const adminToken = getToken();
@@ -745,6 +758,14 @@ function App() {
           user={user}
           onBack={() => setCurrentView('switchboard')}
           onLogout={handleLogout}
+        />
+      )}
+
+      {/* Pantry App */}
+      {currentView === 'pantry' && (
+        <PantryApp
+          user={user}
+          onBack={() => setCurrentView('switchboard')}
         />
       )}
 
