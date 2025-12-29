@@ -195,6 +195,22 @@ router.post('/', verifyAuth, async (req, res) => {
 
     const db = getCoreDb();
 
+    // First, ensure user exists in CORE DB (upsert from Render DB user)
+    const coreUser = await db.users.upsert({
+      where: { email: req.user.email },
+      update: {
+        display_name: req.user.display_name || req.user.name || undefined,
+        picture: req.user.picture_url || req.user.picture || undefined,
+        updated_at: new Date()
+      },
+      create: {
+        email: req.user.email,
+        display_name: req.user.display_name || req.user.name || req.user.email,
+        picture: req.user.picture_url || req.user.picture || null,
+        status: 'active'
+      }
+    });
+
     // Create household
     const household = await db.households.create({
       data: {
@@ -207,13 +223,13 @@ router.post('/', verifyAuth, async (req, res) => {
       }
     });
 
-    // Add current user as owner
+    // Add current user as owner (using CORE DB user ID)
     await db.household_memberships.create({
       data: {
-        user_id: req.user.id,
+        user_id: coreUser.id,
         household_id: household.id,
         role: 'owner',
-        display_name: req.user.display_name || req.user.email,
+        display_name: coreUser.display_name || req.user.email,
         diet_preference: members.find(m => m.isCurrentUser)?.diet || null
       }
     });
