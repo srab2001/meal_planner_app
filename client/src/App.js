@@ -36,6 +36,9 @@ import { LocalStoreFinderApp } from './modules/local-store-finder';
 // Pantry App
 import PantryApp from './apps/pantry/PantryApp';
 
+// Household Setup
+import { HouseholdSetup } from './apps/household';
+
 // Admin Module (AI Coach question management)
 import { AdminCoachPanel, AdminSwitchboard, UsersAdmin } from './modules/admin';
 
@@ -526,12 +529,29 @@ function App() {
         }
         break;
       case 'pantry':
-        // Pantry - requires authentication
+        // Pantry - requires authentication and household
         const pantryToken = getToken();
         if (pantryToken && user) {
-          setCurrentView('pantry');
+          const householdId = localStorage.getItem('active_household_id');
+          if (!householdId) {
+            // No household - redirect to setup
+            localStorage.setItem('redirect_after_household', 'pantry');
+            setCurrentView('household-setup');
+          } else {
+            setCurrentView('pantry');
+          }
         } else {
           localStorage.setItem('redirect_after_login', 'pantry');
+          setCurrentView('login');
+        }
+        break;
+      case 'household-setup':
+        // Household Setup - requires authentication
+        const hsToken = getToken();
+        if (hsToken && user) {
+          setCurrentView('household-setup');
+        } else {
+          localStorage.setItem('redirect_after_login', 'household-setup');
           setCurrentView('login');
         }
         break;
@@ -765,6 +785,21 @@ function App() {
       {currentView === 'pantry' && (
         <PantryApp
           user={user}
+          onBack={() => setCurrentView('switchboard')}
+        />
+      )}
+
+      {/* Household Setup */}
+      {currentView === 'household-setup' && (
+        <HouseholdSetup
+          user={user}
+          onComplete={(household) => {
+            // After household setup, redirect to intended destination or pantry
+            const redirectTo = localStorage.getItem('redirect_after_household') || 'pantry';
+            localStorage.removeItem('redirect_after_household');
+            setCurrentView(redirectTo);
+          }}
+          onSkip={() => setCurrentView('switchboard')}
           onBack={() => setCurrentView('switchboard')}
         />
       )}

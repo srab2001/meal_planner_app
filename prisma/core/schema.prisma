@@ -74,10 +74,15 @@ model user_roles {
 // ============================================
 
 model households {
-  id         String   @id @default(uuid())
-  name       String
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  id                     String   @id @default(uuid())
+  name                   String
+  size                   Int      @default(1)
+  share_pantry_inventory Boolean  @default(true)
+  share_shopping_list    Boolean  @default(true)
+  share_meal_plans       Boolean  @default(true)
+  primary_shopper_id     String?
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
 
   memberships household_memberships[]
   invites     invites[]
@@ -89,12 +94,14 @@ model households {
 }
 
 model household_memberships {
-  id           String   @id @default(uuid())
-  user_id      String
-  household_id String
-  role         String   @default("member") // owner, admin, member, viewer
-  is_active    Boolean  @default(true)
-  joined_at    DateTime @default(now())
+  id              String   @id @default(uuid())
+  user_id         String
+  household_id    String
+  role            String   @default("member") // owner, admin, member, viewer
+  display_name    String?  // Name shown in household (can differ from user.display_name)
+  diet_preference String?  // none, vegetarian, vegan, keto, paleo, gluten-free, dairy-free, halal, kosher
+  is_active       Boolean  @default(true)
+  joined_at       DateTime @default(now())
 
   user      users      @relation(fields: [user_id], references: [id], onDelete: Cascade)
   household households @relation(fields: [household_id], references: [id], onDelete: Cascade)
