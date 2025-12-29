@@ -34,6 +34,10 @@ export default function PantryApp({ user, onBack }) {
 
   // Fetch items with server-side filtering
   const fetchItems = useCallback(async () => {
+    if (!householdId) {
+      setError('No household selected. Please set up or join a household first.');
+      return;
+    }
     try {
       const params = new URLSearchParams({ household_id: householdId });
       if (view !== 'all') params.append('view', view);
@@ -53,12 +57,13 @@ export default function PantryApp({ user, onBack }) {
       setError(null);
     } catch (err) {
       console.error('Error fetching pantry items:', err);
-      setError(err.message);
+      setError(err.message || 'NetworkError when attempting to fetch resource.');
     }
   }, [token, householdId, view, searchTerm]);
 
   // Fetch events
   const fetchEvents = useCallback(async () => {
+    if (!householdId) return;
     try {
       const res = await fetch(`${API_BASE}/api/core/pantry/events?household_id=${householdId}&limit=10`, {
         headers: { 'Authorization': `Bearer ${token}` }
