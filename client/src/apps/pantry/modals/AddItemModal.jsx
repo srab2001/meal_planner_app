@@ -50,7 +50,7 @@ export default function AddItemModal({ onClose, onSuccess, apiBase, token, house
     setSubmitting(true);
 
     try {
-      const res = await fetch(`${apiBase}/api/pantry/items`, {
+      const res = await fetch(`${apiBase}/api/core/pantry/items`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

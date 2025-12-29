@@ -39,7 +39,7 @@ export default function PantryApp({ user, onBack }) {
       if (view !== 'all') params.append('view', view);
       if (searchTerm) params.append('search', searchTerm);
 
-      const res = await fetch(`${API_BASE}/api/pantry/items?${params}`, {
+      const res = await fetch(`${API_BASE}/api/core/pantry/items?${params}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -60,7 +60,7 @@ export default function PantryApp({ user, onBack }) {
   // Fetch events
   const fetchEvents = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/pantry/events?household_id=${householdId}&limit=10`, {
+      const res = await fetch(`${API_BASE}/api/core/pantry/events?household_id=${householdId}&limit=10`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 

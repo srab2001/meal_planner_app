@@ -50,7 +50,7 @@ export default function WasteModal({ item, onClose, onSuccess, apiBase, token, h
         ? form.notes
         : `Reason: ${WASTE_REASONS.find(r => r.value === form.reason)?.label}${form.notes ? ` - ${form.notes}` : ''}`;
 
-      const res = await fetch(`${apiBase}/api/pantry/items/event`, {
+      const res = await fetch(`${apiBase}/api/core/pantry/items/event`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

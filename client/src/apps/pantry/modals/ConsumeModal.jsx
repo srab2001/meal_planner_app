@@ -39,7 +39,7 @@ export default function ConsumeModal({ item, onClose, onSuccess, apiBase, token,
     setSubmitting(true);
 
     try {
-      const res = await fetch(`${apiBase}/api/pantry/items/event`, {
+      const res = await fetch(`${apiBase}/api/core/pantry/items/event`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

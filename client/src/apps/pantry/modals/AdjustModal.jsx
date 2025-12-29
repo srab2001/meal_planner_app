@@ -35,7 +35,7 @@ export default function AdjustModal({ item, onClose, onSuccess, apiBase, token, 
     setSubmitting(true);
 
     try {
-      const res = await fetch(`${apiBase}/api/pantry/items/update`, {
+      const res = await fetch(`${apiBase}/api/core/pantry/items/update`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
