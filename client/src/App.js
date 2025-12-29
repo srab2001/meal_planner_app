@@ -13,6 +13,7 @@ import Profile from './components/Profile';
 import Admin from './components/Admin';
 import MealOfTheDay from './components/MealOfTheDay';
 import RecipeCard from './components/RecipeCard';
+import WorkoutCheckOff from './components/WorkoutCheckOff';
 
 // Nutrition Module
 import { NutritionApp } from './modules/nutrition';
@@ -61,6 +62,7 @@ function App() {
   const [selectedStores, setSelectedStores] = useState({ primaryStore: null, comparisonStore: null });
   const [preferences, setPreferences] = useState(null);
   const [mealPlan, setMealPlan] = useState(null);
+  const [checkoffToken, setCheckoffToken] = useState(null);
 
   // Helper for authenticated API calls with 401 handling
   const fetchWithAuth = async (url, options = {}) => {
@@ -145,6 +147,17 @@ function App() {
       setShowSplash(false);
       setCurrentView('recipe-card');
       return;
+    }
+
+    // Check if accessing workout check-off (public route - skip splash)
+    if (window.location.pathname.startsWith('/workout/check-off/')) {
+      const token = window.location.pathname.split('/workout/check-off/')[1];
+      if (token) {
+        setCheckoffToken(token);
+        setShowSplash(false);
+        setCurrentView('workout-checkoff');
+        return;
+      }
     }
 
     // Check for add_meal query parameter (from meal of the day CTA)
@@ -413,7 +426,7 @@ function App() {
     setShowSplash(false);
     // If there's a specific route (admin, meal-of-the-day, etc), don't override
     // Otherwise show switchboard
-    if (!['admin', 'meal-of-the-day', 'recipe-card'].includes(currentView)) {
+    if (!['admin', 'meal-of-the-day', 'recipe-card', 'workout-checkoff'].includes(currentView)) {
       console.log('🎬 Setting currentView to switchboard');
       setCurrentView('switchboard');
       // Track switchboard view
@@ -674,6 +687,11 @@ function App() {
 
       {currentView === 'recipe-card' && (
         <RecipeCard />
+      )}
+
+      {/* Workout Check-Off (public, no auth required) */}
+      {currentView === 'workout-checkoff' && checkoffToken && (
+        <WorkoutCheckOff token={checkoffToken} />
       )}
 
       {/* Nutrition Module */}
