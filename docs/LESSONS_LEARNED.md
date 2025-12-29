@@ -176,6 +176,20 @@
 - **Caching:** None - always check DB for fresh data
 - **Middleware:** `requirePermission(fn, getParams)` wrapper
 
+### Sync vs Async Permission Checks
+- **Problem:** Repeatedly fetching role from DB is inefficient
+- **Solution:** Provide both async and sync versions
+  - `getUserHouseholdRole({ userId, householdId })` - returns `{ membershipRole }`
+  - `canEditPantryRole(membershipRole)` - sync check after role is fetched
+  - `canEditPantry(userId, householdId)` - async version that fetches role
+- **Pattern:** Fetch role once in middleware, use sync helpers in route
+
+### Pantry RBAC Rules
+- **viewer:** Can only view pantry items
+- **member/admin/owner:** Can view + edit (add, consume, waste, adjust)
+- **non-member:** No access (403)
+- **Enforcement:** Middleware checks role before route handlers
+
 ### App Visibility
 - **Approach:** Server returns visible app list based on RBAC
 - **Fallback:** Frontend shows all apps if API fails
@@ -223,5 +237,46 @@
 
 ---
 
-**Version:** 1.2
+## Pantry Lessons
+
+### Validation Patterns
+- **Quantity validation:** Must check > 0 for add/event, >= 0 for update
+- **Date validation:** Expiration date >= purchase date if both present
+- **Notes validation:** Max 500 characters for text fields
+- **Pattern:** Return `{ valid: boolean, error?: string, value?: T }`
+
+### Expiring Items Filter
+- **Server-side:** Use `expiration_date <= today + N days AND >= today`
+- **Views:** `all`, `exp3`, `exp7`, `exp14`
+- **Status filter:** Exclude `consumed` and `wasted` items
+- **Timezone:** Server uses UTC boundaries for consistency
+
+### Modal Form Patterns
+- **Validation:** Block submit on invalid values
+- **Error display:** Show API errors in form
+- **Optimistic updates:** Update UI immediately, rollback on error
+- **Loading state:** Disable submit button during API call
+
+### Event Types Standardization
+- **Canonical:** `add`, `consume`, `waste`, `adjust`
+- **Legacy support:** Convert `consumed` → `consume`, `wasted` → `waste`
+- **Logging prefixes:** `pantry_item_added`, `pantry_item_consumed`, etc.
+
+---
+
+## UI Lessons
+
+### Search Debouncing
+- **Pattern:** 300ms debounce on search input
+- **Implementation:** useEffect with setTimeout and cleanup
+- **Avoid:** Making API call on every keystroke
+
+### Table vs Grid Layout
+- **Decision:** Use table for data-heavy views (pantry items)
+- **Reason:** Better for comparing values across columns
+- **Cards:** Use for visual/browsing views (recipes)
+
+---
+
+**Version:** 1.3
 **Maintained By:** Development Team

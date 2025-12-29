@@ -21,15 +21,37 @@ function hasRoleLevel(userRole, requiredRole) {
 
 /**
  * Get user's role in a household
+ * @param {Object} params - { userId, householdId }
+ * @returns {Promise<{ membershipRole: string|null }>}
  */
-async function getUserHouseholdRole(userId, householdId) {
+async function getUserHouseholdRole({ userId, householdId }) {
   const db = getCoreDb();
 
   const membership = await db.household_memberships.findFirst({
     where: { user_id: userId, household_id: householdId, is_active: true }
   });
 
-  return membership?.role || null;
+  return { membershipRole: membership?.role || null };
+}
+
+/**
+ * Synchronous check: can this role view pantry?
+ * @param {string|null} membershipRole
+ * @returns {boolean}
+ */
+function canViewPantryRole(membershipRole) {
+  if (!membershipRole) return false;
+  return ['owner', 'admin', 'member', 'viewer'].includes(membershipRole);
+}
+
+/**
+ * Synchronous check: can this role edit pantry?
+ * @param {string|null} membershipRole
+ * @returns {boolean}
+ */
+function canEditPantryRole(membershipRole) {
+  if (!membershipRole) return false;
+  return ['owner', 'admin', 'member'].includes(membershipRole);
 }
 
 /**
@@ -61,8 +83,8 @@ async function canViewApp(userId, householdId, appId) {
   // Global admin can view all
   if (await isGlobalAdmin(userId)) return true;
 
-  const role = await getUserHouseholdRole(userId, householdId);
-  if (!role) return false;
+  const { membershipRole } = await getUserHouseholdRole({ userId, householdId });
+  if (!membershipRole) return false;
 
   // App-specific visibility rules
   const appRules = {
@@ -77,7 +99,7 @@ async function canViewApp(userId, householdId, appId) {
   };
 
   const allowedRoles = appRules[appId] || [];
-  return allowedRoles.includes(role);
+  return allowedRoles.includes(membershipRole);
 }
 
 // ============================================
@@ -90,8 +112,8 @@ async function canViewApp(userId, householdId, appId) {
 async function canEditHousehold(userId, householdId) {
   if (await isGlobalAdmin(userId)) return true;
 
-  const role = await getUserHouseholdRole(userId, householdId);
-  return ['owner', 'household_admin', 'admin'].includes(role);
+  const { membershipRole } = await getUserHouseholdRole({ userId, householdId });
+  return ['owner', 'household_admin', 'admin'].includes(membershipRole);
 }
 
 /**
@@ -100,8 +122,8 @@ async function canEditHousehold(userId, householdId) {
 async function canDeleteHousehold(userId, householdId) {
   if (await isGlobalAdmin(userId)) return true;
 
-  const role = await getUserHouseholdRole(userId, householdId);
-  return role === 'owner';
+  const { membershipRole } = await getUserHouseholdRole({ userId, householdId });
+  return membershipRole === 'owner';
 }
 
 /**
@@ -119,14 +141,14 @@ async function canChangeRoles(userId, householdId, targetUserId) {
 
   if (await isGlobalAdmin(userId)) return true;
 
-  const role = await getUserHouseholdRole(userId, householdId);
-  const targetRole = await getUserHouseholdRole(targetUserId, householdId);
+  const { membershipRole } = await getUserHouseholdRole({ userId, householdId });
+  const { membershipRole: targetRole } = await getUserHouseholdRole({ userId: targetUserId, householdId });
 
   // Owner can change anyone except other owners
-  if (role === 'owner' && targetRole !== 'owner') return true;
+  if (membershipRole === 'owner' && targetRole !== 'owner') return true;
 
   // Admin can change members and viewers
-  if (['household_admin', 'admin'].includes(role) &&
+  if (['household_admin', 'admin'].includes(membershipRole) &&
       ['member', 'viewer'].includes(targetRole)) return true;
 
   return false;
@@ -138,22 +160,24 @@ async function canChangeRoles(userId, householdId, targetUserId) {
 
 /**
  * Check if user can edit pantry (add/consume/waste items)
+ * Async version that fetches role from DB
  */
 async function canEditPantry(userId, householdId) {
   if (await isGlobalAdmin(userId)) return true;
 
-  const role = await getUserHouseholdRole(userId, householdId);
-  return ['owner', 'household_admin', 'admin', 'member'].includes(role);
+  const { membershipRole } = await getUserHouseholdRole({ userId, householdId });
+  return canEditPantryRole(membershipRole);
 }
 
 /**
  * Check if user can view pantry
+ * Async version that fetches role from DB
  */
 async function canViewPantry(userId, householdId) {
   if (await isGlobalAdmin(userId)) return true;
 
-  const role = await getUserHouseholdRole(userId, householdId);
-  return !!role; // Any role can view
+  const { membershipRole } = await getUserHouseholdRole({ userId, householdId });
+  return canViewPantryRole(membershipRole);
 }
 
 // ============================================
@@ -172,10 +196,10 @@ async function canEditMedical(userId, householdId, targetUserId) {
   if (await isGlobalAdmin(userId)) return true;
 
   // Household admin/owner can edit household members' profiles
-  const role = await getUserHouseholdRole(userId, householdId);
-  if (['owner', 'household_admin'].includes(role)) {
+  const { membershipRole } = await getUserHouseholdRole({ userId, householdId });
+  if (['owner', 'household_admin'].includes(membershipRole)) {
     // Verify target is in same household
-    const targetRole = await getUserHouseholdRole(targetUserId, householdId);
+    const { membershipRole: targetRole } = await getUserHouseholdRole({ userId: targetUserId, householdId });
     return !!targetRole;
   }
 
@@ -193,9 +217,9 @@ async function canViewMedical(userId, householdId, targetUserId) {
   if (await isGlobalAdmin(userId)) return true;
 
   // Household members can view each other (for meal planning purposes)
-  const role = await getUserHouseholdRole(userId, householdId);
-  const targetRole = await getUserHouseholdRole(targetUserId, householdId);
-  return !!role && !!targetRole;
+  const { membershipRole } = await getUserHouseholdRole({ userId, householdId });
+  const { membershipRole: targetRole } = await getUserHouseholdRole({ userId: targetUserId, householdId });
+  return !!membershipRole && !!targetRole;
 }
 
 // ============================================
@@ -208,8 +232,8 @@ async function canViewMedical(userId, householdId, targetUserId) {
 async function canCheckin(userId, householdId) {
   if (await isGlobalAdmin(userId)) return true;
 
-  const role = await getUserHouseholdRole(userId, householdId);
-  return ['owner', 'household_admin', 'admin', 'member'].includes(role);
+  const { membershipRole } = await getUserHouseholdRole({ userId, householdId });
+  return ['owner', 'household_admin', 'admin', 'member'].includes(membershipRole);
 }
 
 // ============================================
@@ -283,9 +307,13 @@ module.exports = {
   canInviteMembers,
   canChangeRoles,
 
-  // Pantry
+  // Pantry (async - fetch role from DB)
   canEditPantry,
   canViewPantry,
+
+  // Pantry (sync - use after role is already fetched)
+  canEditPantryRole,
+  canViewPantryRole,
 
   // Medical
   canEditMedical,
