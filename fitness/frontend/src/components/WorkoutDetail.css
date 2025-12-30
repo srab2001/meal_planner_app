@@ -339,3 +339,329 @@
     gap: 4px;
   }
 }
+
+/* ========================================
+   WORKOUT LOGGING STYLES
+   ======================================== */
+
+/* Log & History Buttons */
+.log-button,
+.history-button,
+.save-log-button,
+.cancel-button {
+  height: 40px;
+  padding: 0 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 150ms ease-in-out;
+  border: none;
+}
+
+.log-button {
+  background: #28A745;
+  color: #FFFFFF;
+}
+
+.log-button:hover {
+  background: #218838;
+}
+
+.history-button {
+  background: #6C757D;
+  color: #FFFFFF;
+}
+
+.history-button:hover:not(:disabled) {
+  background: #5A6268;
+}
+
+.history-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.save-log-button {
+  background: #28A745;
+  color: #FFFFFF;
+}
+
+.save-log-button:hover:not(:disabled) {
+  background: #218838;
+}
+
+.save-log-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cancel-button {
+  background: transparent;
+  color: #6C757D;
+  border: 1px solid #6C757D;
+}
+
+.cancel-button:hover {
+  background: #F5F5F5;
+}
+
+/* Logging Banner */
+.logging-banner {
+  background: linear-gradient(135deg, #28A745 0%, #20C997 100%);
+  color: #FFFFFF;
+  padding: 20px 24px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+
+.logging-banner h3 {
+  margin: 0 0 16px 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.log-date-picker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.log-date-picker label {
+  font-weight: 500;
+}
+
+.date-input {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  background: #FFFFFF;
+  color: #333333;
+}
+
+.logging-hint {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+/* Log History Modal */
+.log-history-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.log-history-content {
+  background: #FFFFFF;
+  border-radius: 12px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.log-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #CCCCCC;
+}
+
+.log-history-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #333333;
+}
+
+.close-history-btn {
+  background: transparent;
+  border: 1px solid #CCCCCC;
+  border-radius: 6px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 150ms ease-in-out;
+}
+
+.close-history-btn:hover {
+  background: #F5F5F5;
+}
+
+.no-history {
+  padding: 40px 24px;
+  text-align: center;
+  color: #666666;
+}
+
+.log-history-list {
+  padding: 20px 24px;
+  overflow-y: auto;
+}
+
+.log-date-group {
+  margin-bottom: 24px;
+}
+
+.log-date-group:last-child {
+  margin-bottom: 0;
+}
+
+.log-date-header {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #0066CC;
+  border-bottom: 2px solid #0066CC;
+  padding-bottom: 8px;
+}
+
+.log-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.log-entry {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  padding: 12px;
+  background: #F5F5F5;
+  border-radius: 8px;
+  align-items: center;
+}
+
+.log-exercise {
+  font-weight: 500;
+  color: #333333;
+}
+
+.log-set {
+  font-size: 12px;
+  color: #666666;
+  background: #FFFFFF;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.log-performance {
+  font-weight: 600;
+  color: #28A745;
+}
+
+.log-notes {
+  grid-column: 1 / -1;
+  font-size: 14px;
+  color: #666666;
+  font-style: italic;
+}
+
+/* Logging Mode - Expanded Sets Table */
+.sets-table-header.logging-mode,
+.set-row.logging-mode {
+  grid-template-columns: 50px 70px 80px 100px 100px 1fr;
+}
+
+.sets-table-header {
+  font-size: 11px;
+}
+
+.set-row.logging-mode {
+  padding: 12px;
+}
+
+.actual-reps-col,
+.actual-weight-col,
+.notes-col {
+  text-align: center;
+}
+
+.log-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #CCCCCC;
+  border-radius: 6px;
+  font-size: 14px;
+  text-align: center;
+  transition: border-color 150ms ease-in-out, box-shadow 150ms ease-in-out;
+}
+
+.log-input:focus {
+  outline: none;
+  border-color: #28A745;
+  box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.15);
+}
+
+.log-input.notes-input {
+  text-align: left;
+}
+
+/* Make sets table responsive in logging mode */
+@media (max-width: 768px) {
+  .sets-table-header,
+  .set-row.logging-mode {
+    grid-template-columns: 40px 60px 70px 80px 80px 1fr;
+    gap: 6px;
+    font-size: 12px;
+  }
+
+  .log-input {
+    padding: 6px 8px;
+    font-size: 13px;
+  }
+
+  .logging-banner {
+    padding: 16px;
+  }
+
+  .log-date-picker {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .header-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .log-button,
+  .history-button,
+  .save-log-button,
+  .cancel-button,
+  .edit-button,
+  .delete-button {
+    padding: 0 12px;
+    font-size: 13px;
+    height: 36px;
+  }
+
+  .log-history-content {
+    max-height: 90vh;
+  }
+
+  .log-entry {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .log-set,
+  .log-performance {
+    justify-self: start;
+  }
+}
