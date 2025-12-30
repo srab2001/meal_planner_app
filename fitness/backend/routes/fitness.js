@@ -460,10 +460,10 @@ router.post('/workouts', requireAuth, async (req, res) => {
     }
 
     // Validate workout_type
-    if (!['strength', 'cardio', 'hiit'].includes(workout_type)) {
+    if (!['strength', 'cardio', 'hiit', 'ai-generated'].includes(workout_type)) {
       return res.status(400).json({
         error: 'invalid_workout_type',
-        message: 'workout_type must be one of: strength, cardio, hiit',
+        message: 'workout_type must be one of: strength, cardio, hiit, ai-generated',
       });
     }
 
@@ -1404,6 +1404,7 @@ Please adjust the workout plan according to these specific modifications while m
               data: {
                 user_id: userId,
                 workout_data: JSON.stringify(workout), // Store full 6-section structure
+                workout_type: 'ai-generated',
                 intensity: workout.summary?.intensity_level || 'medium',
                 duration_minutes: parseInt(workout.summary?.total_duration) || 60,
                 calories_burned: workout.summary?.calories_burned_estimate || 0,
