@@ -637,4 +637,114 @@ router.get('/events', verifyAuth, withHouseholdContext, requireView, async (req,
   }
 });
 
+/**
+ * POST /api/pantry/analyze-photo
+ *
+ * Analyze a photo using OpenAI Vision to identify food items
+ *
+ * Body:
+ * - image*: base64 encoded image data (with or without data URL prefix)
+ *
+ * Response: { items: [{ name, quantity, unit, category, confidence }] }
+ */
+router.post('/analyze-photo', verifyAuth, withHouseholdContext, requireEdit, async (req, res) => {
+  try {
+    const { image } = req.body;
+
+    if (!image) {
+      return res.status(400).json({ error: 'Image data is required' });
+    }
+
+    // Get OpenAI instance from app
+    const OpenAI = require('openai');
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    });
+
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({ error: 'OpenAI API key not configured' });
+    }
+
+    // Clean up image data - handle both raw base64 and data URL format
+    let imageData = image;
+    if (!image.startsWith('data:')) {
+      imageData = `data:image/jpeg;base64,${image}`;
+    }
+
+    console.log('[PANTRY] Analyzing photo for food items...');
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: `You are a food inventory assistant. Analyze the image and identify all visible food items.
+For each item, provide:
+- name: The item name (e.g., "Milk", "Eggs", "Apples")
+- quantity: Estimated quantity as a number (e.g., 1, 6, 12)
+- unit: The unit type (count, lbs, oz, gallon, dozen, box, bag, can, bottle, jar, pack)
+- category: One of: dairy, produce, meat, seafood, bakery, pantry, frozen, beverages, snacks, condiments, other
+- confidence: Your confidence level (high, medium, low)
+
+Return ONLY a JSON array of items. If no food items are visible, return an empty array [].
+Example: [{"name":"Milk","quantity":1,"unit":"gallon","category":"dairy","confidence":"high"}]`
+        },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: 'Identify all food items in this image. Return as JSON array only.'
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: imageData,
+                detail: 'high'
+              }
+            }
+          ]
+        }
+      ],
+      max_tokens: 1000,
+      temperature: 0.3
+    });
+
+    const content = response.choices[0]?.message?.content || '[]';
+
+    // Parse the JSON response
+    let items = [];
+    try {
+      // Handle possible markdown code blocks in response
+      let jsonStr = content.trim();
+      if (jsonStr.startsWith('```')) {
+        jsonStr = jsonStr.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
+      }
+      items = JSON.parse(jsonStr);
+
+      // Validate and clean items
+      items = items.filter(item => item.name && item.quantity).map(item => ({
+        name: String(item.name).trim(),
+        quantity: parseFloat(item.quantity) || 1,
+        unit: item.unit || 'count',
+        category: item.category || 'pantry',
+        confidence: item.confidence || 'medium'
+      }));
+    } catch (parseError) {
+      console.error('[PANTRY] Failed to parse AI response:', content);
+      return res.status(500).json({ error: 'Failed to parse food items from image' });
+    }
+
+    console.log(`[PANTRY] Identified ${items.length} food items from photo`);
+
+    res.json({ items });
+  } catch (error) {
+    console.error('Error analyzing photo:', error);
+    if (error.code === 'invalid_api_key') {
+      return res.status(500).json({ error: 'Invalid OpenAI API key' });
+    }
+    res.status(500).json({ error: 'Failed to analyze photo' });
+  }
+});
+
 module.exports = router;
