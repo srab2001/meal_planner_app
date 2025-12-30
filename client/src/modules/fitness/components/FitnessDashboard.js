@@ -408,15 +408,13 @@ export default function FitnessDashboard({
       {showAIInterview && (
         <AIWorkoutInterview
           user={user}
-          onWorkoutGenerated={async (workout) => {
-            try {
-              await onLogWorkout(workout);
-              setShowAIInterview(false);
-              setCurrentView('dashboard');
-            } catch (error) {
-              console.error('Error logging AI-generated workout:', error);
-              alert('Failed to save workout. Please try again.');
-            }
+          onWorkoutGenerated={(workout) => {
+            // Workout is already saved by the AI Interview backend
+            // Just close the modal and return to dashboard
+            setShowAIInterview(false);
+            setCurrentView('dashboard');
+            // Reload the page to show the new workout in history
+            window.location.reload();
           }}
           onClose={() => setShowAIInterview(false)}
         />
