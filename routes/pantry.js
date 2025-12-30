@@ -107,8 +107,18 @@ const withHouseholdContext = async (req, res, next) => {
     return res.status(400).json({ error: 'household_id is required' });
   }
 
+  // First, find the user in CORE DB by email (req.user.id is from Render DB)
+  const db = getCoreDb();
+  const coreUser = await db.users.findUnique({
+    where: { email: req.user.email }
+  });
+
+  if (!coreUser) {
+    return res.status(403).json({ error: 'User not found in CORE DB. Please set up household first.' });
+  }
+
   const { membershipRole } = await getUserHouseholdRole({
-    userId: req.user.id,
+    userId: coreUser.id,
     householdId
   });
 
@@ -117,6 +127,7 @@ const withHouseholdContext = async (req, res, next) => {
   }
 
   req.householdId = householdId;
+  req.coreUserId = coreUser.id;
   req.membershipRole = membershipRole;
   next();
 };
