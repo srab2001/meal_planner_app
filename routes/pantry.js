@@ -678,23 +678,31 @@ router.post('/analyze-photo', verifyAuth, withHouseholdContext, requireEdit, asy
       messages: [
         {
           role: 'system',
-          content: `You are a food inventory assistant. Analyze the image and identify all visible food items.
+          content: `You are an expert food inventory assistant with keen attention to detail. Analyze the image CLOSELY and identify all visible food items with SPECIFIC names.
+
+IMPORTANT: Be as SPECIFIC as possible when naming items:
+- Read labels, packaging, and brand names carefully
+- Use specific variety names (e.g., "Cheese Ravioli" not just "Pasta", "Fuji Apples" not just "Apples")
+- Include brand names when clearly visible (e.g., "Barilla Spaghetti", "Kraft Mac & Cheese")
+- Distinguish between similar items (e.g., "2% Milk" vs "Whole Milk", "Cheddar Cheese" vs "Mozzarella")
+- For produce, identify the specific type (e.g., "Roma Tomatoes", "Russet Potatoes", "Green Seedless Grapes")
+
 For each item, provide:
-- name: The item name (e.g., "Milk", "Eggs", "Apples")
+- name: The SPECIFIC item name with variety/brand when visible (e.g., "Barilla Cheese Ravioli", "Organic Fuji Apples", "Chobani Greek Yogurt")
 - quantity: Estimated quantity as a number (e.g., 1, 6, 12)
 - unit: The unit type (count, lbs, oz, gallon, dozen, box, bag, can, bottle, jar, pack)
 - category: One of: dairy, produce, meat, seafood, bakery, pantry, frozen, beverages, snacks, condiments, other
 - confidence: Your confidence level (high, medium, low)
 
 Return ONLY a JSON array of items. If no food items are visible, return an empty array [].
-Example: [{"name":"Milk","quantity":1,"unit":"gallon","category":"dairy","confidence":"high"}]`
+Example: [{"name":"Barilla Cheese Ravioli","quantity":1,"unit":"box","category":"pantry","confidence":"high"},{"name":"Organic Fuji Apples","quantity":6,"unit":"count","category":"produce","confidence":"high"}]`
         },
         {
           role: 'user',
           content: [
             {
               type: 'text',
-              text: 'Identify all food items in this image. Return as JSON array only.'
+              text: 'Look closely at this image and identify all food items with SPECIFIC names. Read any visible labels, brands, and varieties. Return as JSON array only.'
             },
             {
               type: 'image_url',
@@ -706,8 +714,8 @@ Example: [{"name":"Milk","quantity":1,"unit":"gallon","category":"dairy","confid
           ]
         }
       ],
-      max_tokens: 1000,
-      temperature: 0.3
+      max_tokens: 1500,
+      temperature: 0.2
     });
 
     const content = response.choices[0]?.message?.content || '[]';
