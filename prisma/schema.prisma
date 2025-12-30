@@ -352,6 +352,8 @@ model users {
   fitness_profiles      fitness_profiles?      @relation("fitness_profiles")
   fitness_workouts      fitness_workouts[]     @relation("fitness_workouts")
   fitness_goals         fitness_goals[]        @relation("fitness_goals")
+  workout_templates     workout_templates[]    @relation("workout_templates")
+  workout_sessions      workout_sessions[]     @relation("workout_sessions")
 
   @@index([email], map: "idx_users_email")
   @@index([google_id], map: "idx_users_google_id")
@@ -546,4 +548,85 @@ model pantry_events {
   @@index([item_id], map: "idx_pantry_events_item")
   @@index([event_type], map: "idx_pantry_events_type")
   @@index([created_at(sort: Desc)], map: "idx_pantry_events_created")
+}
+
+// ============================================================================
+// WORKOUT TRACKING MODULE - Saved Workouts + Calendar + Checkoff
+// ============================================================================
+
+/// Workout Templates - Saved workout plans that can be reused
+model workout_templates {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String   @db.Uuid
+  name        String   @db.VarChar(200)
+  notes       String?  @db.Text
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  users     users                        @relation("workout_templates", fields: [user_id], references: [id], onDelete: Cascade)
+  exercises workout_template_exercises[]
+  sessions  workout_sessions[]
+
+  @@index([user_id], map: "idx_workout_templates_user")
+}
+
+/// Workout Template Exercises - Exercises within a template
+model workout_template_exercises {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workout_template_id  String   @db.Uuid
+  sort_order           Int      @default(0)
+  name                 String   @db.VarChar(200)
+  prescription_type    String   @default("reps") @db.VarChar(20) // "reps" | "time"
+  sets                 Int?     // for reps-based exercises
+  reps                 Int?     // for reps-based exercises
+  seconds              Int?     // for time-based exercises
+  rest_seconds         Int?     // rest between sets
+  created_at           DateTime @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime @default(now()) @db.Timestamptz(6)
+
+  template          workout_templates           @relation(fields: [workout_template_id], references: [id], onDelete: Cascade)
+  session_exercises workout_session_exercises[]
+
+  @@index([workout_template_id], map: "idx_workout_template_exercises_template")
+}
+
+/// Workout Sessions - One run of a workout template
+model workout_sessions {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id              String    @db.Uuid
+  workout_template_id  String    @db.Uuid
+  status               String    @default("not_started") @db.VarChar(20) // "not_started" | "in_progress" | "finished"
+  started_at           DateTime? @db.Timestamptz(6)
+  finished_at          DateTime? @db.Timestamptz(6)
+  completion_percent   Int       @default(0)
+  day_note             String?   @db.Text
+  created_at           DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime  @default(now()) @db.Timestamptz(6)
+
+  users     users                       @relation("workout_sessions", fields: [user_id], references: [id], onDelete: Cascade)
+  template  workout_templates           @relation(fields: [workout_template_id], references: [id], onDelete: Cascade)
+  exercises workout_session_exercises[]
+
+  @@index([user_id, finished_at], map: "idx_workout_sessions_user_finished")
+  @@index([user_id, status], map: "idx_workout_sessions_user_status")
+}
+
+/// Workout Session Exercises - Completion tracking per exercise in a session
+model workout_session_exercises {
+  id                           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workout_session_id           String    @db.Uuid
+  workout_template_exercise_id String    @db.Uuid
+  name_snapshot                String    @db.VarChar(200) // copy of name at session creation
+  sort_order_snapshot          Int       @default(0)
+  prescription_snapshot        Json      // { sets, reps, seconds, rest_seconds, prescription_type }
+  is_completed                 Boolean   @default(false)
+  completed_at                 DateTime? @db.Timestamptz(6)
+  notes                        String?   @db.Text
+  created_at                   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at                   DateTime  @default(now()) @db.Timestamptz(6)
+
+  session           workout_sessions            @relation(fields: [workout_session_id], references: [id], onDelete: Cascade)
+  template_exercise workout_template_exercises  @relation(fields: [workout_template_exercise_id], references: [id], onDelete: Cascade)
+
+  @@index([workout_session_id], map: "idx_workout_session_exercises_session")
 }
