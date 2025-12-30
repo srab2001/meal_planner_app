@@ -6,6 +6,7 @@ import AddItemModal from './modals/AddItemModal';
 import ConsumeModal from './modals/ConsumeModal';
 import WasteModal from './modals/WasteModal';
 import AdjustModal from './modals/AdjustModal';
+import ScanPhotoModal from './modals/ScanPhotoModal';
 
 const API_BASE = process.env.REACT_APP_API_URL || 'https://meal-planner-app-mve2.onrender.com';
 
@@ -22,6 +23,7 @@ export default function PantryApp({ user, onBack }) {
 
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showScanModal, setShowScanModal] = useState(false);
   const [consumeItem, setConsumeItem] = useState(null);
   const [wasteItem, setWasteItem] = useState(null);
   const [adjustItem, setAdjustItem] = useState(null);
@@ -128,6 +130,13 @@ export default function PantryApp({ user, onBack }) {
     fetchEvents();
   };
 
+  const handleScanSuccess = (addedItems) => {
+    // Refresh the items list to show newly added items
+    fetchItems();
+    fetchEvents();
+    setShowScanModal(false);
+  };
+
   // Format date for display
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
@@ -167,9 +176,14 @@ export default function PantryApp({ user, onBack }) {
       {/* Toolbar */}
       <div className="pantry-toolbar">
         {canEdit && (
-          <button className="btn-primary" onClick={() => setShowAddModal(true)}>
-            + Add Item
-          </button>
+          <div className="toolbar-buttons">
+            <button className="btn-primary" onClick={() => setShowAddModal(true)}>
+              + Add Item
+            </button>
+            <button className="btn-scan" onClick={() => setShowScanModal(true)}>
+              📷 Scan Photo
+            </button>
+          </div>
         )}
 
         <div className="view-selector">
@@ -337,6 +351,14 @@ export default function PantryApp({ user, onBack }) {
           apiBase={API_BASE}
           token={token}
           householdId={householdId}
+        />
+      )}
+
+      {showScanModal && (
+        <ScanPhotoModal
+          householdId={householdId}
+          onClose={() => setShowScanModal(false)}
+          onItemsIdentified={handleScanSuccess}
         />
       )}
     </div>

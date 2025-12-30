@@ -80,6 +80,30 @@
   background: var(--primary-hover, #3d7a8c);
 }
 
+.toolbar-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.pantry-toolbar .btn-scan {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.pantry-toolbar .btn-scan:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+}
+
 .view-selector {
   display: flex;
   gap: 4px;
