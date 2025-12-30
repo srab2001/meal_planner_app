@@ -136,6 +136,8 @@ export default function ScanPhotoModal({ householdId, onClose, onItemsIdentified
             quantity: item.quantity,
             unit: item.unit,
             category: item.category,
+            purchaseDate: item.purchaseDate,
+            expirationDate: item.expirationDate,
             household_id: householdId
           })
         });

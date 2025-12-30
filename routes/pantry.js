@@ -83,6 +83,26 @@ function logPantryEvent(eventType, userId, householdId, metadata = {}) {
   console.log('[PANTRY_EVENT]', JSON.stringify(logEntry));
 }
 
+/**
+ * Get default shelf life in days based on food category
+ */
+function getDefaultShelfLife(category) {
+  const defaults = {
+    produce: 5,
+    dairy: 10,
+    meat: 3,
+    seafood: 2,
+    bakery: 5,
+    pantry: 180,
+    frozen: 90,
+    beverages: 30,
+    snacks: 60,
+    condiments: 90,
+    other: 14
+  };
+  return defaults[category] || 14;
+}
+
 // ============================================================================
 // MIDDLEWARE
 // ============================================================================
@@ -693,16 +713,27 @@ For each item, provide:
 - unit: The unit type (count, lbs, oz, gallon, dozen, box, bag, can, bottle, jar, pack)
 - category: One of: dairy, produce, meat, seafood, bakery, pantry, frozen, beverages, snacks, condiments, other
 - confidence: Your confidence level (high, medium, low)
+- shelfLifeDays: Estimated days until expiration based on typical shelf life for this food type:
+  * Fresh produce: 3-7 days
+  * Dairy (milk, yogurt): 7-14 days
+  * Cheese: 14-30 days
+  * Fresh meat/seafood: 2-5 days
+  * Deli meats: 5-7 days
+  * Bread/bakery: 5-7 days
+  * Eggs: 21-35 days
+  * Pantry items (canned, dried): 180-365 days
+  * Frozen foods: 90-180 days
+  * Condiments: 60-180 days
 
 Return ONLY a JSON array of items. If no food items are visible, return an empty array [].
-Example: [{"name":"Barilla Cheese Ravioli","quantity":1,"unit":"box","category":"pantry","confidence":"high"},{"name":"Organic Fuji Apples","quantity":6,"unit":"count","category":"produce","confidence":"high"}]`
+Example: [{"name":"Barilla Cheese Ravioli","quantity":1,"unit":"box","category":"pantry","confidence":"high","shelfLifeDays":365},{"name":"Organic Fuji Apples","quantity":6,"unit":"count","category":"produce","confidence":"high","shelfLifeDays":7}]`
         },
         {
           role: 'user',
           content: [
             {
               type: 'text',
-              text: 'Look closely at this image and identify all food items with SPECIFIC names. Read any visible labels, brands, and varieties. Return as JSON array only.'
+              text: 'Look closely at this image and identify all food items with SPECIFIC names. Read any visible labels, brands, and varieties. Include estimated shelf life in days for each item. Return as JSON array only.'
             },
             {
               type: 'image_url',
@@ -730,14 +761,29 @@ Example: [{"name":"Barilla Cheese Ravioli","quantity":1,"unit":"box","category":
       }
       items = JSON.parse(jsonStr);
 
-      // Validate and clean items
-      items = items.filter(item => item.name && item.quantity).map(item => ({
-        name: String(item.name).trim(),
-        quantity: parseFloat(item.quantity) || 1,
-        unit: item.unit || 'count',
-        category: item.category || 'pantry',
-        confidence: item.confidence || 'medium'
-      }));
+      // Validate and clean items, calculate dates
+      const today = new Date();
+      const purchaseDate = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+
+      items = items.filter(item => item.name && item.quantity).map(item => {
+        // Get shelf life or use category-based defaults
+        let shelfLifeDays = parseInt(item.shelfLifeDays) || getDefaultShelfLife(item.category);
+
+        // Calculate expiration date
+        const expirationDate = new Date(today);
+        expirationDate.setDate(expirationDate.getDate() + shelfLifeDays);
+
+        return {
+          name: String(item.name).trim(),
+          quantity: parseFloat(item.quantity) || 1,
+          unit: item.unit || 'count',
+          category: item.category || 'pantry',
+          confidence: item.confidence || 'medium',
+          shelfLifeDays,
+          purchaseDate,
+          expirationDate: expirationDate.toISOString().split('T')[0]
+        };
+      });
     } catch (parseError) {
       console.error('[PANTRY] Failed to parse AI response:', content);
       return res.status(500).json({ error: 'Failed to parse food items from image' });
