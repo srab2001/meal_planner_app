@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import '../styles/FitnessDashboard.css';
 import AIWorkoutInterview from './AIWorkoutInterview';
+import WorkoutTracking from './WorkoutTracking';
 
 /**
  * FitnessDashboard - Main dashboard for fitness tracking
@@ -108,6 +109,12 @@ export default function FitnessDashboard({
           title="AI Workout Coach"
         >
           🤖 AI Coach
+        </button>
+        <button
+          className={`fitness-nav-btn ${currentView === 'saved-workouts' ? 'active' : ''}`}
+          onClick={() => setCurrentView('saved-workouts')}
+        >
+          📋 Saved Workouts
         </button>
       </nav>
 
@@ -402,6 +409,11 @@ export default function FitnessDashboard({
             </div>
           )}
         </div>
+      )}
+
+      {/* Saved Workouts View */}
+      {currentView === 'saved-workouts' && (
+        <WorkoutTracking />
       )}
 
       {/* AI Workout Interview Modal */}
