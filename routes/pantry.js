@@ -313,22 +313,26 @@ router.post('/items', verifyAuth, withHouseholdContext, requireEdit, async (req,
       }
     });
 
-    // Log add event
-    await db.pantry_item_events.create({
-      data: {
-        pantry_item_id: item.id,
-        user_id: req.user.id,
-        event_type: 'add',
-        quantity_change: qtyValidation.value,
-        unit,
-        notes: `Added ${qtyValidation.value} ${unit}`
-      }
-    });
-
-    logPantryEvent('pantry_item_added', req.user.id, req.householdId, {
-      itemId: maskId(item.id),
-      quantity: qtyValidation.value
-    });
+    // Log add event (non-blocking - item save is more important)
+    try {
+      await db.pantry_item_events.create({
+        data: {
+          pantry_item_id: item.id,
+          user_id: req.coreUserId,
+          event_type: 'add',
+          quantity_change: qtyValidation.value,
+          unit,
+          notes: `Added ${qtyValidation.value} ${unit}`
+        }
+      });
+      logPantryEvent('pantry_item_added', req.coreUserId, req.householdId, {
+        itemId: maskId(item.id),
+        quantity: qtyValidation.value
+      });
+    } catch (eventError) {
+      console.error('Failed to log pantry event (non-fatal):', eventError.message);
+      console.error('coreUserId:', req.coreUserId);
+    }
 
     res.status(201).json({
       item: {
@@ -410,23 +414,26 @@ router.post('/items/update', verifyAuth, withHouseholdContext, requireEdit, asyn
       }
     });
 
-    // Log adjust event
-    await db.pantry_item_events.create({
-      data: {
-        pantry_item_id: pantryItemId,
-        user_id: req.user.id,
-        event_type: 'adjust',
-        quantity_change: quantityChange,
-        unit: unit || item.unit,
-        notes: notes || `Adjusted from ${oldQuantity} to ${qtyValidation.value}`
-      }
-    });
-
-    logPantryEvent('pantry_item_adjusted', req.user.id, req.householdId, {
-      itemId: maskId(pantryItemId),
-      oldQuantity,
-      newQuantity: qtyValidation.value
-    });
+    // Log adjust event (non-blocking)
+    try {
+      await db.pantry_item_events.create({
+        data: {
+          pantry_item_id: pantryItemId,
+          user_id: req.coreUserId,
+          event_type: 'adjust',
+          quantity_change: quantityChange,
+          unit: unit || item.unit,
+          notes: notes || `Adjusted from ${oldQuantity} to ${qtyValidation.value}`
+        }
+      });
+      logPantryEvent('pantry_item_adjusted', req.coreUserId, req.householdId, {
+        itemId: maskId(pantryItemId),
+        oldQuantity,
+        newQuantity: qtyValidation.value
+      });
+    } catch (eventError) {
+      console.error('Failed to log adjust event (non-fatal):', eventError.message);
+    }
 
     res.json({
       item: {
@@ -528,36 +535,39 @@ router.post('/items/event', verifyAuth, withHouseholdContext, requireEdit, async
       }
     });
 
-    // Create event record
-    const event = await db.pantry_item_events.create({
-      data: {
-        pantry_item_id: pantryItemId,
-        user_id: req.user.id,
-        event_type: eventType,
-        quantity_change: quantityChange,
-        unit: unit || item.unit,
-        notes,
-        related_plan_item_id: relatedPlanItemId || null
-      }
-    });
-
-    // Log event
-    const logEventType = eventType === 'consume' ? 'pantry_item_consumed' :
-                         eventType === 'waste' ? 'pantry_item_wasted' :
-                         'pantry_item_adjusted';
-    logPantryEvent(logEventType, req.user.id, req.householdId, {
-      itemId: maskId(pantryItemId),
-      amount: amtValidation.value,
-      newQuantity
-    });
+    // Create event record (non-blocking)
+    let event = null;
+    try {
+      event = await db.pantry_item_events.create({
+        data: {
+          pantry_item_id: pantryItemId,
+          user_id: req.coreUserId,
+          event_type: eventType,
+          quantity_change: quantityChange,
+          unit: unit || item.unit,
+          notes,
+          related_plan_item_id: relatedPlanItemId || null
+        }
+      });
+      const logEventType = eventType === 'consume' ? 'pantry_item_consumed' :
+                           eventType === 'waste' ? 'pantry_item_wasted' :
+                           'pantry_item_adjusted';
+      logPantryEvent(logEventType, req.coreUserId, req.householdId, {
+        itemId: maskId(pantryItemId),
+        amount: amtValidation.value,
+        newQuantity
+      });
+    } catch (eventError) {
+      console.error('Failed to log consume/waste event (non-fatal):', eventError.message);
+    }
 
     res.status(201).json({
-      event: {
+      event: event ? {
         id: event.id,
         eventType: event.event_type,
         quantityChange: parseFloat(event.quantity_change || 0),
         createdAt: event.created_at?.toISOString() || null
-      },
+      } : null,
       item: {
         id: updated.id,
         itemName: updated.name,
