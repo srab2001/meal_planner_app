@@ -439,7 +439,7 @@ router.get('/workouts', requireAuth, async (req, res) => {
 router.post('/workouts', requireAuth, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { workout_date, workout_type, duration_minutes, notes } = req.body;
+    const { workout_date, workout_type, duration_minutes, notes, workout_data } = req.body;
 
     console.log(`[POST /api/fitness/workouts] Creating workout for user: ${req.user.email}`);
     console.log(`  Date: ${workout_date}, Type: ${workout_type}`);
@@ -515,10 +515,63 @@ router.post('/workouts', requireAuth, async (req, res) => {
         workout_type,
         duration_minutes: duration_minutes || null,
         notes: notes || null,
+        workout_data: workout_data || null,
       },
     });
 
     console.log(`💪 Workout created for ${req.user.email}: ${workout.id}`);
+
+    // If workout_data contains exercises, create exercise records
+    let exerciseCount = 0;
+    if (workout_data) {
+      try {
+        const parsedData = typeof workout_data === 'string' ? JSON.parse(workout_data) : workout_data;
+
+        if (parsedData.days && Array.isArray(parsedData.days)) {
+          let exerciseOrder = 0;
+          for (const day of parsedData.days) {
+            if (day.exercises && Array.isArray(day.exercises)) {
+              for (const exercise of day.exercises) {
+                try {
+                  exerciseOrder++;
+                  // Create exercise record
+                  const savedExercise = await getFitnessDb().fitness_workout_exercises.create({
+                    data: {
+                      workout_id: workout.id,
+                      exercise_name: `${exercise.exercise || exercise.name || 'Unknown Exercise'} (${day.day || 'Day ' + exerciseOrder})`,
+                      exercise_order: exerciseOrder
+                    }
+                  });
+
+                  // Create set records for this exercise
+                  const numSets = parseInt(exercise.sets) || 3;
+                  const reps = parseInt(exercise.reps) || 10;
+                  const weightStr = exercise.weight || 'Body';
+                  const weightNum = parseFloat(weightStr.toString().replace(/[^\d.]/g, '')) || null;
+
+                  for (let setNum = 1; setNum <= numSets; setNum++) {
+                    await getFitnessDb().fitness_workout_sets.create({
+                      data: {
+                        exercise_id: savedExercise.id,
+                        set_number: setNum,
+                        reps: reps,
+                        weight: weightNum
+                      }
+                    });
+                  }
+                  exerciseCount++;
+                } catch (exError) {
+                  console.error('[POST /api/fitness/workouts] Failed to save exercise:', exError.message);
+                }
+              }
+            }
+          }
+        }
+        console.log(`✅ Created ${exerciseCount} exercise records for workout ${workout.id}`);
+      } catch (parseError) {
+        console.error('[POST /api/fitness/workouts] Failed to parse workout_data:', parseError.message);
+      }
+    }
 
     res.json({
       success: true,
