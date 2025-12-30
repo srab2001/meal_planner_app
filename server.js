@@ -268,7 +268,8 @@ app.use(
   })
 );
 
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Rate Limiting - Prevent DoS attacks and API abuse
 // General rate limiter for all requests
