@@ -317,7 +317,7 @@ router.post('/items', verifyAuth, withHouseholdContext, requireEdit, async (req,
     await db.pantry_item_events.create({
       data: {
         pantry_item_id: item.id,
-        user_id: req.user.id,
+        user_id: req.coreUserId,
         event_type: 'add',
         quantity_change: qtyValidation.value,
         unit,
@@ -325,7 +325,7 @@ router.post('/items', verifyAuth, withHouseholdContext, requireEdit, async (req,
       }
     });
 
-    logPantryEvent('pantry_item_added', req.user.id, req.householdId, {
+    logPantryEvent('pantry_item_added', req.coreUserId, req.householdId, {
       itemId: maskId(item.id),
       quantity: qtyValidation.value
     });
@@ -414,7 +414,7 @@ router.post('/items/update', verifyAuth, withHouseholdContext, requireEdit, asyn
     await db.pantry_item_events.create({
       data: {
         pantry_item_id: pantryItemId,
-        user_id: req.user.id,
+        user_id: req.coreUserId,
         event_type: 'adjust',
         quantity_change: quantityChange,
         unit: unit || item.unit,
@@ -422,7 +422,7 @@ router.post('/items/update', verifyAuth, withHouseholdContext, requireEdit, asyn
       }
     });
 
-    logPantryEvent('pantry_item_adjusted', req.user.id, req.householdId, {
+    logPantryEvent('pantry_item_adjusted', req.coreUserId, req.householdId, {
       itemId: maskId(pantryItemId),
       oldQuantity,
       newQuantity: qtyValidation.value
@@ -532,7 +532,7 @@ router.post('/items/event', verifyAuth, withHouseholdContext, requireEdit, async
     const event = await db.pantry_item_events.create({
       data: {
         pantry_item_id: pantryItemId,
-        user_id: req.user.id,
+        user_id: req.coreUserId,
         event_type: eventType,
         quantity_change: quantityChange,
         unit: unit || item.unit,
@@ -545,7 +545,7 @@ router.post('/items/event', verifyAuth, withHouseholdContext, requireEdit, async
     const logEventType = eventType === 'consume' ? 'pantry_item_consumed' :
                          eventType === 'waste' ? 'pantry_item_wasted' :
                          'pantry_item_adjusted';
-    logPantryEvent(logEventType, req.user.id, req.householdId, {
+    logPantryEvent(logEventType, req.coreUserId, req.householdId, {
       itemId: maskId(pantryItemId),
       amount: amtValidation.value,
       newQuantity
