@@ -1333,7 +1333,7 @@ Use pounds for weight. If bodyweight exercise, write "Body" for weight.`;
 
     // If interview answers are provided, add them to the prompt
     if (interview_answers && Object.keys(interview_answers).length > 0) {
-      const answersText = `
+      let answersText = `
 User's Answers:
 1. Fitness objective: ${interview_answers.fitness_objective || 'Not specified'}
 2. Workout location: ${interview_answers.workout_location || 'Gym'}
