@@ -1423,17 +1423,31 @@ Please adjust the workout plan according to these specific modifications while m
                   for (const exercise of day.exercises) {
                     try {
                       exerciseOrder++;
-                      await getFitnessDb().fitness_workout_exercises.create({
+                      // Create exercise record (only use fields that exist in schema)
+                      const savedExercise = await getFitnessDb().fitness_workout_exercises.create({
                         data: {
                           workout_id: savedWorkout.id,
-                          exercise_name: exercise.exercise || exercise.name || 'Unknown Exercise',
-                          sets: parseInt(exercise.sets) || 3,
-                          reps: parseInt(exercise.reps) || 10,
-                          weight: exercise.weight || 'Body',
-                          notes: `${day.day} - ${exercise.location || 'Gym'}`,
-                          order_index: exerciseOrder
+                          exercise_name: `${exercise.exercise || exercise.name || 'Unknown Exercise'} (${day.day})`,
+                          exercise_order: exerciseOrder
                         }
                       });
+
+                      // Create set records for this exercise
+                      const numSets = parseInt(exercise.sets) || 3;
+                      const reps = parseInt(exercise.reps) || 10;
+                      const weightStr = exercise.weight || 'Body';
+                      const weightNum = parseFloat(weightStr.replace(/[^\d.]/g, '')) || null;
+
+                      for (let setNum = 1; setNum <= numSets; setNum++) {
+                        await getFitnessDb().fitness_workout_sets.create({
+                          data: {
+                            exercise_id: savedExercise.id,
+                            set_number: setNum,
+                            reps: reps,
+                            weight: weightNum
+                          }
+                        });
+                      }
                     } catch (exError) {
                       console.error('[AI Interview] Failed to save exercise:', exError.message);
                     }
