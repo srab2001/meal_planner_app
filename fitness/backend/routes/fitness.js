@@ -1087,6 +1087,310 @@ router.delete('/workouts/:workoutId/exercises/:exerciseId/sets/:setId', requireA
   }
 });
 
+// ============================================================================
+// SET LOGGING ENDPOINTS - Record actual performance on different dates
+// ============================================================================
+
+/**
+ * POST /api/fitness/sets/:setId/log
+ * Log actual performance for a set on a specific date
+ *
+ * Request body: {
+ *   completed_date: "2025-12-30",  // Date completed
+ *   actual_reps: 10,               // Actual reps performed
+ *   actual_weight: 135,            // Actual weight used (lbs)
+ *   notes: "Felt good"             // Optional notes
+ * }
+ */
+router.post('/sets/:setId/log', requireAuth, async (req, res) => {
+  try {
+    const { setId } = req.params;
+    const { completed_date, actual_reps, actual_weight, notes } = req.body;
+    const userId = req.user.id;
+
+    console.log(`[POST /api/fitness/sets/${setId}/log] User: ${req.user.email}`);
+
+    // Verify the set exists and user owns the workout
+    const set = await getFitnessDb().fitness_workout_sets.findFirst({
+      where: { id: setId },
+      include: {
+        exercise: {
+          include: {
+            workout: true
+          }
+        }
+      }
+    });
+
+    if (!set || set.exercise.workout.user_id !== userId) {
+      return res.status(404).json({
+        success: false,
+        error: 'Set not found or access denied'
+      });
+    }
+
+    if (!completed_date) {
+      return res.status(400).json({
+        success: false,
+        error: 'completed_date is required'
+      });
+    }
+
+    // Create the log entry
+    const log = await getFitnessDb().fitness_set_logs.create({
+      data: {
+        set_id: setId,
+        completed_date: new Date(completed_date),
+        actual_reps: actual_reps ? parseInt(actual_reps) : null,
+        actual_weight: actual_weight ? parseFloat(actual_weight) : null,
+        notes: notes || null
+      }
+    });
+
+    console.log(`✅ Set log created: ${log.id}`);
+
+    res.json({
+      success: true,
+      log: log
+    });
+  } catch (error) {
+    console.error('[POST /api/fitness/sets/:setId/log] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create set log'
+    });
+  }
+});
+
+/**
+ * GET /api/fitness/sets/:setId/logs
+ * Get all logs for a specific set
+ */
+router.get('/sets/:setId/logs', requireAuth, async (req, res) => {
+  try {
+    const { setId } = req.params;
+    const userId = req.user.id;
+
+    console.log(`[GET /api/fitness/sets/${setId}/logs] User: ${req.user.email}`);
+
+    // Verify the set exists and user owns the workout
+    const set = await getFitnessDb().fitness_workout_sets.findFirst({
+      where: { id: setId },
+      include: {
+        exercise: {
+          include: {
+            workout: true
+          }
+        }
+      }
+    });
+
+    if (!set || set.exercise.workout.user_id !== userId) {
+      return res.status(404).json({
+        success: false,
+        error: 'Set not found or access denied'
+      });
+    }
+
+    const logs = await getFitnessDb().fitness_set_logs.findMany({
+      where: { set_id: setId },
+      orderBy: { completed_date: 'desc' }
+    });
+
+    res.json({
+      success: true,
+      logs: logs
+    });
+  } catch (error) {
+    console.error('[GET /api/fitness/sets/:setId/logs] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get set logs'
+    });
+  }
+});
+
+/**
+ * GET /api/fitness/workouts/:workoutId/logs
+ * Get all logs for a workout, optionally filtered by date
+ *
+ * Query params:
+ * - date: Filter by specific date (YYYY-MM-DD)
+ */
+router.get('/workouts/:workoutId/logs', requireAuth, async (req, res) => {
+  try {
+    const { workoutId } = req.params;
+    const { date } = req.query;
+    const userId = req.user.id;
+
+    console.log(`[GET /api/fitness/workouts/${workoutId}/logs] User: ${req.user.email}, Date: ${date || 'all'}`);
+
+    // Verify workout ownership
+    const workout = await getFitnessDb().fitness_workouts.findFirst({
+      where: { id: workoutId, user_id: userId },
+      include: {
+        workout_exercises: {
+          include: {
+            sets: {
+              include: {
+                logs: date ? {
+                  where: {
+                    completed_date: new Date(date)
+                  }
+                } : true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!workout) {
+      return res.status(404).json({
+        success: false,
+        error: 'Workout not found'
+      });
+    }
+
+    // Flatten the logs into a more usable format
+    const logs = [];
+    for (const exercise of workout.workout_exercises) {
+      for (const set of exercise.sets) {
+        for (const log of set.logs) {
+          logs.push({
+            ...log,
+            exercise_name: exercise.exercise_name,
+            set_number: set.set_number,
+            prescribed_reps: set.reps,
+            prescribed_weight: set.weight
+          });
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      logs: logs
+    });
+  } catch (error) {
+    console.error('[GET /api/fitness/workouts/:workoutId/logs] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get workout logs'
+    });
+  }
+});
+
+/**
+ * PUT /api/fitness/set-logs/:logId
+ * Update a set log entry
+ */
+router.put('/set-logs/:logId', requireAuth, async (req, res) => {
+  try {
+    const { logId } = req.params;
+    const { actual_reps, actual_weight, notes, completed_date } = req.body;
+    const userId = req.user.id;
+
+    console.log(`[PUT /api/fitness/set-logs/${logId}] User: ${req.user.email}`);
+
+    // Verify ownership via set -> exercise -> workout
+    const log = await getFitnessDb().fitness_set_logs.findFirst({
+      where: { id: logId },
+      include: {
+        set: {
+          include: {
+            exercise: {
+              include: {
+                workout: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!log || log.set.exercise.workout.user_id !== userId) {
+      return res.status(404).json({
+        success: false,
+        error: 'Log not found or access denied'
+      });
+    }
+
+    const updateData = {};
+    if (actual_reps !== undefined) updateData.actual_reps = parseInt(actual_reps);
+    if (actual_weight !== undefined) updateData.actual_weight = parseFloat(actual_weight);
+    if (notes !== undefined) updateData.notes = notes;
+    if (completed_date) updateData.completed_date = new Date(completed_date);
+
+    const updated = await getFitnessDb().fitness_set_logs.update({
+      where: { id: logId },
+      data: updateData
+    });
+
+    res.json({
+      success: true,
+      log: updated
+    });
+  } catch (error) {
+    console.error('[PUT /api/fitness/set-logs/:logId] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update set log'
+    });
+  }
+});
+
+/**
+ * DELETE /api/fitness/set-logs/:logId
+ * Delete a set log entry
+ */
+router.delete('/set-logs/:logId', requireAuth, async (req, res) => {
+  try {
+    const { logId } = req.params;
+    const userId = req.user.id;
+
+    console.log(`[DELETE /api/fitness/set-logs/${logId}] User: ${req.user.email}`);
+
+    // Verify ownership via set -> exercise -> workout
+    const log = await getFitnessDb().fitness_set_logs.findFirst({
+      where: { id: logId },
+      include: {
+        set: {
+          include: {
+            exercise: {
+              include: {
+                workout: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!log || log.set.exercise.workout.user_id !== userId) {
+      return res.status(404).json({
+        success: false,
+        error: 'Log not found or access denied'
+      });
+    }
+
+    await getFitnessDb().fitness_set_logs.delete({
+      where: { id: logId }
+    });
+
+    res.json({
+      success: true,
+      message: 'Log deleted successfully'
+    });
+  } catch (error) {
+    console.error('[DELETE /api/fitness/set-logs/:logId] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete set log'
+    });
+  }
+});
+
 /**
  * GET /api/fitness/exercise-definitions
  * Get exercise library with optional filters
