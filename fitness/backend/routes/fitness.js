@@ -1248,20 +1248,6 @@ router.post('/goals', requireAuth, async (req, res) => {
   }
 });
 
-// ============================================================================
-// ERROR HANDLING
-// ============================================================================
-
-/**
- * Handle 404 for any undefined routes
- */
-router.use((req, res) => {
-  res.status(404).json({
-    error: 'not_found',
-    message: `Route ${req.method} ${req.path} not found`,
-  });
-});
-
 /**
  * POST /api/fitness/ai-interview
  * AI-powered workout planning conversation
@@ -1948,6 +1934,23 @@ router.patch('/admin/interview-questions-reorder', async (req, res) => {
     res.status(500).json({
       error: 'Failed to reorder questions',
       details: error.message,
+    });
+  }
+});
+
+// ============================================================================
+// ERROR HANDLING (must be at the end, after all routes)
+// ============================================================================
+
+/**
+ * Handle 404 for any undefined routes
+ */
+router.use((req, res, next) => {
+  // Only respond to requests that haven't been handled
+  if (!res.headersSent) {
+    res.status(404).json({
+      error: 'not_found',
+      message: `Route ${req.method} ${req.path} not found`,
     });
   }
 });
