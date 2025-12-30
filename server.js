@@ -36,6 +36,9 @@ const pantryRoutes = require('./routes/pantry');
 // Import Household routes
 const householdRoutes = require('./routes/household');
 
+// Import Workout Tracking routes
+const workoutTrackingRoutes = require('./routes/workout-tracking');
+
 // ============================================================================
 // RUN MIGRATIONS FIRST - BEFORE ANY EXPRESS SETUP
 // ============================================================================
@@ -616,6 +619,11 @@ app.use('/api/core/pantry', requireAuth, pantryRoutes);
 // MOUNT HOUSEHOLD ROUTES
 // ============================================================================
 app.use('/api/core/household', requireAuth, householdRoutes);
+
+// ============================================================================
+// MOUNT WORKOUT TRACKING ROUTES
+// ============================================================================
+app.use('/api/workouts', workoutTrackingRoutes);
 
 // simple profile endpoint
 app.get('/api/profile', requireAuth, (req, res) => {
