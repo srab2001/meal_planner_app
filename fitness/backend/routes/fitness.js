@@ -1412,8 +1412,36 @@ Please adjust the workout plan according to these specific modifications while m
                 workout_date: new Date()
               }
             });
-            
+
             console.log('[AI Interview] ✅ Workout saved to database successfully:', savedWorkout.id);
+
+            // Also create workout_exercises records from the AI-generated exercises
+            if (workout.days && Array.isArray(workout.days)) {
+              let exerciseOrder = 0;
+              for (const day of workout.days) {
+                if (day.exercises && Array.isArray(day.exercises)) {
+                  for (const exercise of day.exercises) {
+                    try {
+                      exerciseOrder++;
+                      await getFitnessDb().fitness_workout_exercises.create({
+                        data: {
+                          workout_id: savedWorkout.id,
+                          exercise_name: exercise.exercise || exercise.name || 'Unknown Exercise',
+                          sets: parseInt(exercise.sets) || 3,
+                          reps: parseInt(exercise.reps) || 10,
+                          weight: exercise.weight || 'Body',
+                          notes: `${day.day} - ${exercise.location || 'Gym'}`,
+                          order_index: exerciseOrder
+                        }
+                      });
+                    } catch (exError) {
+                      console.error('[AI Interview] Failed to save exercise:', exError.message);
+                    }
+                  }
+                }
+              }
+              console.log(`[AI Interview] ✅ Created ${exerciseOrder} exercise records`);
+            }
           } catch (dbError) {
             console.error(`[AI Interview] Database save failed (attempt ${saveAttempts}):`, dbError.message);
             
