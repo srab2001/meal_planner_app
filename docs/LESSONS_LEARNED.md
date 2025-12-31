@@ -85,7 +85,7 @@
 
 **Symptom:** Users logging in from the Meal Planner were being redirected to the Fitness App instead of staying on the switchboard.
 
-**Root Cause:** The `?returnTo=fitness` URL parameter was persisting through the OAuth flow and in localStorage, causing unwanted redirects.
+**Root Cause:** The backend `FRONTEND_BASE` environment variable was pointing to the wrong Vercel deployment URL (fitness app instead of meal planner).
 
 #### Key Issues Identified
 
@@ -110,27 +110,22 @@ FRONTEND_BASE=https://meal-planner-gold-one.vercel.app
 # NOT the fitness app URL!
 ```
 
-#### The Correct SSO Flow
+#### The Correct Login Flow
 
 ```
-Normal Login (no returnTo):
+All Logins (including from fitness app):
 1. User clicks login on switchboard
-2. handleGoogleLogin() clears sso_return_to (in case stale)
-3. OAuth redirect to /auth/google
-4. Backend callback → #token=JWT&redirect=/switchboard
-5. App.js extracts token, calls handleLogin()
-6. handleLogin() finds sso_return_to=null → stays on switchboard ✓
-
-SSO Login from Fitness:
-1. Fitness redirects to switchboard?returnTo=fitness
-2. handleGoogleLogin() stores sso_return_to='fitness' in localStorage
-3. OAuth redirect to /auth/google?redirect=/switchboard (clean URL)
-4. Backend callback → #token=JWT&redirect=/switchboard
-5. App.js extracts token, calls handleLogin()
-6. handleLogin() finds sso_return_to='fitness'
-7. Clears sso_return_to IMMEDIATELY
-8. Redirects to fitness with #auth=token=xxx&user=xxx ✓
+2. handleGoogleLogin() clears any stale sso_return_to
+3. OAuth redirect to /auth/google?redirect=/switchboard
+4. Backend callback → FRONTEND_BASE#token=JWT&redirect=/switchboard
+   (FRONTEND_BASE must be set to meal planner URL on Render!)
+5. App.js extracts token, stores in localStorage
+6. Calls /auth/user to verify token
+7. Calls handleLogin() → always goes to switchboard ✓
 ```
+
+**Note:** Users from external fitness app also land on switchboard after login.
+They can then navigate to any app from there.
 
 #### Files That Need SSO Fixes (Checklist)
 
