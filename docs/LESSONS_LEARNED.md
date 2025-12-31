@@ -91,10 +91,24 @@
 
 | Issue | Root Cause | Fix |
 |-------|------------|-----|
+| **Backend FRONTEND_BASE misconfigured** | Render env var pointed to fitness app instead of meal planner | Set FRONTEND_BASE to correct meal planner URL |
 | returnTo in URL lost during OAuth | Query params embedded in hash fragment after OAuth callback, not in `window.location.search` | Store `returnTo` in localStorage BEFORE OAuth redirect |
 | Stale localStorage value | `sso_return_to` persisting from previous SSO visits | Clear `sso_return_to` when no `returnTo` param in URL |
 | Multiple login paths | Different components (AppSwitchboard, LoginPage, SwitchboardNext) each have OAuth links | Fix ALL login entry points, not just one |
 | URL formats differ | Backend uses `#token=`, switchboard SSO uses `#auth=` | Handle both formats in fitness app's useAuth hook |
+
+#### Backend Environment Variable Check
+
+**CRITICAL**: The OAuth callback redirects to `${FRONTEND_BASE}#token=...`
+
+If `FRONTEND_BASE` on Render is set incorrectly, ALL OAuth logins will redirect to the wrong app!
+
+```bash
+# On Render, verify FRONTEND_BASE is set to the MEAL PLANNER, not fitness:
+FRONTEND_BASE=https://meal-planner-gold-one.vercel.app
+
+# NOT the fitness app URL!
+```
 
 #### The Correct SSO Flow
 
