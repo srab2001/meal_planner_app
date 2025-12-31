@@ -146,6 +146,18 @@ export default function SwitchboardNext({
   };
 
   const handleGoogleLogin = () => {
+    // Check if user came from fitness app (returnTo=fitness in URL)
+    const urlParams = new URLSearchParams(window.location.search);
+    const returnTo = urlParams.get('returnTo');
+
+    // Store or clear sso_return_to based on whether returnTo is present
+    if (returnTo) {
+      localStorage.setItem('sso_return_to', returnTo);
+    } else {
+      // Clear any stale returnTo value from previous visits
+      localStorage.removeItem('sso_return_to');
+    }
+
     const redirectUrl = `${window.location.origin}/switchboard`;
     window.location.href = `${API_BASE}/auth/google?redirect=${encodeURIComponent(redirectUrl)}`;
   };
