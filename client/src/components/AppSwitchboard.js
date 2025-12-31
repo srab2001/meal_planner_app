@@ -115,8 +115,8 @@ export default function AppSwitchboard({ onSelectApp, user, onLogout, onLogin })
       icon: '💪',
       color: '#27ae60',
       available: true,
-      comingSoon: false,
-      externalUrl: 'https://frontend-six-topaz-27.vercel.app'
+      comingSoon: false
+      // Note: Using internal FitnessApp module instead of external URL
     },
     {
       id: 'local-store-finder',
