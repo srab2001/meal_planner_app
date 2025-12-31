@@ -94,7 +94,7 @@ function App() {
   };
 
   // Fitness app URL for SSO redirect
-  const FITNESS_APP_URL = 'https://frontend-six-topaz-27.vercel.app';
+  const FITNESS_APP_URL = 'https://meal-planner-app-8hnw.vercel.app';
 
   // Handler: Login - MUST be defined before useEffect that calls it
   const handleLogin = (userData) => {
