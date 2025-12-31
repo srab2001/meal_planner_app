@@ -191,6 +191,15 @@ if (returnTo === 'fitness') {
   - `#token=xxx` - From backend OAuth callback (fallback)
 - **Prevention:** Document expected URL formats in useAuth hook
 
+### Broken External App URLs (Vercel Deployments)
+- **Error:** Clicking Fitness Coach opened `frontend-six-topaz-27.vercel.app` which returned 404 `DEPLOYMENT_NOT_FOUND`
+- **Root Cause:** Vercel deployment was deleted/expired but URL was still hardcoded in `externalUrl`
+- **Fix:** Removed `externalUrl` to use internal FitnessApp module instead
+- **Prevention:**
+  - Use stable project URLs, not deployment-specific URLs
+  - Or use environment variables for external app URLs
+  - Prefer internal modules when available
+
 ---
 
 ## Database Lessons
