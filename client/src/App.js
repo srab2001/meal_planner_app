@@ -98,13 +98,18 @@ function App() {
 
   // Handler: Login - MUST be defined before useEffect that calls it
   const handleLogin = (userData) => {
+    console.log('🔐 handleLogin called for:', userData?.email);
+
     // Save user to localStorage FIRST (before checking returnTo)
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
 
     // Check if user came from fitness app (returnTo stored during OAuth)
     const returnTo = localStorage.getItem('sso_return_to');
+    console.log('🔐 handleLogin: sso_return_to =', returnTo);
+
     if (returnTo === 'fitness') {
+      console.log('🔐 handleLogin: Redirecting to fitness app');
       // Clear the stored returnTo so it doesn't persist
       localStorage.removeItem('sso_return_to');
       // Redirect to fitness app with auth token
@@ -118,6 +123,7 @@ function App() {
     }
     // Clear any stale returnTo value
     localStorage.removeItem('sso_return_to');
+    console.log('🔐 handleLogin: NOT redirecting to fitness, staying on switchboard');
 
     // Check if there's a redirect stored (user was trying to access specific app)
     const redirectTo = localStorage.getItem('redirect_after_login');
