@@ -44,6 +44,11 @@ export default function AppSwitchboard({ onSelectApp, user, onLogout, onLogin })
     if (returnTo) {
       console.log('🔄 Storing returnTo in localStorage before OAuth:', returnTo);
       localStorage.setItem('sso_return_to', returnTo);
+    } else {
+      // IMPORTANT: Clear any stale returnTo value from previous visits
+      // This prevents redirect loops when doing normal login
+      console.log('🔄 No returnTo param, clearing any stale sso_return_to');
+      localStorage.removeItem('sso_return_to');
     }
 
     // Build redirect URL (no need to include returnTo since it's in localStorage)
