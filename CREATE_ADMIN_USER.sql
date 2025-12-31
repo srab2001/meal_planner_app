@@ -1,9 +1,14 @@
 -- ============================================================================
 -- CREATE NEW ADMIN USER - SQL COMMANDS
 -- ============================================================================
--- 
--- This file contains SQL commands to create a new admin user in the database.
--- Choose the option that matches your authentication method.
+--
+-- IMPORTANT: Run these commands in the RENDER PostgreSQL database!
+-- NOT in Neon! The production auth system uses Render.
+--
+-- Connection Details:
+--   Host: dpg-d4nj6demcj7s73dfvie0-a.oregon-postgres.render.com
+--   Database: meal_planner_vo27
+--   User: meal_planner_user
 --
 -- ============================================================================
 

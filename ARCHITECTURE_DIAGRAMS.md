@@ -1,8 +1,10 @@
 # Visual Architecture Diagrams
 
+**Last Updated:** December 31, 2025
+
 ## Database Architecture
 
-### Current (Actual) Setup
+### Production Setup
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                         Frontend (React)                     │
@@ -26,38 +28,41 @@
                └───────────────┬───────────────┘
                                │
                                v
-                  ┌────────────────────────┐
-                  │  Render PostgreSQL DB  │
-                  │                        │
-                  │  (DATABASE_URL)        │
-                  │                        │
-                  │  Tables:               │
-                  │  • users               │
-                  │  • fitness_profiles    │
-                  │  • fitness_workouts    │
-                  │  • fitness_goals       │
-                  │  • meal_plans          │
-                  │  • favorites           │
-                  │  • admin_questions     │
-                  │  • ... and more        │
-                  └────────────────────────┘
-                  
-                  
-┌────────────────────────┐         ↯ NOT USED
-│   Neon PostgreSQL DB   │         ↯ (Configured but never queried)
-│                        │
-│   (Unused)             │
-│                        │
-│   Duplicate tables     │
-│   (if migrated there)  │
-└────────────────────────┘
+          ┌────────────────────────────────────────────┐
+          │          Render PostgreSQL DB              │
+          │  Host: oregon-postgres.render.com          │
+          │  Database: meal_planner_vo27               │
+          │                                            │
+          │  (DATABASE_URL) - AUTH & MEALS             │
+          │                                            │
+          │  Tables:                                   │
+          │  • users (with role column!)              │
+          │  • fitness_profiles                        │
+          │  • fitness_workouts                        │
+          │  • fitness_goals                           │
+          │  • meal_plans                              │
+          │  • favorites                               │
+          │  • admin_questions                         │
+          │  • ... and more                            │
+          └────────────────────────────────────────────┘
+
+          ┌────────────────────────────────────────────┐
+          │           Neon PostgreSQL DB               │
+          │  Host: *.neon.tech                         │
+          │                                            │
+          │  (CORE_DATABASE_URL) - PANTRY/HOUSEHOLDS   │
+          │                                            │
+          │  Tables:                                   │
+          │  • households                              │
+          │  • pantry_items                            │
+          │  • memberships                             │
+          └────────────────────────────────────────────┘
 ```
 
-### Result
-✅ **One database, both apps use same data**
-✅ **No conflicts or sync issues**
-❌ **Neon is wasted setup**
-❌ **JWT token missing fields**
+### Key Points
+✅ **Admin roles are in Render DB** - Update there, NOT Neon!
+✅ **JWT includes role field** - But role is baked in at login time
+✅ **Two databases for different purposes** - Auth vs CORE features
 
 ---
 
@@ -75,7 +80,7 @@ User Browser                    Backend Server              Google OAuth
      │   with OAuth code            │                            │
 ```
 
-### Step 2: JWT Token Generation (Current - ❌ BROKEN)
+### Step 2: JWT Token Generation (✅ WORKING)
 
 ```
 Backend Server

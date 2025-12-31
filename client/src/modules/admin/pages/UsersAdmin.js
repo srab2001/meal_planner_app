@@ -33,10 +33,11 @@ export default function UsersAdmin({ user, onBack, onNavigate }) {
   const [inviteRole, setInviteRole] = useState('user');
   const [inviteSending, setInviteSending] = useState(false);
 
-  // Approve user
-  const [approveEmail, setApproveEmail] = useState('');
-  const [approveRole, setApproveRole] = useState('user');
-  const [approveSubmitting, setApproveSubmitting] = useState(false);
+  // Add user (formerly "approve user")
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserName, setNewUserName] = useState('');
+  const [newUserRole, setNewUserRole] = useState('user');
+  const [addingUser, setAddingUser] = useState(false);
 
   // Messages
   const [error, setError] = useState(null);
@@ -128,32 +129,34 @@ export default function UsersAdmin({ user, onBack, onNavigate }) {
     }
   };
 
-  // Approve user
-  const handleApproveUser = async (e) => {
+  // Add new user
+  const handleAddUser = async (e) => {
     e.preventDefault();
-    if (!approveEmail) {
+    if (!newUserEmail) {
       setError('Please enter an email address');
       return;
     }
 
-    setApproveSubmitting(true);
+    setAddingUser(true);
     setError(null);
 
     try {
-      const approvedUser = await adminApproveUser({
-        email: approveEmail,
-        role: approveRole,
+      const newUser = await adminApproveUser({
+        email: newUserEmail,
+        display_name: newUserName || null,
+        role: newUserRole,
       });
-      setUsers([approvedUser, ...users]);
-      setApproveEmail('');
-      setApproveRole('user');
-      setSuccess('User approved successfully');
-      setTimeout(() => setSuccess(null), 3000);
+      setUsers([newUser, ...users]);
+      setNewUserEmail('');
+      setNewUserName('');
+      setNewUserRole('user');
+      setSuccess(`User ${newUserEmail} added successfully! They can now log in with Google.`);
+      setTimeout(() => setSuccess(null), 5000);
     } catch (err) {
-      console.error('Error approving user:', err);
+      console.error('Error adding user:', err);
       setError(err.message);
     } finally {
-      setApproveSubmitting(false);
+      setAddingUser(false);
     }
   };
 
@@ -230,10 +233,10 @@ export default function UsersAdmin({ user, onBack, onNavigate }) {
           Send Invite
         </button>
         <button
-          className={`tab-button ${activeTab === 'approve' ? 'active' : ''}`}
-          onClick={() => setActiveTab('approve')}
+          className={`tab-button ${activeTab === 'adduser' ? 'active' : ''}`}
+          onClick={() => setActiveTab('adduser')}
         >
-          Approve User
+          + Add User
         </button>
         <button
           className={`tab-button ${activeTab === 'invites' ? 'active' : ''}`}
@@ -357,34 +360,47 @@ export default function UsersAdmin({ user, onBack, onNavigate }) {
           </div>
         )}
 
-        {/* Approve User Tab */}
-        {activeTab === 'approve' && (
+        {/* Add User Tab */}
+        {activeTab === 'adduser' && (
           <div className="form-section">
-            <h2>Approve User (Direct)</h2>
-            <form onSubmit={handleApproveUser} className="admin-form">
+            <h2>Add New User</h2>
+            <p className="form-description">
+              Create a new user account. They can log in immediately using Google OAuth with the email address you specify.
+            </p>
+            <form onSubmit={handleAddUser} className="admin-form">
               <div className="form-group">
                 <label>Email Address *</label>
                 <input
                   type="email"
-                  value={approveEmail}
-                  onChange={(e) => setApproveEmail(e.target.value)}
+                  value={newUserEmail}
+                  onChange={(e) => setNewUserEmail(e.target.value)}
                   placeholder="user@example.com"
                   required
                 />
               </div>
               <div className="form-group">
+                <label>Display Name (optional)</label>
+                <input
+                  type="text"
+                  value={newUserName}
+                  onChange={(e) => setNewUserName(e.target.value)}
+                  placeholder="John Smith"
+                />
+                <small className="form-hint">Will be updated when user logs in with Google</small>
+              </div>
+              <div className="form-group">
                 <label>Role</label>
-                <select value={approveRole} onChange={(e) => setApproveRole(e.target.value)}>
-                  <option value="user">User</option>
-                  <option value="admin">Admin</option>
+                <select value={newUserRole} onChange={(e) => setNewUserRole(e.target.value)}>
+                  <option value="user">User (Standard access)</option>
+                  <option value="admin">Admin (Full access)</option>
                 </select>
               </div>
               <button
                 type="submit"
                 className="submit-btn"
-                disabled={approveSubmitting}
+                disabled={addingUser}
               >
-                {approveSubmitting ? 'Approving...' : 'Approve User'}
+                {addingUser ? 'Adding User...' : 'Add User'}
               </button>
             </form>
           </div>

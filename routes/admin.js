@@ -195,12 +195,12 @@ router.post('/users/invite', requireAuth, requireAdmin, async (req, res) => {
 
 /**
  * POST /api/admin/users/approve
- * Directly approve user without invite (bypass invitation flow)
- * Body: { email, role?: 'user' }
+ * Create/add a new user directly (bypass invitation flow)
+ * Body: { email, display_name?, role?: 'user' }
  */
 router.post('/users/approve', requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { email, role = 'user' } = req.body;
+    const { email, display_name, role = 'user' } = req.body;
 
     if (!email || !email.includes('@')) {
       return res.status(400).json({ error: 'Valid email required' });
@@ -210,27 +210,26 @@ router.post('/users/approve', requireAuth, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Invalid role' });
     }
 
-    // Create user directly with approved status
+    // Create user directly with active status
     // (They will need to complete OAuth login to finish setup)
     const result = await pool.query(
-      `INSERT INTO users (email, role, status, created_at, updated_at)
-       VALUES ($1, $2, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `INSERT INTO users (email, display_name, role, status, created_at, updated_at)
+       VALUES ($1, $2, $3, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
        ON CONFLICT (email) DO UPDATE
-       SET role = $2, status = 'active'
+       SET role = $3, status = 'active',
+           display_name = COALESCE($2, users.display_name),
+           updated_at = CURRENT_TIMESTAMP
        RETURNING id, email, display_name, role, status, created_at, last_login_at`,
-      [email, role]
+      [email, display_name || null, role]
     );
 
     const user = result.rows[0];
-    console.log(`[Admin] Approved user ${email} with role ${role}`);
+    console.log(`[Admin] Added user ${email} with role ${role}`);
 
-    res.json({
-      user,
-      message: 'User approved. They can now log in with Google OAuth.',
-    });
+    res.json(user);
   } catch (error) {
-    console.error('[Admin] Error approving user:', error);
-    res.status(500).json({ error: 'Failed to approve user' });
+    console.error('[Admin] Error adding user:', error);
+    res.status(500).json({ error: 'Failed to add user' });
   }
 });
 

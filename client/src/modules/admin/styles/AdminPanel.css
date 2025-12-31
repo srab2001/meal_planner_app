@@ -392,6 +392,21 @@
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
+.form-description {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.form-hint {
+  display: block;
+  color: #888;
+  font-size: 12px;
+  margin-top: 6px;
+  font-style: italic;
+}
+
 .submit-btn {
   width: 100%;
   padding: 12px 24px;

@@ -1,6 +1,13 @@
 -- ════════════════════════════════════════════════════════════════════════════
 -- SQL QUERIES FOR DBEAVER - Admin Role Setup
 -- ════════════════════════════════════════════════════════════════════════════
+--
+-- IMPORTANT: Connect to RENDER PostgreSQL (NOT Neon!)
+--   Host: dpg-d4nj6demcj7s73dfvie0-a.oregon-postgres.render.com
+--   Database: meal_planner_vo27
+--   User: meal_planner_user
+--
+-- ════════════════════════════════════════════════════════════════════════════
 
 
 -- QUERY 1: VIEW ALL RECENT USERS
