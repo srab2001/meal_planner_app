@@ -10,11 +10,14 @@ export function useAuth() {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://meal-planner-app-mve2.onrender.com';
+
   useEffect(() => {
     // First, check URL hash for auth passed from main switchboard
     const hash = window.location.hash;
     console.log('🔐 useAuth: checking hash:', hash);
 
+    // Handle #auth=token=xxx&user=xxx format (preferred)
     if (hash && hash.startsWith('#auth=')) {
       try {
         const paramString = hash.substring(6); // Remove '#auth='
@@ -42,6 +45,36 @@ export function useAuth() {
       } catch (err) {
         console.error('Failed to parse auth from URL:', err);
       }
+    }
+
+    // Handle #token=xxx format (fallback - verify with API)
+    if (hash && hash.startsWith('#token=')) {
+      const urlToken = hash.substring(7).split('&')[0]; // Remove '#token=' and any query params
+      console.log('🔐 useAuth: Found #token= format, verifying with API...');
+
+      // Verify token with backend and get user info
+      fetch(`${API_BASE}/auth/user`, {
+        headers: { 'Authorization': `Bearer ${urlToken}` }
+      })
+        .then(res => res.ok ? res.json() : Promise.reject('Token invalid'))
+        .then(data => {
+          if (data.user) {
+            console.log('🔐 useAuth: Token verified for:', data.user.email);
+            localStorage.setItem('token', urlToken);
+            localStorage.setItem('auth_token', urlToken);
+            localStorage.setItem('user', JSON.stringify(data.user));
+            setUser(data.user);
+            setToken(urlToken);
+            // Clean up URL hash
+            window.history.replaceState(null, '', window.location.pathname);
+          }
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error('🔐 useAuth: Token verification failed:', err);
+          setLoading(false);
+        });
+      return; // Exit early, loading will be set by the fetch callback
     }
 
     // Try to get auth from localStorage (persisted from main app)
