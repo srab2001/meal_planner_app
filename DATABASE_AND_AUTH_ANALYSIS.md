@@ -1,13 +1,16 @@
 # Database & Authentication Architecture Analysis
 
+**Last Updated:** December 31, 2025
+
 ## Executive Summary
 
-**The Good News:** Your Render and Neon databases are **NOT conflicting** and **NOT interfering** with each other. There is actually only **ONE database** - Render PostgreSQL.
+**Architecture:** Two databases serve different purposes:
+1. **Render PostgreSQL** - Production users, auth, meals, favorites
+2. **Neon PostgreSQL** - CORE features (pantry, households) via `CORE_DATABASE_URL`
 
-**The Real Issue:** Your JWT token generation is **missing critical user fields** (`role` and `status`), which causes:
-1. ❌ Admin users to lose admin privileges when accessing fitness module
-2. ❌ Potential issues with AI Coach if it checks user permissions
-3. ❌ Inconsistent user state between main app and fitness module
+**CRITICAL:** Admin roles must be updated in the **Render database**, NOT Neon!
+
+**Status:** ✅ JWT token generation now includes `role` and `status` fields.
 
 ---
 
@@ -17,11 +20,17 @@
 
 | Component | Database | Connection String | Purpose |
 |-----------|----------|-------------------|---------|
-| **Main App** | Render PostgreSQL | `DATABASE_URL` (Render) | Users, meals, admin, auth |
-| **Fitness App** | Render PostgreSQL | `DATABASE_URL` (Render) | Fitness profiles, workouts, goals |
-| **Neon DB** | ❌ NOT USED | (Unused) | This was setup but never integrated |
+| **Main App** | Render PostgreSQL | `DATABASE_URL` | Users, meals, admin, auth |
+| **Fitness App** | Render PostgreSQL | `DATABASE_URL` | Fitness profiles, workouts, goals |
+| **CORE Features** | Neon PostgreSQL | `CORE_DATABASE_URL` | Pantry, households |
 
-**Key Finding:** Both applications use the SAME `DATABASE_URL` environment variable, which points to Render's PostgreSQL database. Neon is sitting idle.
+**Key Finding:** Production auth uses Render PostgreSQL. Admin roles must be updated there!
+
+```
+# Render PostgreSQL (for admin roles)
+Host: dpg-d4nj6demcj7s73dfvie0-a.oregon-postgres.render.com
+Database: meal_planner_vo27
+```
 
 ### File References
 
@@ -71,8 +80,8 @@ async (accessToken, refreshToken, profile, done) => {
 
 Database includes: `id`, `email`, `role`, `status`, `google_id`, `picture_url`, etc.
 
-### Step 3: Token Generation (⚠️ THE PROBLEM)
-**File:** server.js, lines 396-404
+### Step 3: Token Generation (✅ FIXED)
+**File:** server.js, lines 457-471
 
 ```javascript
 function generateToken(user) {
@@ -82,9 +91,9 @@ function generateToken(user) {
       email: user.email,
       googleId: user.googleId,        // ✅ Included
       displayName: user.displayName,  // ✅ Included
-      picture: user.picture           // ✅ Included
-      // ❌ MISSING: role
-      // ❌ MISSING: status
+      picture: user.picture,          // ✅ Included
+      role: user.role || 'user',      // ✅ Included
+      status: user.status || 'active' // ✅ Included
     },
     JWT_SECRET,
     { expiresIn: '30d' }
@@ -92,7 +101,7 @@ function generateToken(user) {
 }
 ```
 
-**Critical Issue:** Even though user has `role` and `status` in the database, they're NOT included in the JWT token!
+**Note:** Role is baked into JWT at login time. After updating database, user must log out and back in.
 
 ### Step 4: Token Usage
 

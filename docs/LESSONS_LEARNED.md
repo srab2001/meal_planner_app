@@ -1,23 +1,30 @@
 # Lessons Learned - ASR Health Portal Next
 
 **Project:** ASR Health Portal - Parallel Build
-**Last Updated:** December 29, 2025
+**Last Updated:** December 31, 2025
 
 ---
 
 ## Architecture Rules
 
-### 1. CORE DB is System of Record
-- **Location:** Neon `core_db_next`
-- **Contains:** users, roles, households, medical profiles, restrictions, pantry, compliance
-- All identity and authorization data lives here
-- Single source of truth for user context
+### 1. Production Database is on RENDER (Not Neon!)
+- **Location:** Render PostgreSQL (`oregon-postgres.render.com`)
+- **Connection:** `DATABASE_URL` on Render backend
+- **Contains:** users (with role column), meals, favorites, subscriptions, usage_stats
+- **CRITICAL:** Admin roles must be updated HERE, not in Neon!
 
-### 2. Render DB is Meal-Heavy Only
-- **Location:** Render `meal_db_next`
-- **Contains:** flyers, scraped items, meal generations, logs, meal outputs
-- No user identity data
-- References CORE DB user_id as foreign key (not joined)
+```bash
+# Production database connection (Render)
+Host: dpg-d4nj6demcj7s73dfvie0-a.oregon-postgres.render.com
+Database: meal_planner_vo27
+User: meal_planner_user
+```
+
+### 2. Neon DB is for Development/CORE Features
+- **Location:** Neon `core_db_next`
+- **Contains:** households, pantry, medical profiles, restrictions, compliance
+- Used for CORE_DATABASE_URL features (pantry, households)
+- **NOT** used for authentication in production!
 
 ### 3. No Cross-DB Joins
 - Never join tables across CORE DB and Render DB
@@ -199,6 +206,46 @@ if (returnTo === 'fitness') {
   - Use stable project URLs, not deployment-specific URLs
   - Or use environment variables for external app URLs
   - Prefer internal modules when available
+
+### Admin Role Not Working (December 2025)
+
+**Symptom:** User with admin role in Neon database still saw "You do not have admin privileges" error.
+
+**Root Cause:** The production backend connects to **Render's PostgreSQL**, not Neon. Admin roles were being updated in the wrong database.
+
+#### The Two Databases
+| Database | Host | Purpose |
+|----------|------|---------|
+| **Render PostgreSQL** | `oregon-postgres.render.com` | Production users, auth, meals |
+| **Neon** | `*.neon.tech` | CORE features (pantry, households) |
+
+#### How Admin Roles Work
+1. User logs in with Google OAuth
+2. Backend queries **Render DB**: `SELECT * FROM users WHERE google_id = ?`
+3. Backend creates JWT with `role: user.role || 'user'`
+4. Frontend checks `user.role === 'admin'` from JWT
+
+#### Fix: Update Render Database
+```sql
+-- Connect to Render PostgreSQL (NOT Neon!)
+-- Host: dpg-d4nj6demcj7s73dfvie0-a.oregon-postgres.render.com
+
+-- Add role column if missing
+ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT 'user';
+
+-- Grant admin
+UPDATE users SET role = 'admin' WHERE email = 'your-email@example.com';
+
+-- Verify
+SELECT email, role FROM users WHERE email = 'your-email@example.com';
+```
+
+After updating, user must **log out and log back in** to get new JWT with admin role.
+
+#### Prevention
+- Document which database is used for what
+- Add comments in environment variable configs
+- When debugging auth issues, always check DATABASE_URL first
 
 ---
 
@@ -382,5 +429,5 @@ if (returnTo === 'fitness') {
 
 ---
 
-**Version:** 1.3
+**Version:** 1.4
 **Maintained By:** Development Team
