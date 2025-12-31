@@ -93,37 +93,17 @@ function App() {
     return response;
   };
 
-  // Fitness app URL for SSO redirect
-  const FITNESS_APP_URL = 'https://meal-planner-app-8hnw.vercel.app';
-
   // Handler: Login - MUST be defined before useEffect that calls it
   const handleLogin = (userData) => {
     console.log('🔐 handleLogin called for:', userData?.email);
 
-    // Save user to localStorage FIRST (before checking returnTo)
+    // Save user to localStorage FIRST
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
 
-    // Check if user came from fitness app (returnTo stored during OAuth)
-    const returnTo = localStorage.getItem('sso_return_to');
-    console.log('🔐 handleLogin: sso_return_to =', returnTo);
-
-    if (returnTo === 'fitness') {
-      console.log('🔐 handleLogin: Redirecting to fitness app');
-      // Clear the stored returnTo so it doesn't persist
-      localStorage.removeItem('sso_return_to');
-      // Redirect to fitness app with auth token
-      const token = localStorage.getItem('auth_token');
-      const userStr = localStorage.getItem('user');
-      if (token && userStr) {
-        const params = new URLSearchParams({ token, user: userStr });
-        window.location.href = `${FITNESS_APP_URL}#auth=${params.toString()}`;
-        return;
-      }
-    }
-    // Clear any stale returnTo value
+    // Clear any stale SSO returnTo value (users always go to switchboard after login)
     localStorage.removeItem('sso_return_to');
-    console.log('🔐 handleLogin: NOT redirecting to fitness, staying on switchboard');
+    console.log('🔐 handleLogin: User logged in, going to switchboard');
 
     // Check if there's a redirect stored (user was trying to access specific app)
     const redirectTo = localStorage.getItem('redirect_after_login');
