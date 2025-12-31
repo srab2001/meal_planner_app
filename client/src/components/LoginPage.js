@@ -10,6 +10,11 @@ function LoginPage({ onLogin }) {
   const [loginUrl, setLoginUrl] = useState('');
 
   useEffect(() => {
+    // IMPORTANT: Clear any stale SSO returnTo value when using LoginPage
+    // This prevents redirect loops when doing normal login (not SSO from fitness)
+    localStorage.removeItem('sso_return_to');
+    console.log('🔄 LoginPage: Cleared any stale sso_return_to');
+
     // Build OAuth URL with redirect destination if one was stored
     const redirect = localStorage.getItem('redirect_after_login');
     const state = redirect ? `?redirect=${encodeURIComponent(redirect)}` : '';
