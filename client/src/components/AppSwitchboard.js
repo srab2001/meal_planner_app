@@ -33,17 +33,21 @@ export default function AppSwitchboard({ onSelectApp, user, onLogout, onLogin })
     }
   };
 
-  // Google login handler - preserves returnTo param for SSO redirect back to fitness
+  // Google login handler - stores returnTo in localStorage BEFORE OAuth to prevent it from getting lost
   const handleGoogleLogin = () => {
     // Check if user came from fitness app (returnTo=fitness in URL)
     const urlParams = new URLSearchParams(window.location.search);
     const returnTo = urlParams.get('returnTo');
 
-    // Build redirect URL, preserving returnTo param if present
-    let redirectUrl = `${window.location.origin}/switchboard`;
+    // Store returnTo in localStorage BEFORE OAuth redirect
+    // This ensures it survives the OAuth flow and URL changes
     if (returnTo) {
-      redirectUrl += `?returnTo=${returnTo}`;
+      console.log('🔄 Storing returnTo in localStorage before OAuth:', returnTo);
+      localStorage.setItem('sso_return_to', returnTo);
     }
+
+    // Build redirect URL (no need to include returnTo since it's in localStorage)
+    const redirectUrl = `${window.location.origin}/switchboard`;
 
     window.location.href = `${process.env.REACT_APP_API_URL || 'https://meal-planner-app-mve2.onrender.com'}/auth/google?redirect=${encodeURIComponent(redirectUrl)}`;
   };

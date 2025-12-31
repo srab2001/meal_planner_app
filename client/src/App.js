@@ -194,13 +194,8 @@ function App() {
         localStorage.setItem('redirect_after_login', redirect);
       }
 
-      // Check for returnTo parameter and store it for handleLogin
-      const urlParams = new URLSearchParams(window.location.search);
-      const returnTo = urlParams.get('returnTo');
-      if (returnTo) {
-        console.log('🔄 Found returnTo in URL:', returnTo);
-        localStorage.setItem('sso_return_to', returnTo);
-      }
+      // Note: returnTo is now stored in localStorage BEFORE OAuth redirect (in AppSwitchboard.js)
+      // This ensures it survives the OAuth flow. We no longer try to extract it from the URL here.
 
       // Clean up the URL completely (remove hash AND query params)
       window.history.replaceState(null, '', window.location.pathname);
