@@ -243,7 +243,7 @@ const allowedOrigins = [
   'https://meal-planner-rjyhqof89-stus-projects-458dd35a.vercel.app',  // Vercel preview
   'https://meal-planner.vercel.app',  // Production Vercel URL
   'https://meal-planner-gold-one.vercel.app',  // Current production URL
-  // Add your production Vercel URL here when deployed
+  'https://meal-planner-app-8hnw.vercel.app',  // Fitness frontend
 ].filter(Boolean); // Remove undefined values
 
 console.log('Allowed CORS origins:', allowedOrigins);

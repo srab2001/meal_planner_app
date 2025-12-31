@@ -526,3 +526,4 @@ function WorkoutDetail({ user, token }) {
 }
 
 export default WorkoutDetail;
+// Build trigger 1767140167
