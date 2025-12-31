@@ -81,6 +81,85 @@
 
 ## SSO & Auth Lessons (from production)
 
+### The SSO Redirect Loop Problem (December 2025)
+
+**Symptom:** Users logging in from the Meal Planner were being redirected to the Fitness App instead of staying on the switchboard.
+
+**Root Cause:** The `?returnTo=fitness` URL parameter was persisting through the OAuth flow and in localStorage, causing unwanted redirects.
+
+#### Key Issues Identified
+
+| Issue | Root Cause | Fix |
+|-------|------------|-----|
+| returnTo in URL lost during OAuth | Query params embedded in hash fragment after OAuth callback, not in `window.location.search` | Store `returnTo` in localStorage BEFORE OAuth redirect |
+| Stale localStorage value | `sso_return_to` persisting from previous SSO visits | Clear `sso_return_to` when no `returnTo` param in URL |
+| Multiple login paths | Different components (AppSwitchboard, LoginPage, SwitchboardNext) each have OAuth links | Fix ALL login entry points, not just one |
+| URL formats differ | Backend uses `#token=`, switchboard SSO uses `#auth=` | Handle both formats in fitness app's useAuth hook |
+
+#### The Correct SSO Flow
+
+```
+Normal Login (no returnTo):
+1. User clicks login on switchboard
+2. handleGoogleLogin() clears sso_return_to (in case stale)
+3. OAuth redirect to /auth/google
+4. Backend callback → #token=JWT&redirect=/switchboard
+5. App.js extracts token, calls handleLogin()
+6. handleLogin() finds sso_return_to=null → stays on switchboard ✓
+
+SSO Login from Fitness:
+1. Fitness redirects to switchboard?returnTo=fitness
+2. handleGoogleLogin() stores sso_return_to='fitness' in localStorage
+3. OAuth redirect to /auth/google?redirect=/switchboard (clean URL)
+4. Backend callback → #token=JWT&redirect=/switchboard
+5. App.js extracts token, calls handleLogin()
+6. handleLogin() finds sso_return_to='fitness'
+7. Clears sso_return_to IMMEDIATELY
+8. Redirects to fitness with #auth=token=xxx&user=xxx ✓
+```
+
+#### Files That Need SSO Fixes (Checklist)
+
+When implementing SSO with localStorage state:
+- [ ] `AppSwitchboard.js` - handleGoogleLogin()
+- [ ] `AppSwitchboard.js` - admin login path
+- [ ] `LoginPage.js` - useEffect on mount
+- [ ] `SwitchboardNext.jsx` - handleGoogleLogin()
+- [ ] `App.js` - handleLogin() to read and clear state
+- [ ] External app's useAuth hook - handle both #auth= and #token= formats
+
+#### Prevention Checklist
+
+1. **Store state BEFORE redirect** - OAuth destroys URL state
+2. **Clear state when NOT needed** - Prevents stale value issues
+3. **Clear state AFTER use** - Prevents redirect loops
+4. **Check ALL login paths** - Apps often have multiple entry points
+5. **Add debug logging** - Makes production issues diagnosable
+
+#### Debug Logging Pattern
+
+```javascript
+// In handleGoogleLogin (BEFORE OAuth)
+if (returnTo) {
+  console.log('🔄 Storing returnTo before OAuth:', returnTo);
+  localStorage.setItem('sso_return_to', returnTo);
+} else {
+  console.log('🔄 No returnTo, clearing stale sso_return_to');
+  localStorage.removeItem('sso_return_to');
+}
+
+// In handleLogin (AFTER OAuth)
+const returnTo = localStorage.getItem('sso_return_to');
+console.log('🔐 handleLogin: sso_return_to =', returnTo);
+if (returnTo === 'fitness') {
+  console.log('🔐 Redirecting to fitness app');
+  localStorage.removeItem('sso_return_to'); // Clear BEFORE redirect
+  // ... redirect
+} else {
+  console.log('🔐 NOT redirecting, staying on switchboard');
+}
+```
+
 ### OAuth Query Params Lost During URL Cleanup
 - **Error:** returnTo param stripped after OAuth
 - **Fix:** Use `pathname + search` when cleaning URL hash
@@ -95,6 +174,13 @@
 - **Error:** Hardcoded Vercel deployment URLs become stale
 - **Fix:** Use stable project URLs or environment variables
 - **Prevention:** Never hardcode deployment-specific URLs
+
+### Multiple URL Hash Formats
+- **Error:** Fitness app only handled `#token=` format, not `#auth=`
+- **Fix:** useAuth hook handles both formats:
+  - `#auth=token=xxx&user=xxx` - From switchboard SSO (preferred)
+  - `#token=xxx` - From backend OAuth callback (fallback)
+- **Prevention:** Document expected URL formats in useAuth hook
 
 ---
 
