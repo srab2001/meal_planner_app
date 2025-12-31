@@ -102,12 +102,11 @@ function App() {
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
 
-    // Check if user came from fitness app (returnTo=fitness in URL)
-    const urlParams = new URLSearchParams(window.location.search);
-    const returnTo = urlParams.get('returnTo');
+    // Check if user came from fitness app (returnTo stored during OAuth)
+    const returnTo = localStorage.getItem('sso_return_to');
     if (returnTo === 'fitness') {
-      // Clean up URL
-      window.history.replaceState(null, '', window.location.pathname);
+      // Clear the stored returnTo so it doesn't persist
+      localStorage.removeItem('sso_return_to');
       // Redirect to fitness app with auth token
       const token = localStorage.getItem('auth_token');
       const userStr = localStorage.getItem('user');
@@ -117,6 +116,8 @@ function App() {
         return;
       }
     }
+    // Clear any stale returnTo value
+    localStorage.removeItem('sso_return_to');
 
     // Check if there's a redirect stored (user was trying to access specific app)
     const redirectTo = localStorage.getItem('redirect_after_login');
@@ -184,7 +185,7 @@ function App() {
       const token = hash.split('token=')[1].split('&')[0];
       console.log('Token received from OAuth redirect');
       setToken(token);
-      
+
       // Extract redirect destination if it exists in the hash
       const redirectMatch = hash.match(/redirect=([^&]*)/);
       if (redirectMatch && redirectMatch[1]) {
@@ -192,9 +193,17 @@ function App() {
         console.log('🔄 Found redirect in OAuth response:', redirect);
         localStorage.setItem('redirect_after_login', redirect);
       }
-      
-      // Clean up the URL hash but preserve query params (like ?returnTo=fitness)
-      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+
+      // Check for returnTo parameter and store it for handleLogin
+      const urlParams = new URLSearchParams(window.location.search);
+      const returnTo = urlParams.get('returnTo');
+      if (returnTo) {
+        console.log('🔄 Found returnTo in URL:', returnTo);
+        localStorage.setItem('sso_return_to', returnTo);
+      }
+
+      // Clean up the URL completely (remove hash AND query params)
+      window.history.replaceState(null, '', window.location.pathname);
     }
 
     // Check if user is already authenticated with existing token
