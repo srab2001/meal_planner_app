@@ -171,6 +171,8 @@ export default function AppSwitchboard({ onSelectApp, user, onLogout, onLogin })
     if (app.id === 'admin') {
       if (!user) {
         // User not logged in - redirect to Google login
+        // Clear any stale SSO returnTo value first
+        localStorage.removeItem('sso_return_to');
         // The redirect query param tells the backend to return to admin panel after login
         const redirectUrl = `${window.location.origin}/switchboard?admin=true`;
         window.location.href = `${process.env.REACT_APP_API_URL || 'https://meal-planner-app-mve2.onrender.com'}/auth/google?redirect=${encodeURIComponent(redirectUrl)}`;
