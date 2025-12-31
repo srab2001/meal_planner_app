@@ -211,25 +211,36 @@ router.post('/users/approve', requireAuth, requireAdmin, async (req, res) => {
     }
 
     // Create user directly with active status
-    // (They will need to complete OAuth login to finish setup)
-    const result = await pool.query(
-      `INSERT INTO users (email, display_name, role, status, created_at, updated_at)
-       VALUES ($1, $2, $3, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-       ON CONFLICT (email) DO UPDATE
-       SET role = $3, status = 'active',
-           display_name = COALESCE($2, users.display_name),
-           updated_at = CURRENT_TIMESTAMP
-       RETURNING id, email, display_name, role, status, created_at, last_login_at`,
-      [email, display_name || null, role]
-    );
+    // Use simpler query that works with both Render and Neon schemas
+    let result;
+
+    if (display_name) {
+      result = await pool.query(
+        `INSERT INTO users (email, display_name, role, status)
+         VALUES ($1, $2, $3, 'active')
+         ON CONFLICT (email) DO UPDATE
+         SET role = $3, status = 'active', display_name = $2
+         RETURNING *`,
+        [email, display_name, role]
+      );
+    } else {
+      result = await pool.query(
+        `INSERT INTO users (email, role, status)
+         VALUES ($1, $2, 'active')
+         ON CONFLICT (email) DO UPDATE
+         SET role = $2, status = 'active'
+         RETURNING *`,
+        [email, role]
+      );
+    }
 
     const user = result.rows[0];
     console.log(`[Admin] Added user ${email} with role ${role}`);
 
     res.json(user);
   } catch (error) {
-    console.error('[Admin] Error adding user:', error);
-    res.status(500).json({ error: 'Failed to add user' });
+    console.error('[Admin] Error adding user:', error.message);
+    res.status(500).json({ error: `Failed to add user: ${error.message}` });
   }
 });
 
