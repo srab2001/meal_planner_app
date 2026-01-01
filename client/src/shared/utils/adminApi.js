@@ -49,7 +49,8 @@ export const adminInviteUser = async (payload) => {
     body: JSON.stringify(payload)
   });
   if (!response.ok) {
-    throw new Error(`Failed to send invitation: ${response.statusText}`);
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Failed to send invitation: ${response.statusText}`);
   }
   return response.json();
 };
