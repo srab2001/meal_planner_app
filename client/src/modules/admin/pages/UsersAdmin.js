@@ -112,15 +112,23 @@ export default function UsersAdmin({ user, onBack, onNavigate }) {
     setError(null);
 
     try {
-      const newInvite = await adminInviteUser({
+      const response = await adminInviteUser({
         email: inviteEmail,
         role: inviteRole,
       });
-      setInvites([newInvite, ...invites]);
+      setInvites([response, ...invites]);
       setInviteEmail('');
       setInviteRole('user');
-      setSuccess('Invitation sent successfully');
-      setTimeout(() => setSuccess(null), 3000);
+
+      // Show email status in success message
+      if (response.emailSent) {
+        setSuccess(`Invitation email sent to ${response.email}!`);
+      } else if (response.emailError) {
+        setSuccess(`Invitation created but email not sent: ${response.emailError}. Copy the link to share manually.`);
+      } else {
+        setSuccess('Invitation created! Copy the link to share with the user.');
+      }
+      setTimeout(() => setSuccess(null), 5000);
     } catch (err) {
       console.error('Error sending invitation:', err);
       setError(err.message);

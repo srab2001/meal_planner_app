@@ -15,6 +15,7 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const { Pool } = require('pg');
+const { sendInviteEmail, isEmailConfigured } = require('../services/emailService');
 
 // Use DATABASE_URL for main app database
 const pool = new Pool({
@@ -181,11 +182,21 @@ router.post('/users/invite', requireAuth, requireAdmin, async (req, res) => {
     );
 
     const invite = result.rows[0];
+    const acceptanceLink = `${process.env.FRONTEND_BASE || 'https://meal-planner-gold-one.vercel.app'}/accept-invite?token=${token}`;
     console.log(`[Admin] Created invite for ${email} with role ${role}`);
 
+    // Send invitation email
+    let emailResult = { success: false, error: 'Email not configured' };
+    if (isEmailConfigured()) {
+      const inviterName = req.user.displayName || req.user.email || 'Admin';
+      emailResult = await sendInviteEmail(email, token, role, inviterName);
+    }
+
     res.json({
-      invite,
-      acceptanceLink: `${process.env.FRONTEND_BASE}/accept-invite?token=${token}`,
+      ...invite,
+      acceptanceLink,
+      emailSent: emailResult.success,
+      emailError: emailResult.error || null,
     });
   } catch (error) {
     console.error('[Admin] Error creating invite:', error);
@@ -312,11 +323,21 @@ router.post('/invites/:id/resend', requireAuth, requireAdmin, async (req, res) =
     );
 
     const updatedInvite = updateResult.rows[0];
+    const acceptanceLink = `${process.env.FRONTEND_BASE || 'https://meal-planner-gold-one.vercel.app'}/accept-invite?token=${newToken}`;
     console.log(`[Admin] Resent invite for ${invite.email}`);
 
+    // Send invitation email
+    let emailResult = { success: false, error: 'Email not configured' };
+    if (isEmailConfigured()) {
+      const inviterName = req.user.displayName || req.user.email || 'Admin';
+      emailResult = await sendInviteEmail(invite.email, newToken, invite.role, inviterName);
+    }
+
     res.json({
-      invite: updatedInvite,
-      acceptanceLink: `${process.env.FRONTEND_BASE}/accept-invite?token=${newToken}`,
+      ...updatedInvite,
+      acceptanceLink,
+      emailSent: emailResult.success,
+      emailError: emailResult.error || null,
     });
   } catch (error) {
     console.error('[Admin] Error resending invite:', error);
