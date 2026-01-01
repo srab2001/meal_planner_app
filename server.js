@@ -1,5 +1,7 @@
 require('dotenv').config();
 
+console.log('[SERVER] 🚀 Starting server version: 2026-01-01-email-v1');
+
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
