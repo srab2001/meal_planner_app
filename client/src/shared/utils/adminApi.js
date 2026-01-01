@@ -55,8 +55,8 @@ export const adminInviteUser = async (payload) => {
 };
 
 /**
- * Approve a user directly (bypass invitation)
- * @param {object} payload - { email, role }
+ * Approve a user directly (bypass invitation) / Add new user
+ * @param {object} payload - { email, display_name?, role }
  * @returns {Promise<object>} User object
  */
 export const adminApproveUser = async (payload) => {
@@ -66,7 +66,8 @@ export const adminApproveUser = async (payload) => {
     body: JSON.stringify(payload)
   });
   if (!response.ok) {
-    throw new Error(`Failed to approve user: ${response.statusText}`);
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Failed to add user: ${response.statusText}`);
   }
   return response.json();
 };

@@ -249,6 +249,32 @@ After updating, user must **log out and log back in** to get new JWT with admin 
 
 ---
 
+## Email Integration (Office 365)
+
+### Setup Requirements
+1. Configure SMTP environment variables on Render:
+   ```
+   SMTP_HOST=smtp.office365.com
+   SMTP_PORT=587
+   SMTP_USER=your-email@yourdomain.com
+   SMTP_PASS=your-password-or-app-password
+   EMAIL_FROM=your-email@yourdomain.com  (optional, defaults to SMTP_USER)
+   ```
+
+2. If using MFA, create an app password at: https://mysignins.microsoft.com/security-info
+
+### Features
+- Invitation emails sent when admin creates invite
+- Emails resent when admin clicks "Resend" on pending invite
+- Frontend shows email status (sent, failed, or not configured)
+- Graceful degradation: invites still work without email (copy link manually)
+
+### Files
+- `/services/emailService.js` - Office 365 SMTP configuration
+- `/routes/admin.js` - Calls `sendInviteEmail()` on invite/resend
+
+---
+
 ## Database Lessons
 
 ### Empty Array Type in PostgreSQL

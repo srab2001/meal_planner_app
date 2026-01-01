@@ -15,6 +15,7 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const { Pool } = require('pg');
+const { sendInviteEmail, isEmailConfigured } = require('../services/emailService');
 
 // Use DATABASE_URL for main app database
 const pool = new Pool({
@@ -181,11 +182,21 @@ router.post('/users/invite', requireAuth, requireAdmin, async (req, res) => {
     );
 
     const invite = result.rows[0];
+    const acceptanceLink = `${process.env.FRONTEND_BASE || 'https://meal-planner-gold-one.vercel.app'}/accept-invite?token=${token}`;
     console.log(`[Admin] Created invite for ${email} with role ${role}`);
 
+    // Send invitation email
+    let emailResult = { success: false, error: 'Email not configured' };
+    if (isEmailConfigured()) {
+      const inviterName = req.user.displayName || req.user.email || 'Admin';
+      emailResult = await sendInviteEmail(email, token, role, inviterName);
+    }
+
     res.json({
-      invite,
-      acceptanceLink: `${process.env.FRONTEND_BASE}/accept-invite?token=${token}`,
+      ...invite,
+      acceptanceLink,
+      emailSent: emailResult.success,
+      emailError: emailResult.error || null,
     });
   } catch (error) {
     console.error('[Admin] Error creating invite:', error);
@@ -211,25 +222,36 @@ router.post('/users/approve', requireAuth, requireAdmin, async (req, res) => {
     }
 
     // Create user directly with active status
-    // (They will need to complete OAuth login to finish setup)
-    const result = await pool.query(
-      `INSERT INTO users (email, display_name, role, status, created_at, updated_at)
-       VALUES ($1, $2, $3, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-       ON CONFLICT (email) DO UPDATE
-       SET role = $3, status = 'active',
-           display_name = COALESCE($2, users.display_name),
-           updated_at = CURRENT_TIMESTAMP
-       RETURNING id, email, display_name, role, status, created_at, last_login_at`,
-      [email, display_name || null, role]
-    );
+    // Use simpler query that works with both Render and Neon schemas
+    let result;
+
+    if (display_name) {
+      result = await pool.query(
+        `INSERT INTO users (email, display_name, role, status)
+         VALUES ($1, $2, $3, 'active')
+         ON CONFLICT (email) DO UPDATE
+         SET role = $3, status = 'active', display_name = $2
+         RETURNING *`,
+        [email, display_name, role]
+      );
+    } else {
+      result = await pool.query(
+        `INSERT INTO users (email, role, status)
+         VALUES ($1, $2, 'active')
+         ON CONFLICT (email) DO UPDATE
+         SET role = $2, status = 'active'
+         RETURNING *`,
+        [email, role]
+      );
+    }
 
     const user = result.rows[0];
     console.log(`[Admin] Added user ${email} with role ${role}`);
 
     res.json(user);
   } catch (error) {
-    console.error('[Admin] Error adding user:', error);
-    res.status(500).json({ error: 'Failed to add user' });
+    console.error('[Admin] Error adding user:', error.message);
+    res.status(500).json({ error: `Failed to add user: ${error.message}` });
   }
 });
 
@@ -301,11 +323,21 @@ router.post('/invites/:id/resend', requireAuth, requireAdmin, async (req, res) =
     );
 
     const updatedInvite = updateResult.rows[0];
+    const acceptanceLink = `${process.env.FRONTEND_BASE || 'https://meal-planner-gold-one.vercel.app'}/accept-invite?token=${newToken}`;
     console.log(`[Admin] Resent invite for ${invite.email}`);
 
+    // Send invitation email
+    let emailResult = { success: false, error: 'Email not configured' };
+    if (isEmailConfigured()) {
+      const inviterName = req.user.displayName || req.user.email || 'Admin';
+      emailResult = await sendInviteEmail(invite.email, newToken, invite.role, inviterName);
+    }
+
     res.json({
-      invite: updatedInvite,
-      acceptanceLink: `${process.env.FRONTEND_BASE}/accept-invite?token=${newToken}`,
+      ...updatedInvite,
+      acceptanceLink,
+      emailSent: emailResult.success,
+      emailError: emailResult.error || null,
     });
   } catch (error) {
     console.error('[Admin] Error resending invite:', error);
