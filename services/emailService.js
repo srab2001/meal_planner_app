@@ -16,6 +16,16 @@ const isEmailConfigured = () => {
   return !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
 };
 
+// Log email configuration status on startup
+if (isEmailConfigured()) {
+  console.log(`[Email] ✅ SMTP configured: ${process.env.SMTP_HOST} (user: ${process.env.SMTP_USER})`);
+} else {
+  console.log('[Email] ⚠️ SMTP not configured - invitation emails will be disabled');
+  if (!process.env.SMTP_HOST) console.log('[Email]   Missing: SMTP_HOST');
+  if (!process.env.SMTP_USER) console.log('[Email]   Missing: SMTP_USER');
+  if (!process.env.SMTP_PASS) console.log('[Email]   Missing: SMTP_PASS');
+}
+
 // Create transporter (lazy initialization)
 let transporter = null;
 
