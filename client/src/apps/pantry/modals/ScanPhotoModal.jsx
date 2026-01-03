@@ -193,20 +193,21 @@ export default function ScanPhotoModal({ householdId, onClose, onItemsIdentified
           {!preview ? (
             <div className="upload-section">
               <div className="upload-options">
-                <button className="upload-option" onClick={handleGallerySelect}>
+                <label className="upload-option" htmlFor="gallery-input">
                   <div className="upload-icon">🖼️</div>
                   <p>Choose from Photos</p>
                   <p className="upload-hint">Select from gallery</p>
-                </button>
-                <button className="upload-option" onClick={handleCameraCapture}>
+                </label>
+                <label className="upload-option" htmlFor="camera-input">
                   <div className="upload-icon">📷</div>
                   <p>Take Photo</p>
                   <p className="upload-hint">Use camera</p>
-                </button>
+                </label>
               </div>
               <p className="upload-formats">Supports JPG, PNG (max 10MB)</p>
               {/* Gallery input - no capture attribute */}
               <input
+                id="gallery-input"
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
@@ -215,6 +216,7 @@ export default function ScanPhotoModal({ householdId, onClose, onItemsIdentified
               />
               {/* Camera input - with capture attribute */}
               <input
+                id="camera-input"
                 ref={cameraInputRef}
                 type="file"
                 accept="image/*"
