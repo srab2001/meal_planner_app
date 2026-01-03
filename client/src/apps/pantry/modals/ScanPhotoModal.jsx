@@ -196,7 +196,6 @@ export default function ScanPhotoModal({ householdId, onClose, onItemsIdentified
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
-                capture="environment"
                 onChange={handleFileSelect}
                 style={{ display: 'none' }}
               />
