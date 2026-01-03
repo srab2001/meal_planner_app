@@ -4,9 +4,9 @@ import './ScanPhotoModal.css';
 const API_BASE = process.env.REACT_APP_API_URL || 'https://meal-planner-app-mve2.onrender.com';
 
 export default function ScanPhotoModal({ householdId, onClose, onItemsIdentified }) {
-  const [image, setImage] = useState(null);
-  const [preview, setPreview] = useState(null);
+  const [images, setImages] = useState([]); // Array of { file, preview, base64 }
   const [analyzing, setAnalyzing] = useState(false);
+  const [analyzingProgress, setAnalyzingProgress] = useState({ current: 0, total: 0 });
   const [error, setError] = useState(null);
   const [identifiedItems, setIdentifiedItems] = useState([]);
   const [selectedItems, setSelectedItems] = useState({});
@@ -16,82 +16,115 @@ export default function ScanPhotoModal({ householdId, onClose, onItemsIdentified
   const token = localStorage.getItem('auth_token');
 
   const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setError('Please select an image file');
-      return;
-    }
-
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      setError('Image must be less than 10MB');
-      return;
-    }
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
 
     setError(null);
+    const newImages = [];
 
-    // Create preview
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setPreview(e.target.result);
-      setImage(e.target.result);
-    };
-    reader.readAsDataURL(file);
+    files.forEach(file => {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setError('Please select only image files');
+        return;
+      }
+
+      // Validate file size (max 10MB each)
+      if (file.size > 10 * 1024 * 1024) {
+        setError('Each image must be less than 10MB');
+        return;
+      }
+
+      // Create preview and base64
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const imageData = {
+          file,
+          preview: e.target.result,
+          base64: e.target.result
+        };
+        setImages(prev => [...prev, imageData]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Reset file input so same file can be selected again
+    e.target.value = '';
   };
 
-  const handleCapture = () => {
+  const handleAddMore = () => {
     fileInputRef.current?.click();
   };
 
-  const analyzePhoto = async () => {
-    if (!image) {
-      setError('Please select or capture an image first');
+  const removeImage = (index) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const analyzePhotos = async () => {
+    if (images.length === 0) {
+      setError('Please select at least one image');
       return;
     }
 
     setAnalyzing(true);
     setError(null);
     setIdentifiedItems([]);
+    setAnalyzingProgress({ current: 0, total: images.length });
 
     try {
-      const res = await fetch(`${API_BASE}/api/core/pantry/analyze-photo`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          image,
-          household_id: householdId
-        })
-      });
+      const allItems = [];
 
-      if (!res.ok) {
+      // Analyze each photo
+      for (let i = 0; i < images.length; i++) {
+        setAnalyzingProgress({ current: i + 1, total: images.length });
+
+        const res = await fetch(`${API_BASE}/api/core/pantry/analyze-photo`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            image: images[i].base64,
+            household_id: householdId
+          })
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          console.error(`Failed to analyze photo ${i + 1}:`, data.error);
+          continue; // Continue with other photos
+        }
+
         const data = await res.json();
-        throw new Error(data.error || 'Failed to analyze photo');
+        if (data.items && data.items.length > 0) {
+          // Add photo index to each item for reference
+          const itemsWithSource = data.items.map(item => ({
+            ...item,
+            sourcePhotoIndex: i
+          }));
+          allItems.push(...itemsWithSource);
+        }
       }
 
-      const data = await res.json();
-      setIdentifiedItems(data.items || []);
+      setIdentifiedItems(allItems);
 
       // Select all items by default
       const defaultSelected = {};
-      data.items.forEach((item, idx) => {
+      allItems.forEach((_, idx) => {
         defaultSelected[idx] = true;
       });
       setSelectedItems(defaultSelected);
 
-      if (data.items.length === 0) {
-        setError('No food items detected in the image. Try a clearer photo.');
+      if (allItems.length === 0) {
+        setError('No food items detected in any of the images. Try clearer photos.');
       }
     } catch (err) {
-      console.error('Error analyzing photo:', err);
-      setError(err.message || 'Failed to analyze photo');
+      console.error('Error analyzing photos:', err);
+      setError(err.message || 'Failed to analyze photos');
     } finally {
       setAnalyzing(false);
+      setAnalyzingProgress({ current: 0, total: 0 });
     }
   };
 
@@ -122,7 +155,6 @@ export default function ScanPhotoModal({ householdId, onClose, onItemsIdentified
     setError(null);
 
     try {
-      // Add items one by one
       const addedItems = [];
       for (const item of itemsToAdd) {
         const res = await fetch(`${API_BASE}/api/core/pantry/items`, {
@@ -148,7 +180,6 @@ export default function ScanPhotoModal({ householdId, onClose, onItemsIdentified
         }
       }
 
-      // Notify parent and close
       onItemsIdentified?.(addedItems);
       onClose();
     } catch (err) {
@@ -159,9 +190,8 @@ export default function ScanPhotoModal({ householdId, onClose, onItemsIdentified
     }
   };
 
-  const clearImage = () => {
-    setImage(null);
-    setPreview(null);
+  const clearAll = () => {
+    setImages([]);
     setIdentifiedItems([]);
     setSelectedItems({});
     setError(null);
@@ -185,47 +215,79 @@ export default function ScanPhotoModal({ householdId, onClose, onItemsIdentified
         </div>
 
         <div className="scan-modal-content">
-          {!preview ? (
+          {images.length === 0 ? (
             <div className="upload-section">
-              <div className="upload-area" onClick={handleCapture}>
+              <div className="upload-area" onClick={handleAddMore}>
                 <div className="upload-icon">📷</div>
-                <p>Click to take a photo or select an image</p>
-                <p className="upload-hint">Supports JPG, PNG (max 10MB)</p>
+                <p>Click to select photos</p>
+                <p className="upload-hint">Select one or multiple photos (max 10MB each)</p>
               </div>
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
+                multiple
                 onChange={handleFileSelect}
                 style={{ display: 'none' }}
               />
             </div>
           ) : (
             <div className="preview-section">
-              <div className="image-preview">
-                <img src={preview} alt="Food to scan" />
-                <button className="clear-btn" onClick={clearImage}>
-                  Change Image
-                </button>
+              {/* Photo thumbnails */}
+              <div className="photo-grid">
+                {images.map((img, idx) => (
+                  <div key={idx} className="photo-thumbnail">
+                    <img src={img.preview} alt={`Photo ${idx + 1}`} />
+                    <button
+                      className="remove-photo-btn"
+                      onClick={() => removeImage(idx)}
+                      title="Remove photo"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                {/* Add more button */}
+                <div className="photo-thumbnail add-more" onClick={handleAddMore}>
+                  <span>+</span>
+                  <p>Add More</p>
+                </div>
               </div>
 
-              {!identifiedItems.length && !analyzing && (
-                <button
-                  className="analyze-btn"
-                  onClick={analyzePhoto}
-                  disabled={analyzing}
-                >
-                  {analyzing ? 'Analyzing...' : 'Identify Food Items'}
-                </button>
-              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleFileSelect}
+                style={{ display: 'none' }}
+              />
 
-              {analyzing && (
-                <div className="analyzing-indicator">
-                  <div className="spinner"></div>
-                  <p>AI is analyzing your photo...</p>
+              {/* Analyze button */}
+              {!identifiedItems.length && !analyzing && (
+                <div className="action-buttons">
+                  <button className="clear-all-btn" onClick={clearAll}>
+                    Clear All
+                  </button>
+                  <button
+                    className="analyze-btn"
+                    onClick={analyzePhotos}
+                    disabled={analyzing}
+                  >
+                    Identify Food Items ({images.length} photo{images.length !== 1 ? 's' : ''})
+                  </button>
                 </div>
               )}
 
+              {/* Analyzing progress */}
+              {analyzing && (
+                <div className="analyzing-indicator">
+                  <div className="spinner"></div>
+                  <p>Analyzing photo {analyzingProgress.current} of {analyzingProgress.total}...</p>
+                </div>
+              )}
+
+              {/* Identified items */}
               {identifiedItems.length > 0 && (
                 <div className="identified-items">
                   <h3>Identified Items ({identifiedItems.length})</h3>
