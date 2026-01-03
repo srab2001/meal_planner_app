@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import '../styles/FitnessDashboard.css';
 import AIWorkoutInterview from './AIWorkoutInterview';
+import WorkoutTracking from './WorkoutTracking';
 
 /**
  * FitnessDashboard - Main dashboard for fitness tracking
@@ -108,6 +109,12 @@ export default function FitnessDashboard({
           title="AI Workout Coach"
         >
           🤖 AI Coach
+        </button>
+        <button
+          className={`fitness-nav-btn ${currentView === 'saved-workouts' ? 'active' : ''}`}
+          onClick={() => setCurrentView('saved-workouts')}
+        >
+          📋 Saved Workouts
         </button>
       </nav>
 
@@ -404,19 +411,22 @@ export default function FitnessDashboard({
         </div>
       )}
 
+      {/* Saved Workouts View */}
+      {currentView === 'saved-workouts' && (
+        <WorkoutTracking />
+      )}
+
       {/* AI Workout Interview Modal */}
       {showAIInterview && (
         <AIWorkoutInterview
           user={user}
-          onWorkoutGenerated={async (workout) => {
-            try {
-              await onLogWorkout(workout);
-              setShowAIInterview(false);
-              setCurrentView('dashboard');
-            } catch (error) {
-              console.error('Error logging AI-generated workout:', error);
-              alert('Failed to save workout. Please try again.');
-            }
+          onWorkoutGenerated={(workout) => {
+            // Workout is already saved by the AI Interview backend
+            // Just close the modal and return to dashboard
+            setShowAIInterview(false);
+            setCurrentView('dashboard');
+            // Reload the page to show the new workout in history
+            window.location.reload();
           }}
           onClose={() => setShowAIInterview(false)}
         />

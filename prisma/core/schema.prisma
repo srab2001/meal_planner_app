@@ -3,7 +3,7 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../../node_modules/@prisma/client/core"
+  output   = "../generated/core-client"
 }
 
 datasource db {
@@ -74,10 +74,15 @@ model user_roles {
 // ============================================
 
 model households {
-  id         String   @id @default(uuid())
-  name       String
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  id                     String   @id @default(uuid())
+  name                   String
+  size                   Int      @default(1)
+  share_pantry_inventory Boolean  @default(true)
+  share_shopping_list    Boolean  @default(true)
+  share_meal_plans       Boolean  @default(true)
+  primary_shopper_id     String?
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
 
   memberships household_memberships[]
   invites     invites[]
@@ -89,12 +94,14 @@ model households {
 }
 
 model household_memberships {
-  id           String   @id @default(uuid())
-  user_id      String
-  household_id String
-  role         String   @default("member") // owner, admin, member, viewer
-  is_active    Boolean  @default(true)
-  joined_at    DateTime @default(now())
+  id              String   @id @default(uuid())
+  user_id         String
+  household_id    String
+  role            String   @default("member") // owner, admin, member, viewer
+  display_name    String?  // Name shown in household (can differ from user.display_name)
+  diet_preference String?  // none, vegetarian, vegan, keto, paleo, gluten-free, dairy-free, halal, kosher
+  is_active       Boolean  @default(true)
+  joined_at       DateTime @default(now())
 
   user      users      @relation(fields: [user_id], references: [id], onDelete: Cascade)
   household households @relation(fields: [household_id], references: [id], onDelete: Cascade)
@@ -281,12 +288,15 @@ model pantry_items {
   id              String    @id @default(uuid())
   pantry_id       String
   name            String
-  category        String?   // produce, dairy, meat, pantry, frozen
+  brand           String?   // optional brand name
+  category        String?   // produce, dairy, meat, pantry, frozen, beverages, other
   quantity        Decimal   @db.Decimal(10, 2)
-  unit            String?   // lbs, oz, count, etc.
+  unit            String?   // lbs, oz, count, kg, g, L, mL, cups
   purchase_date   DateTime?
   expiration_date DateTime?
-  status          String    @default("available") // available, low, expired, consumed
+  status          String    @default("available") // available, low, expired, consumed, wasted
+  barcode         String?   // UPC/EAN barcode
+  notes           String?   // user notes
   created_at      DateTime  @default(now())
   updated_at      DateTime  @updatedAt
 
@@ -296,16 +306,19 @@ model pantry_items {
   @@index([pantry_id])
   @@index([expiration_date])
   @@index([status])
+  @@index([barcode])
 }
 
 model pantry_item_events {
-  id            String   @id @default(uuid())
-  pantry_item_id String
-  user_id       String
-  event_type    String   // added, consumed, expired, adjusted
-  quantity_change Decimal? @db.Decimal(10, 2)
-  notes         String?
-  created_at    DateTime @default(now())
+  id               String   @id @default(uuid())
+  pantry_item_id   String
+  user_id          String
+  event_type       String   // add, consume, waste, adjust
+  quantity_change  Decimal? @db.Decimal(10, 2)
+  unit             String?  // unit at time of event
+  notes            String?
+  related_plan_item_id String? // optional link to meal plan item
+  created_at       DateTime @default(now())
 
   pantry_item pantry_items @relation(fields: [pantry_item_id], references: [id], onDelete: Cascade)
   user        users        @relation(fields: [user_id], references: [id], onDelete: Cascade)
@@ -313,6 +326,7 @@ model pantry_item_events {
   @@index([pantry_item_id])
   @@index([user_id])
   @@index([created_at])
+  @@index([event_type])
 }
 
 // ============================================

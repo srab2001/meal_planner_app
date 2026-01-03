@@ -6,7 +6,7 @@ import './WorkoutDetail.css';
 /**
  * WorkoutDetail Component
  * Displays a single workout with all exercises and sets
- * Allows viewing, editing, and deleting workouts
+ * Allows viewing, editing, deleting, and LOGGING actual performance
  */
 function WorkoutDetail({ user, token }) {
   const navigate = useNavigate();
@@ -16,6 +16,15 @@ function WorkoutDetail({ user, token }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Logging state
+  const [isLogging, setIsLogging] = useState(false);
+  const [logDate, setLogDate] = useState(new Date().toISOString().split('T')[0]);
+  const [setLogs, setSetLogs] = useState({}); // { setId: { actual_reps, actual_weight, notes } }
+  const [savingLogs, setSavingLogs] = useState(false);
+  const [logHistory, setLogHistory] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -117,6 +126,133 @@ function WorkoutDetail({ user, token }) {
     return workout.workout_exercises.reduce((total, ex) => total + ex.sets.length, 0);
   };
 
+  // Initialize set logs with prescribed values
+  const initializeSetLogs = () => {
+    const logs = {};
+    if (workout && workout.workout_exercises) {
+      workout.workout_exercises.forEach(exercise => {
+        exercise.sets.forEach(set => {
+          logs[set.id] = {
+            actual_reps: set.reps || '',
+            actual_weight: set.weight || '',
+            notes: ''
+          };
+        });
+      });
+    }
+    setSetLogs(logs);
+  };
+
+  // Start logging mode
+  const startLogging = () => {
+    initializeSetLogs();
+    setIsLogging(true);
+  };
+
+  // Cancel logging mode
+  const cancelLogging = () => {
+    setIsLogging(false);
+    setSetLogs({});
+  };
+
+  // Handle changes to set log values
+  const handleSetLogChange = (setId, field, value) => {
+    setSetLogs(prev => ({
+      ...prev,
+      [setId]: {
+        ...prev[setId],
+        [field]: value
+      }
+    }));
+  };
+
+  // Save all logs to API
+  const handleSaveLogs = async () => {
+    try {
+      setSavingLogs(true);
+      setError(null);
+
+      const logPromises = Object.entries(setLogs).map(([setId, logData]) => {
+        // Only save if user entered actual values
+        if (logData.actual_reps || logData.actual_weight) {
+          return fetch(`${API_BASE}/api/fitness/sets/${setId}/log`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              completed_date: logDate,
+              actual_reps: logData.actual_reps ? parseInt(logData.actual_reps, 10) : null,
+              actual_weight: logData.actual_weight ? parseFloat(logData.actual_weight) : null,
+              notes: logData.notes || null
+            })
+          });
+        }
+        return null;
+      }).filter(Boolean);
+
+      const responses = await Promise.all(logPromises);
+
+      // Check for errors
+      for (const response of responses) {
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to save log');
+        }
+      }
+
+      alert(`Workout logged successfully for ${formatDate(logDate)}!`);
+      setIsLogging(false);
+      setSetLogs({});
+    } catch (err) {
+      console.error('Error saving logs:', err);
+      setError('Failed to save workout log: ' + err.message);
+    } finally {
+      setSavingLogs(false);
+    }
+  };
+
+  // Load log history for this workout
+  const loadLogHistory = async () => {
+    try {
+      setLoadingHistory(true);
+
+      const response = await fetch(`${API_BASE}/api/fitness/workouts/${id}/logs`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load log history');
+      }
+
+      const data = await response.json();
+      setLogHistory(data.logs || []);
+      setShowHistory(true);
+    } catch (err) {
+      console.error('Error loading log history:', err);
+      setError('Failed to load log history: ' + err.message);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  // Format log history by date
+  const groupLogsByDate = () => {
+    const grouped = {};
+    logHistory.forEach(log => {
+      const dateKey = log.completed_date?.split('T')[0] || 'Unknown';
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = [];
+      }
+      grouped[dateKey].push(log);
+    });
+    return grouped;
+  };
+
   if (loading) {
     return (
       <div className="workout-detail-loading">
@@ -149,18 +285,103 @@ function WorkoutDetail({ user, token }) {
           ← Back
         </button>
         <div className="header-actions">
-          <button onClick={handleEdit} className="edit-button">
-            Edit
-          </button>
-          <button
-            onClick={handleDelete}
-            className="delete-button"
-            disabled={deleting}
-          >
-            {deleting ? 'Deleting...' : 'Delete'}
-          </button>
+          {!isLogging && (
+            <>
+              <button onClick={startLogging} className="log-button">
+                Log Workout
+              </button>
+              <button
+                onClick={loadLogHistory}
+                className="history-button"
+                disabled={loadingHistory}
+              >
+                {loadingHistory ? 'Loading...' : 'View History'}
+              </button>
+              <button onClick={handleEdit} className="edit-button">
+                Edit
+              </button>
+              <button
+                onClick={handleDelete}
+                className="delete-button"
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </>
+          )}
+          {isLogging && (
+            <>
+              <button
+                onClick={handleSaveLogs}
+                className="save-log-button"
+                disabled={savingLogs}
+              >
+                {savingLogs ? 'Saving...' : 'Save Log'}
+              </button>
+              <button onClick={cancelLogging} className="cancel-button">
+                Cancel
+              </button>
+            </>
+          )}
         </div>
       </div>
+
+      {/* Logging Mode Banner */}
+      {isLogging && (
+        <div className="logging-banner">
+          <h3>Logging Workout Performance</h3>
+          <div className="log-date-picker">
+            <label htmlFor="logDate">Completion Date:</label>
+            <input
+              type="date"
+              id="logDate"
+              value={logDate}
+              onChange={(e) => setLogDate(e.target.value)}
+              className="date-input"
+            />
+          </div>
+          <p className="logging-hint">
+            Enter your actual reps and weights below. You can log this workout on different dates to track progress over time.
+          </p>
+        </div>
+      )}
+
+      {/* Log History Modal */}
+      {showHistory && (
+        <div className="log-history-modal">
+          <div className="log-history-content">
+            <div className="log-history-header">
+              <h3>Workout Log History</h3>
+              <button onClick={() => setShowHistory(false)} className="close-history-btn">
+                Close
+              </button>
+            </div>
+            {logHistory.length === 0 ? (
+              <p className="no-history">No logs recorded yet. Click "Log Workout" to record your first session!</p>
+            ) : (
+              <div className="log-history-list">
+                {Object.entries(groupLogsByDate()).sort((a, b) => new Date(b[0]) - new Date(a[0])).map(([date, logs]) => (
+                  <div key={date} className="log-date-group">
+                    <h4 className="log-date-header">{formatDate(date)}</h4>
+                    <div className="log-entries">
+                      {logs.map(log => (
+                        <div key={log.id} className="log-entry">
+                          <span className="log-exercise">{log.exercise_name || 'Unknown'}</span>
+                          <span className="log-set">Set {log.set_number || '?'}</span>
+                          <span className="log-performance">
+                            {log.actual_reps || '-'} reps @ {log.actual_weight ? `${log.actual_weight} lbs` : '-'}
+                          </span>
+                          {log.notes && <span className="log-notes">{log.notes}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Workout Info */}
       <div className="workout-info-card">
@@ -214,21 +435,62 @@ function WorkoutDetail({ user, token }) {
 
                 {/* Sets Table */}
                 <div className="sets-table">
-                  <div className="sets-table-header">
+                  <div className={`sets-table-header ${isLogging ? 'logging-mode' : ''}`}>
                     <span className="set-col">Set</span>
-                    <span className="reps-col">Reps</span>
-                    <span className="weight-col">Weight</span>
+                    <span className="reps-col">{isLogging ? 'Prescribed' : 'Reps'}</span>
+                    <span className="weight-col">{isLogging ? 'Prescribed' : 'Weight'}</span>
+                    {isLogging && (
+                      <>
+                        <span className="actual-reps-col">Actual Reps</span>
+                        <span className="actual-weight-col">Actual Weight</span>
+                        <span className="notes-col">Notes</span>
+                      </>
+                    )}
                   </div>
 
                   {exercise.sets
                     .sort((a, b) => a.set_number - b.set_number)
                     .map((set) => (
-                      <div key={set.id} className="set-row">
+                      <div key={set.id} className={`set-row ${isLogging ? 'logging-mode' : ''}`}>
                         <span className="set-col">{set.set_number}</span>
                         <span className="reps-col">{set.reps || '-'}</span>
                         <span className="weight-col">
                           {set.weight ? `${set.weight} lbs` : '-'}
                         </span>
+                        {isLogging && (
+                          <>
+                            <span className="actual-reps-col">
+                              <input
+                                type="number"
+                                min="0"
+                                placeholder="Reps"
+                                value={setLogs[set.id]?.actual_reps || ''}
+                                onChange={(e) => handleSetLogChange(set.id, 'actual_reps', e.target.value)}
+                                className="log-input"
+                              />
+                            </span>
+                            <span className="actual-weight-col">
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.5"
+                                placeholder="lbs"
+                                value={setLogs[set.id]?.actual_weight || ''}
+                                onChange={(e) => handleSetLogChange(set.id, 'actual_weight', e.target.value)}
+                                className="log-input"
+                              />
+                            </span>
+                            <span className="notes-col">
+                              <input
+                                type="text"
+                                placeholder="Notes..."
+                                value={setLogs[set.id]?.notes || ''}
+                                onChange={(e) => handleSetLogChange(set.id, 'notes', e.target.value)}
+                                className="log-input notes-input"
+                              />
+                            </span>
+                          </>
+                        )}
                       </div>
                     ))}
 
@@ -264,3 +526,4 @@ function WorkoutDetail({ user, token }) {
 }
 
 export default WorkoutDetail;
+// Build trigger 1767140167

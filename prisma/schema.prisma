@@ -352,6 +352,8 @@ model users {
   fitness_profiles      fitness_profiles?      @relation("fitness_profiles")
   fitness_workouts      fitness_workouts[]     @relation("fitness_workouts")
   fitness_goals         fitness_goals[]        @relation("fitness_goals")
+  workout_templates     workout_templates[]    @relation("workout_templates")
+  workout_sessions      workout_sessions[]     @relation("workout_sessions")
 
   @@index([email], map: "idx_users_email")
   @@index([google_id], map: "idx_users_google_id")
@@ -478,4 +480,153 @@ model admin_interview_questions {
   @@index([is_active], map: "idx_admin_questions_active")
   @@index([order_position], map: "idx_admin_questions_position")
   @@index([plan_type], map: "idx_admin_questions_plan_type")
+}
+
+// ============================================================================
+// PANTRY MODELS
+// ============================================================================
+
+/// Pantries - one per household for food inventory tracking
+model pantries {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  household_id String   @unique @db.Uuid
+  name         String   @default("Main Pantry") @db.VarChar(100)
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime @default(now()) @db.Timestamptz(6)
+
+  items  pantry_items[]
+  events pantry_events[]
+
+  @@index([household_id], map: "idx_pantries_household")
+}
+
+/// Pantry items - food inventory with expiration tracking
+model pantry_items {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pantry_id       String    @db.Uuid
+  name            String    @db.VarChar(200)
+  brand           String?   @db.VarChar(100)
+  category        String    @default("pantry") @db.VarChar(50) // produce, dairy, meat, pantry, frozen, beverages, other
+  quantity        Decimal   @default(1) @db.Decimal(10, 2)
+  unit            String    @default("count") @db.VarChar(20) // count, lbs, oz, kg, g, L, mL, cups
+  purchase_date   DateTime? @db.Date
+  expiration_date DateTime? @db.Date
+  status          String    @default("active") @db.VarChar(20) // active, low, expired, consumed, wasted
+  notes           String?   @db.Text
+  barcode         String?   @db.VarChar(50)
+  created_by      String?   @db.Uuid
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime  @default(now()) @db.Timestamptz(6)
+
+  pantry pantries @relation(fields: [pantry_id], references: [id], onDelete: Cascade)
+  events pantry_events[]
+
+  @@index([pantry_id], map: "idx_pantry_items_pantry")
+  @@index([expiration_date], map: "idx_pantry_items_expiration")
+  @@index([category], map: "idx_pantry_items_category")
+  @@index([status], map: "idx_pantry_items_status")
+}
+
+/// Pantry events - consumption, waste, and adjustment tracking
+model pantry_events {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pantry_id       String   @db.Uuid
+  item_id         String?  @db.Uuid
+  item_name       String   @db.VarChar(200) // Store name for history even if item deleted
+  event_type      String   @db.VarChar(20) // consumed, wasted, adjusted, added, removed
+  quantity_change Decimal  @db.Decimal(10, 2) // negative for consumed/wasted, positive for added
+  unit            String?  @db.VarChar(20)
+  reason          String?  @db.Text // For waste: expired, spoiled, damaged, other
+  notes           String?  @db.Text
+  created_by      String?  @db.Uuid
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  pantry pantries      @relation(fields: [pantry_id], references: [id], onDelete: Cascade)
+  item   pantry_items? @relation(fields: [item_id], references: [id], onDelete: SetNull)
+
+  @@index([pantry_id], map: "idx_pantry_events_pantry")
+  @@index([item_id], map: "idx_pantry_events_item")
+  @@index([event_type], map: "idx_pantry_events_type")
+  @@index([created_at(sort: Desc)], map: "idx_pantry_events_created")
+}
+
+// ============================================================================
+// WORKOUT TRACKING MODULE - Saved Workouts + Calendar + Checkoff
+// ============================================================================
+
+/// Workout Templates - Saved workout plans that can be reused
+model workout_templates {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String   @db.Uuid
+  name        String   @db.VarChar(200)
+  notes       String?  @db.Text
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  users     users                        @relation("workout_templates", fields: [user_id], references: [id], onDelete: Cascade)
+  exercises workout_template_exercises[]
+  sessions  workout_sessions[]
+
+  @@index([user_id], map: "idx_workout_templates_user")
+}
+
+/// Workout Template Exercises - Exercises within a template
+model workout_template_exercises {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workout_template_id  String   @db.Uuid
+  sort_order           Int      @default(0)
+  name                 String   @db.VarChar(200)
+  prescription_type    String   @default("reps") @db.VarChar(20) // "reps" | "time"
+  sets                 Int?     // for reps-based exercises
+  reps                 Int?     // for reps-based exercises
+  seconds              Int?     // for time-based exercises
+  rest_seconds         Int?     // rest between sets
+  created_at           DateTime @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime @default(now()) @db.Timestamptz(6)
+
+  template          workout_templates           @relation(fields: [workout_template_id], references: [id], onDelete: Cascade)
+  session_exercises workout_session_exercises[]
+
+  @@index([workout_template_id], map: "idx_workout_template_exercises_template")
+}
+
+/// Workout Sessions - One run of a workout template
+model workout_sessions {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id              String    @db.Uuid
+  workout_template_id  String    @db.Uuid
+  status               String    @default("not_started") @db.VarChar(20) // "not_started" | "in_progress" | "finished"
+  started_at           DateTime? @db.Timestamptz(6)
+  finished_at          DateTime? @db.Timestamptz(6)
+  completion_percent   Int       @default(0)
+  day_note             String?   @db.Text
+  created_at           DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime  @default(now()) @db.Timestamptz(6)
+
+  users     users                       @relation("workout_sessions", fields: [user_id], references: [id], onDelete: Cascade)
+  template  workout_templates           @relation(fields: [workout_template_id], references: [id], onDelete: Cascade)
+  exercises workout_session_exercises[]
+
+  @@index([user_id, finished_at], map: "idx_workout_sessions_user_finished")
+  @@index([user_id, status], map: "idx_workout_sessions_user_status")
+}
+
+/// Workout Session Exercises - Completion tracking per exercise in a session
+model workout_session_exercises {
+  id                           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workout_session_id           String    @db.Uuid
+  workout_template_exercise_id String    @db.Uuid
+  name_snapshot                String    @db.VarChar(200) // copy of name at session creation
+  sort_order_snapshot          Int       @default(0)
+  prescription_snapshot        Json      // { sets, reps, seconds, rest_seconds, prescription_type }
+  is_completed                 Boolean   @default(false)
+  completed_at                 DateTime? @db.Timestamptz(6)
+  notes                        String?   @db.Text
+  created_at                   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at                   DateTime  @default(now()) @db.Timestamptz(6)
+
+  session           workout_sessions            @relation(fields: [workout_session_id], references: [id], onDelete: Cascade)
+  template_exercise workout_template_exercises  @relation(fields: [workout_template_exercise_id], references: [id], onDelete: Cascade)
+
+  @@index([workout_session_id], map: "idx_workout_session_exercises_session")
 }

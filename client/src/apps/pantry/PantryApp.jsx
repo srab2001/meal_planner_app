@@ -1,159 +1,366 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './PantryApp.css';
+
+// Modals
+import AddItemModal from './modals/AddItemModal';
+import ConsumeModal from './modals/ConsumeModal';
+import WasteModal from './modals/WasteModal';
+import AdjustModal from './modals/AdjustModal';
+import ScanPhotoModal from './modals/ScanPhotoModal';
 
 const API_BASE = process.env.REACT_APP_API_URL || 'https://meal-planner-app-mve2.onrender.com';
 
 export default function PantryApp({ user, onBack }) {
+  // State
   const [items, setItems] = useState([]);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('all');
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [itemForm, setItemForm] = useState({ name: '', category: 'pantry', quantity: 1, unit: 'count', expiration_date: '' });
+  const [error, setError] = useState(null);
 
+  // Filters
+  const [view, setView] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Modals
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showScanModal, setShowScanModal] = useState(false);
+  const [consumeItem, setConsumeItem] = useState(null);
+  const [wasteItem, setWasteItem] = useState(null);
+  const [adjustItem, setAdjustItem] = useState(null);
+
+  // Auth
   const token = localStorage.getItem('auth_token');
   const householdId = localStorage.getItem('active_household_id');
-  const canEdit = ['owner', 'admin', 'member'].includes(user?.householdRole || 'member');
+  const membershipRole = user?.householdRole || 'member';
+  const canEdit = ['owner', 'admin', 'member'].includes(membershipRole);
 
-  useEffect(() => { fetchPantryData(); }, []);
-
-  const fetchPantryData = async () => {
-    try {
-      const [itemsRes, eventsRes] = await Promise.all([
-        fetch(`${API_BASE}/api/core/pantry/items?household_id=${householdId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`${API_BASE}/api/core/pantry/events?household_id=${householdId}&limit=20`, { headers: { 'Authorization': `Bearer ${token}` } })
-      ]);
-      if (itemsRes.ok) setItems((await itemsRes.json()).items || []);
-      if (eventsRes.ok) setEvents((await eventsRes.json()).events || []);
-    } catch (err) {
-      console.error('Error fetching pantry:', err);
-    } finally {
-      setLoading(false);
+  // Fetch items with server-side filtering
+  const fetchItems = useCallback(async () => {
+    if (!householdId) {
+      setError('No household selected. Please set up or join a household first.');
+      return;
     }
-  };
-
-  const handleAddItem = async (e) => {
-    e.preventDefault();
     try {
-      const response = await fetch(`${API_BASE}/api/core/pantry/items`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'X-Household-ID': householdId },
-        body: JSON.stringify(itemForm)
+      const params = new URLSearchParams({ household_id: householdId });
+      if (view !== 'all') params.append('view', view);
+      if (searchTerm) params.append('search', searchTerm);
+
+      const res = await fetch(`${API_BASE}/api/core/pantry/items?${params}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (response.ok) {
-        const data = await response.json();
-        setItems([data.item, ...items]);
-        setItemForm({ name: '', category: 'pantry', quantity: 1, unit: 'count', expiration_date: '' });
-        setShowAddForm(false);
-        fetchPantryData();
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to fetch items');
+      }
+
+      const data = await res.json();
+      setItems(data.items || []);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching pantry items:', err);
+      setError(err.message || 'NetworkError when attempting to fetch resource.');
+    }
+  }, [token, householdId, view, searchTerm]);
+
+  // Fetch events
+  const fetchEvents = useCallback(async () => {
+    if (!householdId) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/core/pantry/events?household_id=${householdId}&limit=10`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setEvents(data.events || []);
       }
     } catch (err) {
-      alert('Error adding item');
+      console.error('Error fetching events:', err);
     }
+  }, [token, householdId]);
+
+  // Initial load and refresh on filter change
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      await Promise.all([fetchItems(), fetchEvents()]);
+      setLoading(false);
+    };
+    loadData();
+  }, [fetchItems, fetchEvents]);
+
+  // Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchItems();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm, fetchItems]);
+
+  // Optimistic update helper
+  const updateItemOptimistic = (itemId, updates) => {
+    setItems(prev => prev.map(item =>
+      item.id === itemId ? { ...item, ...updates } : item
+    ));
   };
 
-  const handleEvent = async (itemId, eventType, quantity = 1) => {
-    try {
-      const response = await fetch(`${API_BASE}/api/core/pantry/items/${itemId}/events`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'X-Household-ID': householdId },
-        body: JSON.stringify({ event_type: eventType, quantity_change: -Math.abs(quantity) })
-      });
-      if (response.ok) fetchPantryData();
-    } catch (err) {
-      alert('Error recording event');
-    }
+  // Handle successful modal actions
+  const handleAddSuccess = (newItem) => {
+    setItems(prev => [newItem, ...prev]);
+    setShowAddModal(false);
+    fetchEvents();
   };
 
-  const getExpiringItems = (days) => {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() + days);
-    return items.filter(i => i.expiration_date && new Date(i.expiration_date) <= cutoff && i.status !== 'expired');
+  const handleConsumeSuccess = (updatedItem) => {
+    updateItemOptimistic(updatedItem.id, updatedItem);
+    setConsumeItem(null);
+    fetchEvents();
   };
 
-  const filteredItems = activeTab === 'all' ? items :
-    activeTab === '3days' ? getExpiringItems(3) :
-    activeTab === '7days' ? getExpiringItems(7) :
-    activeTab === '14days' ? getExpiringItems(14) : items;
+  const handleWasteSuccess = (updatedItem) => {
+    updateItemOptimistic(updatedItem.id, updatedItem);
+    setWasteItem(null);
+    fetchEvents();
+  };
 
-  if (loading) return <div className="pantry-app loading"><div className="spinner"></div></div>;
+  const handleAdjustSuccess = (updatedItem) => {
+    updateItemOptimistic(updatedItem.id, updatedItem);
+    setAdjustItem(null);
+    fetchEvents();
+  };
+
+  const handleScanSuccess = (addedItems) => {
+    // Refresh the items list to show newly added items
+    fetchItems();
+    fetchEvents();
+    setShowScanModal(false);
+  };
+
+  // Format date for display
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '-';
+    return new Date(dateStr).toLocaleDateString();
+  };
+
+  // Get expiration status class
+  const getExpiryClass = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const threeDays = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+
+    if (date < now) return 'expired';
+    if (date <= threeDays) return 'expiring-soon';
+    return '';
+  };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="pantry-app loading">
+        <div className="spinner"></div>
+        <p>Loading pantry...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="pantry-app">
+      {/* Header */}
       <header className="pantry-header">
         <button className="btn-back" onClick={onBack}>← Back</button>
-        <h1>🥫 Pantry</h1>
-        {canEdit && <button className="btn-add" onClick={() => setShowAddForm(!showAddForm)}>+ Add Item</button>}
+        <h1>Pantry</h1>
       </header>
 
-      <nav className="pantry-tabs">
-        {[
-          { id: 'all', label: 'All Items', count: items.length },
-          { id: '3days', label: '3 Days', count: getExpiringItems(3).length },
-          { id: '7days', label: '7 Days', count: getExpiringItems(7).length },
-          { id: '14days', label: '14 Days', count: getExpiringItems(14).length },
-          { id: 'events', label: 'Recent', count: events.length }
-        ].map(tab => (
-          <button key={tab.id} className={activeTab === tab.id ? 'active' : ''} onClick={() => setActiveTab(tab.id)}>
-            {tab.label} {tab.count > 0 && <span className="badge">{tab.count}</span>}
-          </button>
-        ))}
-      </nav>
-
-      {showAddForm && canEdit && (
-        <form className="add-form" onSubmit={handleAddItem}>
-          <input placeholder="Item name" value={itemForm.name} onChange={e => setItemForm({...itemForm, name: e.target.value})} required />
-          <select value={itemForm.category} onChange={e => setItemForm({...itemForm, category: e.target.value})}>
-            {['produce', 'dairy', 'meat', 'pantry', 'frozen', 'beverages', 'other'].map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <input type="number" min="0.1" step="0.1" value={itemForm.quantity} onChange={e => setItemForm({...itemForm, quantity: parseFloat(e.target.value)})} />
-          <select value={itemForm.unit} onChange={e => setItemForm({...itemForm, unit: e.target.value})}>
-            {['count', 'lbs', 'oz', 'kg', 'g', 'L', 'mL', 'cups'].map(u => <option key={u} value={u}>{u}</option>)}
-          </select>
-          <input type="date" value={itemForm.expiration_date} onChange={e => setItemForm({...itemForm, expiration_date: e.target.value})} />
-          <button type="submit">Add</button>
-        </form>
-      )}
-
-      <main className="pantry-content">
-        {activeTab !== 'events' ? (
-          <div className="items-grid">
-            {filteredItems.map(item => (
-              <div key={item.id} className={`item-card category-${item.category} ${item.status}`}>
-                <div className="item-header">
-                  <span className="category">{item.category}</span>
-                  {item.expiration_date && (
-                    <span className={`expiry ${new Date(item.expiration_date) < new Date() ? 'expired' : new Date(item.expiration_date) < new Date(Date.now() + 3*24*60*60*1000) ? 'soon' : ''}`}>
-                      {new Date(item.expiration_date).toLocaleDateString()}
-                    </span>
-                  )}
-                </div>
-                <h3>{item.name}</h3>
-                <p className="quantity">{item.quantity} {item.unit}</p>
-                {canEdit && (
-                  <div className="item-actions">
-                    <button onClick={() => handleEvent(item.id, 'consumed', 1)} title="Use 1">Use</button>
-                    <button onClick={() => handleEvent(item.id, 'wasted', item.quantity)} title="Mark as waste">Waste</button>
-                  </div>
-                )}
-              </div>
-            ))}
-            {filteredItems.length === 0 && <p className="empty">No items</p>}
-          </div>
-        ) : (
-          <div className="events-list">
-            {events.map(e => (
-              <div key={e.id} className={`event-card type-${e.event_type}`}>
-                <span className="event-type">{e.event_type}</span>
-                <span className="event-item">{e.item_name}</span>
-                <span className="event-qty">{e.quantity_change > 0 ? '+' : ''}{e.quantity_change}</span>
-                <span className="event-time">{new Date(e.created_at).toLocaleString()}</span>
-              </div>
-            ))}
-            {events.length === 0 && <p className="empty">No recent events</p>}
+      {/* Toolbar */}
+      <div className="pantry-toolbar">
+        {canEdit && (
+          <div className="toolbar-buttons">
+            <button className="btn-primary" onClick={() => setShowAddModal(true)}>
+              + Add Item
+            </button>
+            <button className="btn-scan" onClick={() => setShowScanModal(true)}>
+              📷 Scan Photo
+            </button>
           </div>
         )}
-      </main>
+
+        <div className="view-selector">
+          {[
+            { value: 'all', label: 'All' },
+            { value: 'exp3', label: 'Expiring 3 days' },
+            { value: 'exp7', label: 'Expiring 7 days' },
+            { value: 'exp14', label: 'Expiring 14 days' }
+          ].map(opt => (
+            <button
+              key={opt.value}
+              className={view === opt.value ? 'active' : ''}
+              onClick={() => setView(opt.value)}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        <input
+          type="text"
+          className="search-input"
+          placeholder="Search items..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+
+      {/* Error display */}
+      {error && (
+        <div className="error-banner">
+          {error}
+          <button onClick={() => fetchItems()}>Retry</button>
+        </div>
+      )}
+
+      {/* Main content */}
+      <div className="pantry-main">
+        {/* Items table */}
+        <div className="items-section">
+          <table className="items-table">
+            <thead>
+              <tr>
+                <th>Item Name</th>
+                <th>Brand</th>
+                <th>Quantity</th>
+                <th>Unit</th>
+                <th>Purchase Date</th>
+                <th>Expiration Date</th>
+                {canEdit && <th>Actions</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {items.length === 0 ? (
+                <tr>
+                  <td colSpan={canEdit ? 7 : 6} className="empty-row">
+                    No items found
+                  </td>
+                </tr>
+              ) : (
+                items.map(item => (
+                  <tr key={item.id} className={item.status === 'low' ? 'low-stock' : ''}>
+                    <td className="item-name">{item.itemName}</td>
+                    <td>{item.brand || '-'}</td>
+                    <td className="quantity">{item.quantity}</td>
+                    <td>{item.unit || '-'}</td>
+                    <td>{formatDate(item.purchaseDate)}</td>
+                    <td className={getExpiryClass(item.expirationDate)}>
+                      {formatDate(item.expirationDate)}
+                    </td>
+                    {canEdit && (
+                      <td className="actions">
+                        <button
+                          className="btn-action consume"
+                          onClick={() => setConsumeItem(item)}
+                          title="Consume"
+                        >
+                          Use
+                        </button>
+                        <button
+                          className="btn-action waste"
+                          onClick={() => setWasteItem(item)}
+                          title="Mark as waste"
+                        >
+                          Waste
+                        </button>
+                        <button
+                          className="btn-action adjust"
+                          onClick={() => setAdjustItem(item)}
+                          title="Adjust quantity"
+                        >
+                          Adjust
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Events panel */}
+        <div className="events-section">
+          <h2>Recent Events</h2>
+          <div className="events-list">
+            {events.length === 0 ? (
+              <p className="empty">No recent events</p>
+            ) : (
+              events.map(event => (
+                <div key={event.id} className={`event-item type-${event.eventType}`}>
+                  <span className="event-type">{event.eventType}</span>
+                  <span className="event-name">{event.itemName}</span>
+                  <span className="event-qty">
+                    {event.quantityChange > 0 ? '+' : ''}{event.quantityChange}
+                  </span>
+                  <span className="event-time">
+                    {new Date(event.createdAt).toLocaleString()}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Modals */}
+      {showAddModal && (
+        <AddItemModal
+          onClose={() => setShowAddModal(false)}
+          onSuccess={handleAddSuccess}
+          apiBase={API_BASE}
+          token={token}
+          householdId={householdId}
+        />
+      )}
+
+      {consumeItem && (
+        <ConsumeModal
+          item={consumeItem}
+          onClose={() => setConsumeItem(null)}
+          onSuccess={handleConsumeSuccess}
+          apiBase={API_BASE}
+          token={token}
+          householdId={householdId}
+        />
+      )}
+
+      {wasteItem && (
+        <WasteModal
+          item={wasteItem}
+          onClose={() => setWasteItem(null)}
+          onSuccess={handleWasteSuccess}
+          apiBase={API_BASE}
+          token={token}
+          householdId={householdId}
+        />
+      )}
+
+      {adjustItem && (
+        <AdjustModal
+          item={adjustItem}
+          onClose={() => setAdjustItem(null)}
+          onSuccess={handleAdjustSuccess}
+          apiBase={API_BASE}
+          token={token}
+          householdId={householdId}
+        />
+      )}
+
+      {showScanModal && (
+        <ScanPhotoModal
+          householdId={householdId}
+          onClose={() => setShowScanModal(false)}
+          onItemsIdentified={handleScanSuccess}
+        />
+      )}
     </div>
   );
 }

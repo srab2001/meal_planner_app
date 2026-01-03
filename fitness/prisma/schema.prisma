@@ -4,7 +4,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "./generated/client"
 }
 
 datasource db {
@@ -29,16 +28,24 @@ model fitness_profiles {
 
 /// Fitness goals - weight loss, muscle gain, endurance
 model fitness_goals {
-  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id      String    @db.Uuid
-  goal_type    String    // "weight_loss", "muscle_gain", "endurance"
-  target_value Decimal?  @db.Decimal(8, 2)
-  unit         String?   // "lbs", "kg", "minutes", "reps"
-  start_date   DateTime? @db.Date
-  target_date  DateTime? @db.Date
-  status       String    @default("active") // "active", "completed", "abandoned"
-  created_at   DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime  @default(now()) @db.Timestamptz(6)
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id         String    @db.Uuid
+  goal_type       String    // "weight_loss", "muscle_gain", "endurance"
+  target_value    Decimal?  @db.Decimal(8, 2)
+  unit            String?   // "lbs", "kg", "minutes", "reps"
+  start_date      DateTime? @db.Date
+  target_date     DateTime? @db.Date
+  status          String    @default("active") // "active", "completed", "abandoned", "draft"
+
+  // Goal Builder Fields
+  plan_data       Json?     // Store all answers and AI output
+  plan_type       String?   // Plan type
+  comar_validated Boolean   @default(false)  // Has passed validation
+  validated_at    DateTime? @db.Timestamptz(6)
+  ai_output       Json?     // AI-generated plan based on answers
+
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime  @default(now()) @db.Timestamptz(6)
 
   @@index([user_id], map: "idx_fitness_goals_user_id")
   @@index([status], map: "idx_fitness_goals_status")
@@ -94,8 +101,25 @@ model fitness_workout_sets {
   duration_seconds Int?
   created_at      DateTime @default(now()) @db.Timestamptz(6)
   exercise        fitness_workout_exercises @relation(fields: [exercise_id], references: [id], onDelete: Cascade)
+  logs            fitness_set_logs[]
 
   @@index([exercise_id], map: "idx_fitness_workout_sets_exercise_id")
+}
+
+/// Set completion logs - record actual performance on different dates
+/// Allows users to log the same workout template on multiple dates
+model fitness_set_logs {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  set_id          String    @db.Uuid
+  completed_date  DateTime  @db.Date    // Date the set was completed
+  actual_reps     Int?                  // Actual reps performed
+  actual_weight   Decimal?  @db.Decimal(8, 2) // Actual weight used
+  notes           String?               // Optional notes (e.g., "felt easy", "struggled")
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  set             fitness_workout_sets @relation(fields: [set_id], references: [id], onDelete: Cascade)
+
+  @@index([set_id], map: "idx_fitness_set_logs_set_id")
+  @@index([completed_date], map: "idx_fitness_set_logs_date")
 }
 
 /// Exercise library - predefined exercises with metadata

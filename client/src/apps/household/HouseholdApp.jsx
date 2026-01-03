@@ -127,7 +127,7 @@ export default function HouseholdApp({ user, onBack, onLogout }) {
   };
 
   const handleRevokeInvite = async (inviteId) => {
-    if (!confirm('Revoke this invite?')) return;
+    if (!window.confirm('Revoke this invite?')) return;
 
     try {
       const response = await fetch(
@@ -183,7 +183,7 @@ export default function HouseholdApp({ user, onBack, onLogout }) {
   };
 
   const handleRemoveMember = async (memberId, memberEmail) => {
-    if (!confirm(`Remove ${memberEmail} from this household?`)) return;
+    if (!window.confirm(`Remove ${memberEmail} from this household?`)) return;
 
     try {
       const response = await fetch(

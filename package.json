@@ -7,10 +7,11 @@
     "schema": "prisma/schema.prisma"
   },
   "scripts": {
-    "prestart": "node scripts/run-migrations.js",
+    "prestart": "node scripts/run-migrations.js && npx prisma db push --schema prisma/core/schema.prisma --skip-generate",
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "postinstall": "npx prisma generate --schema prisma/schema.prisma",
+    "postinstall": "npx prisma generate --schema prisma/schema.prisma && npx prisma generate --schema prisma/core/schema.prisma",
+    "db:push:core": "npx prisma db push --schema prisma/core/schema.prisma --accept-data-loss",
     "test": "echo 'Running tests...' && node --test || echo 'No tests defined yet'",
     "test:watch": "nodemon --exec npm test",
     "update-key": "node update-openai-key.js",

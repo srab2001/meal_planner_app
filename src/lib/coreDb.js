@@ -5,7 +5,8 @@
  * Uses Neon PostgreSQL (core_db_next).
  */
 
-const { PrismaClient } = require('@prisma/client');
+// Import from the CORE DB specific Prisma client output location
+const { PrismaClient } = require('../../prisma/generated/core-client');
 
 // Singleton instance
 let coreDbInstance = null;
@@ -16,10 +17,20 @@ let coreDbInstance = null;
  */
 function getCoreDb() {
   if (!coreDbInstance) {
+    const coreDbUrl = process.env.CORE_DATABASE_URL;
+
+    if (!coreDbUrl) {
+      throw new Error(
+        'CORE_DATABASE_URL environment variable is not set. ' +
+        'Please add it to your Render environment variables. ' +
+        'See .env.example for configuration details.'
+      );
+    }
+
     coreDbInstance = new PrismaClient({
       datasources: {
         db: {
-          url: process.env.CORE_DATABASE_URL
+          url: coreDbUrl
         }
       },
       log: process.env.NODE_ENV === 'development'

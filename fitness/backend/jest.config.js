@@ -11,7 +11,7 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/__tests__/setup.js'],
   testTimeout: 10000,
   moduleNameMapper: {
-    '^../prisma/generated/client$': '<rootDir>/__tests__/__mocks__/prismaClient.js',
+    '^@prisma/client$': '<rootDir>/__tests__/__mocks__/prismaClient.js',
     '^twilio$': '<rootDir>/__tests__/__mocks__/twilio.js'
   }
 };

@@ -30,6 +30,15 @@ const adminRoutes = require('./routes/admin');
 // Import CORE DB routes
 const coreRoutes = require('./routes/core');
 
+// Import Pantry routes
+const pantryRoutes = require('./routes/pantry');
+
+// Import Household routes
+const householdRoutes = require('./routes/household');
+
+// Import Workout Tracking routes
+const workoutTrackingRoutes = require('./routes/workout-tracking');
+
 // ============================================================================
 // RUN MIGRATIONS FIRST - BEFORE ANY EXPRESS SETUP
 // ============================================================================
@@ -114,6 +123,26 @@ async function runMigrationsSync() {
       console.error('[FITNESS] ⚠️  Fitness migrations failed (non-fatal):', fitError.message);
       console.log('[FITNESS] ℹ️  This may be expected if fitness migrations were already applied');
       console.log('[FITNESS] ℹ️  Server will continue starting...');
+    }
+
+    // Push CORE DB schema (households, pantry, users, roles)
+    console.log('[CORE DB] 🏠 Pushing CORE database schema...');
+    if (!process.env.CORE_DATABASE_URL) {
+      console.error('[CORE DB] ⚠️  CORE_DATABASE_URL not set - skipping CORE schema push');
+      console.log('[CORE DB] ℹ️  Household and Pantry features will not work without CORE DB');
+    } else {
+      try {
+        const { execSync } = require('child_process');
+        execSync('npx prisma db push --schema prisma/core/schema.prisma --skip-generate --accept-data-loss', {
+          stdio: 'inherit',
+          env: { ...process.env }
+        });
+        console.log('[CORE DB] ✅ CORE schema pushed successfully');
+      } catch (coreError) {
+        console.error('[CORE DB] ⚠️  CORE schema push failed (non-fatal):', coreError.message);
+        console.log('[CORE DB] ℹ️  This may be expected if schema was already applied');
+        console.log('[CORE DB] ℹ️  Server will continue starting...');
+      }
     }
 
     return true;
@@ -214,7 +243,7 @@ const allowedOrigins = [
   'https://meal-planner-rjyhqof89-stus-projects-458dd35a.vercel.app',  // Vercel preview
   'https://meal-planner.vercel.app',  // Production Vercel URL
   'https://meal-planner-gold-one.vercel.app',  // Current production URL
-  // Add your production Vercel URL here when deployed
+  'https://meal-planner-app-8hnw.vercel.app',  // Fitness frontend
 ].filter(Boolean); // Remove undefined values
 
 console.log('Allowed CORS origins:', allowedOrigins);
@@ -242,7 +271,8 @@ app.use(
   })
 );
 
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Rate Limiting - Prevent DoS attacks and API abuse
 // General rate limiter for all requests
@@ -625,6 +655,21 @@ app.use('/api/admin', requireAuth, adminRoutes);
 // ============================================================================
 // Core routes have their own auth handling for demo support
 app.use('/api/core', coreRoutes);
+
+// ============================================================================
+// MOUNT PANTRY ROUTES
+// ============================================================================
+app.use('/api/core/pantry', requireAuth, pantryRoutes);
+
+// ============================================================================
+// MOUNT HOUSEHOLD ROUTES
+// ============================================================================
+app.use('/api/core/household', requireAuth, householdRoutes);
+
+// ============================================================================
+// MOUNT WORKOUT TRACKING ROUTES
+// ============================================================================
+app.use('/api/workouts', workoutTrackingRoutes);
 
 // ============================================================================
 // FITNESS INTERVIEW ROUTES

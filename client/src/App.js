@@ -13,6 +13,7 @@ import Profile from './components/Profile';
 import Admin from './components/Admin';
 import MealOfTheDay from './components/MealOfTheDay';
 import RecipeCard from './components/RecipeCard';
+import WorkoutCheckOff from './components/WorkoutCheckOff';
 
 // Nutrition Module
 import { NutritionApp } from './modules/nutrition';
@@ -31,6 +32,12 @@ import { FitnessApp } from './modules/fitness';
 
 // Local Store Finder Module
 import { LocalStoreFinderApp } from './modules/local-store-finder';
+
+// Pantry App
+import PantryApp from './apps/pantry/PantryApp';
+
+// Household Setup
+import { HouseholdSetup } from './apps/household';
 
 // Admin Module (AI Coach question management)
 import { AdminCoachPanel, AdminSwitchboard, UsersAdmin } from './modules/admin';
@@ -61,6 +68,7 @@ function App() {
   const [selectedStores, setSelectedStores] = useState({ primaryStore: null, comparisonStore: null });
   const [preferences, setPreferences] = useState(null);
   const [mealPlan, setMealPlan] = useState(null);
+  const [checkoffToken, setCheckoffToken] = useState(null);
 
   // Helper for authenticated API calls with 401 handling
   const fetchWithAuth = async (url, options = {}) => {
@@ -86,7 +94,7 @@ function App() {
   };
 
   // Fitness app URL for SSO redirect
-  const FITNESS_APP_URL = 'https://frontend-six-topaz-27.vercel.app';
+  const FITNESS_APP_URL = 'https://meal-planner-app-8hnw.vercel.app';
 
   // Handler: Login - MUST be defined before useEffect that calls it
   const handleLogin = (userData) => {
@@ -94,12 +102,11 @@ function App() {
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
 
-    // Check if user came from fitness app (returnTo=fitness in URL)
-    const urlParams = new URLSearchParams(window.location.search);
-    const returnTo = urlParams.get('returnTo');
+    // Check if user came from fitness app (returnTo stored during OAuth)
+    const returnTo = localStorage.getItem('sso_return_to');
     if (returnTo === 'fitness') {
-      // Clean up URL
-      window.history.replaceState(null, '', window.location.pathname);
+      // Clear the stored returnTo so it doesn't persist
+      localStorage.removeItem('sso_return_to');
       // Redirect to fitness app with auth token
       const token = localStorage.getItem('auth_token');
       const userStr = localStorage.getItem('user');
@@ -109,6 +116,8 @@ function App() {
         return;
       }
     }
+    // Clear any stale returnTo value
+    localStorage.removeItem('sso_return_to');
 
     // Check if there's a redirect stored (user was trying to access specific app)
     const redirectTo = localStorage.getItem('redirect_after_login');
@@ -147,6 +156,17 @@ function App() {
       return;
     }
 
+    // Check if accessing workout check-off (public route - skip splash)
+    if (window.location.pathname.startsWith('/workout/check-off/')) {
+      const token = window.location.pathname.split('/workout/check-off/')[1];
+      if (token) {
+        setCheckoffToken(token);
+        setShowSplash(false);
+        setCurrentView('workout-checkoff');
+        return;
+      }
+    }
+
     // Check for add_meal query parameter (from meal of the day CTA)
     const urlParams = new URLSearchParams(window.location.search);
     const mealToAdd = urlParams.get('add_meal');
@@ -165,7 +185,7 @@ function App() {
       const token = hash.split('token=')[1].split('&')[0];
       console.log('Token received from OAuth redirect');
       setToken(token);
-      
+
       // Extract redirect destination if it exists in the hash
       const redirectMatch = hash.match(/redirect=([^&]*)/);
       if (redirectMatch && redirectMatch[1]) {
@@ -173,9 +193,17 @@ function App() {
         console.log('🔄 Found redirect in OAuth response:', redirect);
         localStorage.setItem('redirect_after_login', redirect);
       }
-      
-      // Clean up the URL hash but preserve query params (like ?returnTo=fitness)
-      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+
+      // Check for returnTo parameter and store it for handleLogin
+      const urlParams = new URLSearchParams(window.location.search);
+      const returnTo = urlParams.get('returnTo');
+      if (returnTo) {
+        console.log('🔄 Found returnTo in URL:', returnTo);
+        localStorage.setItem('sso_return_to', returnTo);
+      }
+
+      // Clean up the URL completely (remove hash AND query params)
+      window.history.replaceState(null, '', window.location.pathname);
     }
 
     // Check if user is already authenticated with existing token
@@ -413,7 +441,7 @@ function App() {
     setShowSplash(false);
     // If there's a specific route (admin, meal-of-the-day, etc), don't override
     // Otherwise show switchboard
-    if (!['admin', 'meal-of-the-day', 'recipe-card'].includes(currentView)) {
+    if (!['admin', 'meal-of-the-day', 'recipe-card', 'workout-checkoff'].includes(currentView)) {
       console.log('🎬 Setting currentView to switchboard');
       setCurrentView('switchboard');
       // Track switchboard view
@@ -506,6 +534,33 @@ function App() {
           setCurrentView('local-store-finder');
         } else {
           localStorage.setItem('redirect_after_login', 'local-store-finder');
+          setCurrentView('login');
+        }
+        break;
+      case 'pantry':
+        // Pantry - requires authentication and household
+        const pantryToken = getToken();
+        if (pantryToken && user) {
+          const householdId = localStorage.getItem('active_household_id');
+          if (!householdId) {
+            // No household - redirect to setup
+            localStorage.setItem('redirect_after_household', 'pantry');
+            setCurrentView('household-setup');
+          } else {
+            setCurrentView('pantry');
+          }
+        } else {
+          localStorage.setItem('redirect_after_login', 'pantry');
+          setCurrentView('login');
+        }
+        break;
+      case 'household-setup':
+        // Household Setup - requires authentication
+        const hsToken = getToken();
+        if (hsToken && user) {
+          setCurrentView('household-setup');
+        } else {
+          localStorage.setItem('redirect_after_login', 'household-setup');
           setCurrentView('login');
         }
         break;
@@ -676,6 +731,11 @@ function App() {
         <RecipeCard />
       )}
 
+      {/* Workout Check-Off (public, no auth required) */}
+      {currentView === 'workout-checkoff' && checkoffToken && (
+        <WorkoutCheckOff token={checkoffToken} />
+      )}
+
       {/* Nutrition Module */}
       {currentView === 'nutrition' && (
         <NutritionApp
@@ -727,6 +787,29 @@ function App() {
           user={user}
           onBack={() => setCurrentView('switchboard')}
           onLogout={handleLogout}
+        />
+      )}
+
+      {/* Pantry App */}
+      {currentView === 'pantry' && (
+        <PantryApp
+          user={user}
+          onBack={() => setCurrentView('switchboard')}
+        />
+      )}
+
+      {/* Household Setup */}
+      {currentView === 'household-setup' && (
+        <HouseholdSetup
+          user={user}
+          onComplete={(household) => {
+            // After household setup, redirect to intended destination or pantry
+            const redirectTo = localStorage.getItem('redirect_after_household') || 'pantry';
+            localStorage.removeItem('redirect_after_household');
+            setCurrentView(redirectTo);
+          }}
+          onSkip={() => setCurrentView('switchboard')}
+          onBack={() => setCurrentView('switchboard')}
         />
       )}
 
