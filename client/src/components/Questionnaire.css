@@ -37,6 +37,17 @@
   margin-bottom: 10px;
 }
 
+/* Step media container for videos/posters */
+.step-media-container {
+  margin-bottom: 24px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.step-media-container .step-video-container {
+  max-width: 100%;
+}
+
 .hint {
   color: #666;
   font-size: 14px;

@@ -1,9 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import './Questionnaire.css';
+import { StepVideo } from '../shared/components';
+import { useStepMedia } from '../shared/hooks';
 
 // API Configuration - Always use production URLs (Vercel/Render)
 const PRODUCTION_API = 'https://meal-planner-app-mve2.onrender.com';
 const API_BASE = process.env.REACT_APP_API_URL || PRODUCTION_API;
+
+// Map step numbers to step keys for media
+const STEP_TO_MEDIA_KEY = {
+  1: 'CUISINES',
+  2: 'SERVINGS',
+  3: 'INGREDIENTS',
+  4: 'DIETARY',
+  5: 'MEALS',
+  6: null, // Days step doesn't have media
+};
 
 const DAYS_OF_WEEK = [
   { id: 'Monday', icon: '📅', label: 'Monday' },
@@ -33,6 +45,9 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
   // Wizard step management
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 6;
+
+  // Step media for videos/posters
+  const { getMedia, hasMedia } = useStepMedia();
 
   // Dynamic options loaded from API
   const [cuisineOptions, setCuisineOptions] = useState([]);
@@ -691,6 +706,17 @@ function Questionnaire({ user, onSubmit, onLogout, selectedStores }) {
         </div>
 
         <div className="question-section wizard-step">
+          {/* Step video/poster media */}
+          {STEP_TO_MEDIA_KEY[currentStep] && hasMedia(STEP_TO_MEDIA_KEY[currentStep]) && (
+            <div className="step-media-container">
+              <StepVideo
+                videoUrl={getMedia(STEP_TO_MEDIA_KEY[currentStep])?.videoUrl}
+                posterUrl={getMedia(STEP_TO_MEDIA_KEY[currentStep])?.posterUrl}
+                runRule={getMedia(STEP_TO_MEDIA_KEY[currentStep])?.runRule || 'loop'}
+              />
+            </div>
+          )}
+
           <h3>{getStepTitle()}</h3>
           <p className="hint">{getStepSubtitle()}</p>
           {renderStepContent()}

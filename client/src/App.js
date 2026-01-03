@@ -40,7 +40,7 @@ import PantryApp from './apps/pantry/PantryApp';
 import { HouseholdSetup } from './apps/household';
 
 // Admin Module (AI Coach question management)
-import { AdminCoachPanel, AdminSwitchboard, UsersAdmin } from './modules/admin';
+import { AdminCoachPanel, AdminSwitchboard, UsersAdmin, StepMediaAdmin } from './modules/admin';
 
 // Analytics Service
 import analyticsService from './shared/services/AnalyticsService';
@@ -808,6 +808,13 @@ function App() {
           user={user}
           onBack={() => setCurrentView('admin-panel')}
           onNavigate={(view) => setCurrentView(view)}
+        />
+      )}
+
+      {currentView === 'admin-step-media' && (
+        <StepMediaAdmin
+          user={user}
+          onBack={() => setCurrentView('admin-panel')}
         />
       )}
       </div>

@@ -8,3 +8,4 @@ export { default as ToastContainer } from './ToastContainer';
 export { default as AchievementPopup } from './AchievementPopup';
 export { default as StreakBanner } from './StreakBanner';
 export { default as FeedbackModal } from './FeedbackModal';
+export { default as StepVideo } from './StepVideo';

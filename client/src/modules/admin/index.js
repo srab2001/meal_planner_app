@@ -22,3 +22,4 @@ export { default as InviteForm } from './components/InviteForm';
 // Admin Pages (for routing)
 export { default as AdminSwitchboard } from './pages/AdminSwitchboard';
 export { default as UsersAdmin } from './pages/UsersAdmin';
+export { default as StepMediaAdmin } from './pages/StepMediaAdmin';

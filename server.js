@@ -41,6 +41,10 @@ const householdRoutes = require('./routes/household');
 // Import Workout Tracking routes
 const workoutTrackingRoutes = require('./routes/workout-tracking');
 
+// Import Step Media routes
+const stepMediaRoutes = require('./routes/step-media');
+const adminStepMediaRoutes = require('./routes/admin-step-media');
+
 // ============================================================================
 // RUN MIGRATIONS FIRST - BEFORE ANY EXPRESS SETUP
 // ============================================================================
@@ -626,6 +630,15 @@ app.use('/api/core/household', requireAuth, householdRoutes);
 // MOUNT WORKOUT TRACKING ROUTES
 // ============================================================================
 app.use('/api/workouts', workoutTrackingRoutes);
+
+// ============================================================================
+// MOUNT STEP MEDIA ROUTES
+// ============================================================================
+// Public routes for fetching active step media
+app.use('/api/step-media', stepMediaRoutes);
+
+// Admin routes for managing step media (requires auth and admin role)
+app.use('/api/admin/step-media', requireAuth, adminStepMediaRoutes);
 
 // simple profile endpoint
 app.get('/api/profile', requireAuth, (req, res) => {
