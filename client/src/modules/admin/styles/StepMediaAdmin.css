@@ -1,0 +1,281 @@
+/**
+ * StepMediaAdmin.css - Styles for step media admin page
+ */
+
+/* Step Selector Tabs */
+.step-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.step-tab {
+  padding: 8px 16px;
+  border: 1px solid #d1d5db;
+  background: white;
+  color: #4b5563;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.step-tab:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.step-tab.active {
+  background: #667eea;
+  border-color: #667eea;
+  color: white;
+}
+
+.step-tab .active-indicator {
+  font-size: 8px;
+  color: #22c55e;
+}
+
+.step-tab.active .active-indicator {
+  color: #86efac;
+}
+
+/* Media List Grid */
+.media-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+/* Media Card */
+.media-card {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  transition: all 0.2s ease;
+}
+
+.media-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  background: white;
+}
+
+.media-card.active {
+  border-color: #22c55e;
+  background: #f0fdf4;
+}
+
+.media-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.media-card-header h3 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  color: #1f2937;
+}
+
+.run-rule-badge {
+  font-size: 11px;
+  padding: 4px 8px;
+  background: #e5e7eb;
+  color: #4b5563;
+  border-radius: 4px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* Media Preview */
+.media-card-preview {
+  margin-bottom: 16px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #1a1a2e;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-button {
+  width: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  padding: 0;
+}
+
+.poster-thumbnail {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  display: block;
+}
+
+.preview-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.preview-button:hover .preview-overlay {
+  opacity: 1;
+}
+
+.no-media {
+  color: #6b7280;
+  font-size: 13px;
+  padding: 40px 20px;
+}
+
+/* Media Meta */
+.media-card-meta {
+  margin-bottom: 16px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.media-card-meta p {
+  margin: 4px 0;
+}
+
+/* Media Actions */
+.media-card-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.media-card-actions .save-btn,
+.media-card-actions .cancel-btn {
+  flex: 1;
+  padding: 8px 16px;
+}
+
+.active-label {
+  color: #22c55e;
+  font-weight: 600;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.active-label::before {
+  content: '✓';
+}
+
+/* Preview Modal */
+.preview-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.preview-modal {
+  background: white;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 700px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.preview-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.preview-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #1f2937;
+}
+
+.preview-modal-header button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.preview-modal-header button:hover {
+  color: #1f2937;
+}
+
+.preview-modal-content {
+  padding: 20px;
+  background: #1a1a2e;
+}
+
+.preview-modal-footer {
+  padding: 16px 20px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.preview-modal-footer p {
+  margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .step-selector {
+    flex-direction: column;
+  }
+
+  .step-tab {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .media-list {
+    grid-template-columns: 1fr;
+  }
+
+  .preview-modal {
+    max-height: 95vh;
+  }
+}

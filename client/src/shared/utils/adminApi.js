@@ -102,3 +102,106 @@ export const adminResendInvite = async (id) => {
   }
   return response.json();
 };
+
+// ============================================================================
+// STEP MEDIA ADMIN API
+// ============================================================================
+
+/**
+ * List all step media grouped by step key
+ * @returns {Promise<object>} { stepKeys: string[], media: Record<string, MediaItem[]> }
+ */
+export const adminListStepMedia = async () => {
+  const url = `${API_BASE}/api/admin/step-media`;
+  const response = await fetchWithAuth(url, { method: 'GET' });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch step media: ${response.statusText}`);
+  }
+  return response.json();
+};
+
+/**
+ * Get a single step media item
+ * @param {string} id - Media ID
+ * @returns {Promise<object>} Media object
+ */
+export const adminGetStepMedia = async (id) => {
+  const url = `${API_BASE}/api/admin/step-media/${id}`;
+  const response = await fetchWithAuth(url, { method: 'GET' });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch step media: ${response.statusText}`);
+  }
+  return response.json();
+};
+
+/**
+ * Create a new step media version
+ * @param {object} payload - { stepKey, label, videoUrl?, posterUrl?, runRule? }
+ * @returns {Promise<object>} Created media object
+ */
+export const adminCreateStepMedia = async (payload) => {
+  const url = `${API_BASE}/api/admin/step-media`;
+  const response = await fetchWithAuth(url, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Failed to create step media: ${response.statusText}`);
+  }
+  return response.json();
+};
+
+/**
+ * Update a step media version
+ * @param {string} id - Media ID
+ * @param {object} payload - { label?, videoUrl?, posterUrl?, runRule? }
+ * @returns {Promise<object>} Updated media object
+ */
+export const adminUpdateStepMedia = async (id, payload) => {
+  const url = `${API_BASE}/api/admin/step-media/${id}`;
+  const response = await fetchWithAuth(url, {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Failed to update step media: ${response.statusText}`);
+  }
+  return response.json();
+};
+
+/**
+ * Publish a step media version (make it active)
+ * @param {string} id - Media ID
+ * @returns {Promise<object>} Publish result
+ */
+export const adminPublishStepMedia = async (id) => {
+  const url = `${API_BASE}/api/admin/step-media/${id}/publish`;
+  const response = await fetchWithAuth(url, {
+    method: 'POST',
+    body: JSON.stringify({})
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Failed to publish step media: ${response.statusText}`);
+  }
+  return response.json();
+};
+
+/**
+ * Delete a step media version
+ * @param {string} id - Media ID
+ * @returns {Promise<object>} Delete result
+ */
+export const adminDeleteStepMedia = async (id) => {
+  const url = `${API_BASE}/api/admin/step-media/${id}`;
+  const response = await fetchWithAuth(url, {
+    method: 'DELETE'
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Failed to delete step media: ${response.statusText}`);
+  }
+  return response.json();
+};

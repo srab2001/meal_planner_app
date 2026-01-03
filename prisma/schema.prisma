@@ -630,3 +630,49 @@ model workout_session_exercises {
 
   @@index([workout_session_id], map: "idx_workout_session_exercises_session")
 }
+
+// ============================================================================
+// STEP MEDIA - Video/Poster content for meal planning steps
+// ============================================================================
+
+/// Meal planning step keys for media association
+enum MealStepKey {
+  CUISINES
+  SERVINGS
+  INGREDIENTS
+  DIETARY
+  MEALS
+  STORES
+  RECIPES_WITH_PRICES
+}
+
+/// Step Media - Versioned media content for meal planning steps
+model step_media {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  step_key       MealStepKey
+  label          String       @db.VarChar(200) // Admin-friendly label for this version
+  video_url      String?      // External URL (S3, R2, Vercel Blob)
+  poster_url     String?      // Poster image URL
+  run_rule       String       @default("loop") @db.VarChar(20) // "loop" | "stopOnUserAction"
+  created_by     String?      @db.Uuid
+  created_at     DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime     @default(now()) @db.Timestamptz(6)
+
+  active_for step_media_active? @relation("ActiveMedia")
+
+  @@index([step_key], map: "idx_step_media_step_key")
+  @@index([created_at(sort: Desc)], map: "idx_step_media_created_at")
+}
+
+/// Step Media Active - Tracks which media version is currently published for each step
+model step_media_active {
+  id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  step_key         MealStepKey  @unique // One active media per step
+  active_media_id  String       @unique @db.Uuid
+  published_at     DateTime     @default(now()) @db.Timestamptz(6)
+  published_by     String?      @db.Uuid
+
+  active_media step_media @relation("ActiveMedia", fields: [active_media_id], references: [id], onDelete: Cascade)
+
+  @@index([step_key], map: "idx_step_media_active_step_key")
+}

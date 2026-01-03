@@ -22,6 +22,13 @@ export default function AdminSwitchboard({ user, onBack, onNavigate }) {
       icon: '👥',
       action: () => onNavigate ? onNavigate('admin-users') : null,
     },
+    {
+      id: 'step-media',
+      title: 'Step Media',
+      description: 'Manage videos and posters for meal planning steps',
+      icon: '🎬',
+      action: () => onNavigate ? onNavigate('admin-step-media') : null,
+    },
   ];
 
   return (
