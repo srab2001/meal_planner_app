@@ -6,6 +6,7 @@
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
+    "@vercel/blob": "^2.0.0",
     "axios": "^1.7.7",
     "html2pdf.js": "^0.12.1",
     "jspdf": "^2.5.1",
