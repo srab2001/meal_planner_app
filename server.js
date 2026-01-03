@@ -45,6 +45,9 @@ const workoutTrackingRoutes = require('./routes/workout-tracking');
 const stepMediaRoutes = require('./routes/step-media');
 const adminStepMediaRoutes = require('./routes/admin-step-media');
 
+// Import Upload routes (Vercel Blob)
+const uploadRoutes = require('./routes/upload');
+
 // ============================================================================
 // RUN MIGRATIONS FIRST - BEFORE ANY EXPRESS SETUP
 // ============================================================================
@@ -639,6 +642,11 @@ app.use('/api/step-media', stepMediaRoutes);
 
 // Admin routes for managing step media (requires auth and admin role)
 app.use('/api/admin/step-media', requireAuth, adminStepMediaRoutes);
+
+// ============================================================================
+// MOUNT UPLOAD ROUTES (Vercel Blob)
+// ============================================================================
+app.use('/api/upload', requireAuth, uploadRoutes);
 
 // simple profile endpoint
 app.get('/api/profile', requireAuth, (req, res) => {
