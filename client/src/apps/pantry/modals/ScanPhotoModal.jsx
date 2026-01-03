@@ -13,7 +13,6 @@ export default function ScanPhotoModal({ householdId, onClose, onItemsIdentified
   const [adding, setAdding] = useState(false);
 
   const fileInputRef = useRef(null);
-  const cameraInputRef = useRef(null);
   const token = localStorage.getItem('auth_token');
 
   const handleFileSelect = (e) => {
@@ -43,12 +42,8 @@ export default function ScanPhotoModal({ householdId, onClose, onItemsIdentified
     reader.readAsDataURL(file);
   };
 
-  const handleGallerySelect = () => {
+  const handleCapture = () => {
     fileInputRef.current?.click();
-  };
-
-  const handleCameraCapture = () => {
-    cameraInputRef.current?.click();
   };
 
   const analyzePhoto = async () => {
@@ -192,32 +187,13 @@ export default function ScanPhotoModal({ householdId, onClose, onItemsIdentified
         <div className="scan-modal-content">
           {!preview ? (
             <div className="upload-section">
-              <div className="upload-options">
-                <label className="upload-option" htmlFor="gallery-input">
-                  <div className="upload-icon">🖼️</div>
-                  <p>Choose from Photos</p>
-                  <p className="upload-hint">Select from gallery</p>
-                </label>
-                <label className="upload-option" htmlFor="camera-input">
-                  <div className="upload-icon">📷</div>
-                  <p>Take Photo</p>
-                  <p className="upload-hint">Use camera</p>
-                </label>
+              <div className="upload-area" onClick={handleCapture}>
+                <div className="upload-icon">📷</div>
+                <p>Click to take a photo or select an image</p>
+                <p className="upload-hint">Supports JPG, PNG (max 10MB)</p>
               </div>
-              <p className="upload-formats">Supports JPG, PNG (max 10MB)</p>
-              {/* Gallery input - no capture attribute */}
               <input
-                id="gallery-input"
                 ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileSelect}
-                style={{ display: 'none' }}
-              />
-              {/* Camera input - with capture attribute */}
-              <input
-                id="camera-input"
-                ref={cameraInputRef}
                 type="file"
                 accept="image/*"
                 capture="environment"
