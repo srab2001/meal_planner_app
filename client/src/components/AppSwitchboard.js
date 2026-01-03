@@ -33,27 +33,21 @@ export default function AppSwitchboard({ onSelectApp, user, onLogout, onLogin })
     }
   };
 
-  // Google login handler - stores returnTo in localStorage BEFORE OAuth to prevent it from getting lost
+  // Google login handler - stores returnTo for SSO redirect back to fitness
   const handleGoogleLogin = () => {
     // Check if user came from fitness app (returnTo=fitness in URL)
     const urlParams = new URLSearchParams(window.location.search);
     const returnTo = urlParams.get('returnTo');
 
-    // Store returnTo in localStorage BEFORE OAuth redirect
-    // This ensures it survives the OAuth flow and URL changes
+    // Store returnTo in localStorage for App.js to use after OAuth
     if (returnTo) {
-      console.log('🔄 Storing returnTo in localStorage before OAuth:', returnTo);
       localStorage.setItem('sso_return_to', returnTo);
-    } else {
-      // IMPORTANT: Clear any stale returnTo value from previous visits
-      // This prevents redirect loops when doing normal login
-      console.log('🔄 No returnTo param, clearing any stale sso_return_to');
-      localStorage.removeItem('sso_return_to');
+      // Clear the URL param to prevent it from persisting
+      window.history.replaceState(null, '', window.location.pathname);
     }
 
-    // Build redirect URL (no need to include returnTo since it's in localStorage)
+    // Redirect to OAuth without returnTo in URL (it's now in localStorage)
     const redirectUrl = `${window.location.origin}/switchboard`;
-
     window.location.href = `${process.env.REACT_APP_API_URL || 'https://meal-planner-app-mve2.onrender.com'}/auth/google?redirect=${encodeURIComponent(redirectUrl)}`;
   };
 
@@ -115,8 +109,8 @@ export default function AppSwitchboard({ onSelectApp, user, onLogout, onLogin })
       icon: '💪',
       color: '#27ae60',
       available: true,
-      comingSoon: false
-      // Note: Using internal FitnessApp module instead of external URL
+      comingSoon: false,
+      externalUrl: 'https://frontend-six-topaz-27.vercel.app'
     },
     {
       id: 'local-store-finder',
@@ -171,8 +165,6 @@ export default function AppSwitchboard({ onSelectApp, user, onLogout, onLogin })
     if (app.id === 'admin') {
       if (!user) {
         // User not logged in - redirect to Google login
-        // Clear any stale SSO returnTo value first
-        localStorage.removeItem('sso_return_to');
         // The redirect query param tells the backend to return to admin panel after login
         const redirectUrl = `${window.location.origin}/switchboard?admin=true`;
         window.location.href = `${process.env.REACT_APP_API_URL || 'https://meal-planner-app-mve2.onrender.com'}/auth/google?redirect=${encodeURIComponent(redirectUrl)}`;

@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["planSummary", "weeklySchedule", "sessions", "progressionRules", "substitutions", "trackingFields", "safetyNotes"],
+  "properties": {
+    "planSummary": { "type": "object" },
+    "weeklySchedule": { "type": "array" },
+    "sessions": { "type": "array", "items": { "type": "object" } },
+    "progressionRules": { "type": "object" },
+    "substitutions": { "type": "object" },
+    "trackingFields": { "type": "object" },
+    "safetyNotes": { "oneOf": [{"type":"array"}, {"type":"string"}] },
+    "spreadsheet_csv": { "type": "string" }
+  }
+}

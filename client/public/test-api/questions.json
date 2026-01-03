@@ -1,0 +1,15 @@
+{
+  "ok": true,
+  "data": {
+    "questions": [
+      { "key": "main_goal", "label": "Main Goal", "input_type": "single_select", "is_required": true, "options": [{"value":"lose_weight","label":"Lose weight"},{"value":"build_muscle","label":"Build muscle"}] },
+      { "key": "primary_objectives", "label": "Objectives", "input_type": "multi_select", "is_required": false, "options": [{"value":"cardio","label":"Cardio"},{"value":"strength","label":"Strength"}] },
+      { "key": "fitness_level", "label": "Fitness Level", "input_type": "single_select", "is_required": true, "options": [{"value":"beginner","label":"Beginner"},{"value":"intermediate","label":"Intermediate"}] },
+      { "key": "days_per_week", "label": "Days Per Week", "input_type": "number", "is_required": true },
+      { "key": "session_length", "label": "Session Length", "input_type": "number", "is_required": true },
+      { "key": "location", "label": "Location", "input_type": "single_select", "is_required": true, "options": [{"value":"gym","label":"Gym"},{"value":"home","label":"Home"}] },
+      { "key": "injuries", "label": "Injuries or Limits", "input_type": "text", "is_required": false },
+      { "key": "training_style", "label": "Training Style", "input_type": "single_select", "is_required": false, "options": [{"value":"hypertrophy","label":"Hypertrophy"},{"value":"endurance","label":"Endurance"}] }
+    ]
+  }
+}
