@@ -246,7 +246,19 @@ export default function PantryApp({ user, onBack }) {
               ) : (
                 items.map(item => (
                   <tr key={item.id} className={item.status === 'low' ? 'low-stock' : ''}>
-                    <td className="item-name">{item.itemName}</td>
+                    <td className="item-name">
+                      <div className="item-name-content">
+                        <span>{item.itemName}</span>
+                        <a
+                          href={`https://www.google.com/search?q=${encodeURIComponent((item.brand ? item.brand + ' ' : '') + item.itemName + ' product info')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="product-link"
+                        >
+                          View product details →
+                        </a>
+                      </div>
+                    </td>
                     <td>{item.brand || '-'}</td>
                     <td className="quantity">{item.quantity}</td>
                     <td>{item.unit || '-'}</td>
