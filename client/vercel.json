@@ -1,6 +1,18 @@
 {
   "rewrites": [
     {
+      "source": "/api/fitness-interview/questions",
+      "destination": "/test-api/questions.json"
+    },
+    {
+      "source": "/api/fitness-interview/submit",
+      "destination": "/test-api/submit.json"
+    },
+    {
+      "source": "/api/fitness-interview/generate-plan",
+      "destination": "/test-api/generate.json"
+    },
+    {
       "source": "/api/:path*",
       "destination": "https://meal-planner-app-mve2.onrender.com/api/:path*"
     },
