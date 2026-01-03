@@ -22,7 +22,9 @@
     "db:migrate": "node-pg-migrate up",
     "db:reset": "docker-compose down postgres && docker-compose up -d postgres",
     "lint": "echo 'Linting...' || true",
-    "setup:test": "docker-compose up -d postgres-test && sleep 5 && npm run db:migrate"
+    "setup:test": "docker-compose up -d postgres-test && sleep 5 && npm run db:migrate",
+    "seed:fitness": "node scripts/seed-fitness-interview.js",
+    "seed:all": "npm run seed:fitness"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
