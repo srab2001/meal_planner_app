@@ -552,6 +552,52 @@ app.post('/auth/logout', (req, res) => {
   res.json({ success: true, message: 'Logged out successfully' });
 });
 
+// Development-only test token endpoint (for E2E testing without Google OAuth)
+// This creates a valid JWT for testing purposes
+// SECURITY: Only enabled when NOT in production
+app.post('/auth/test-token', (req, res) => {
+  // Only allow in non-production environments
+  if (NODE_ENV === 'production') {
+    console.warn('⚠️  Attempt to access /auth/test-token in production - BLOCKED');
+    return res.status(403).json({
+      error: 'test_endpoint_disabled',
+      message: 'Test token endpoint is disabled in production'
+    });
+  }
+
+  console.log('🧪 Generating test token for E2E testing...');
+
+  // Create a test user object
+  const testUser = {
+    id: 'test-user-id-' + Date.now(),
+    email: 'test@example.com',
+    displayName: 'Test User',
+    picture: null,
+    googleId: 'test-google-id',
+    role: 'user',
+    status: 'active'
+  };
+
+  try {
+    const token = generateToken(testUser);
+    console.log('✅ Test token generated successfully');
+
+    res.json({
+      success: true,
+      token: token,
+      user: testUser,
+      expiresIn: '30d',
+      message: 'Test token created. Valid for 30 days. Use with: Authorization: Bearer ' + token
+    });
+  } catch (err) {
+    console.error('❌ Error generating test token:', err);
+    res.status(500).json({
+      error: 'token_generation_failed',
+      message: err.message
+    });
+  }
+});
+
 // ============================================================================
 // MOUNT FITNESS ROUTES
 // ============================================================================
@@ -579,6 +625,19 @@ app.use('/api/admin', requireAuth, adminRoutes);
 // ============================================================================
 // Core routes have their own auth handling for demo support
 app.use('/api/core', coreRoutes);
+
+// ============================================================================
+// FITNESS INTERVIEW ROUTES
+// - User submission (generates AI plan)
+// - User plan listing and retrieval
+// ============================================================================
+const fitnessInterviewRoutes = require('./routes/fitness-interview');
+// Protect submissions with AI rate limiter
+app.use('/api/fitness-interview', requireAuth, fitnessInterviewRoutes);
+
+// Fitness plans retrieval (latest plan) - mount at /api/fitness/plan
+const fitnessPlansRoutes = require('./routes/fitness-plans');
+app.use('/api/fitness/plan', requireAuth, fitnessPlansRoutes);
 
 // simple profile endpoint
 app.get('/api/profile', requireAuth, (req, res) => {
@@ -2209,6 +2268,57 @@ app.get('/api/user/profile', requireAuth, async (req, res) => {
   }
 });
 
+// Alias endpoints for legacy client path: /api/fitness/profile
+// GET /api/fitness/profile -> same as /api/user/profile
+app.get('/api/fitness/profile', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Reuse same queries as /api/user/profile
+    const userResult = await db.query(
+      `SELECT
+        id, email, display_name, picture_url, phone_number, timezone,
+        meal_plans_generated, bio, role, created_at, last_login
+      FROM users
+      WHERE id = $1`,
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = userResult.rows[0];
+
+    const prefsRes = await db.query(
+      `SELECT default_cuisines, default_people, default_meals, default_days,
+        default_dietary, email_notifications, theme, units, language,
+        share_favorites, public_profile
+      FROM user_preferences
+      WHERE user_id = $1`,
+      [userId]
+    );
+
+    const preferences = prefsRes.rows[0] || {};
+
+    const statsResult = await db.query(
+      `SELECT
+        (SELECT COUNT(*) FROM favorites WHERE user_id = $1) as favorites_count,
+        (SELECT COUNT(*) FROM meal_plan_history WHERE user_id = $1) as meal_plans_count,
+        (SELECT MAX(created_at) FROM meal_plan_history WHERE user_id = $1) as last_meal_plan
+      `,
+      [userId]
+    );
+
+    const stats = statsResult.rows[0];
+
+    res.json({ user, preferences, stats });
+  } catch (error) {
+    console.error('Error fetching fitness/profile alias:', error);
+    res.status(500).json({ error: 'Failed to fetch profile' });
+  }
+});
+
 // Update user profile
 app.put('/api/user/profile', requireAuth, async (req, res) => {
   try {
@@ -2245,6 +2355,42 @@ app.put('/api/user/profile', requireAuth, async (req, res) => {
 
   } catch (error) {
     console.error('Error updating profile:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+// Allow legacy client to POST updates to /api/fitness/profile
+app.post('/api/fitness/profile', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { display_name, phone_number, timezone, bio } = req.body;
+
+    const result = await db.query(
+      `UPDATE users
+       SET display_name = COALESCE($1, display_name),
+           phone_number = COALESCE($2, phone_number),
+           timezone = COALESCE($3, timezone),
+           bio = COALESCE($4, bio),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $5
+       RETURNING id, email, display_name, picture_url, phone_number, timezone, bio`,
+      [display_name, phone_number, timezone, bio, userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Log activity (non-blocking)
+    try {
+      await db.query(`SELECT log_user_activity($1, 'profile_updated', $2)`, [userId, JSON.stringify({ fields_updated: Object.keys(req.body) })]);
+    } catch (logError) {
+      console.warn('Failed to log profile update activity (fitness alias):', logError.message);
+    }
+
+    res.json({ user: result.rows[0] });
+  } catch (error) {
+    console.error('Error updating fitness/profile alias:', error);
     res.status(500).json({ error: 'Failed to update profile' });
   }
 });
