@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import '../styles/AdminPanel.css';
 import '../styles/StepMediaAdmin.css';
 import { StepVideo } from '../../../shared/components';
+import MediaUpload from '../components/MediaUpload';
 import {
   adminListStepMedia,
   adminCreateStepMedia,
@@ -392,25 +393,63 @@ export default function StepMediaAdmin({ user, onBack }) {
               </div>
 
               <div className="form-group">
-                <label>Video URL</label>
-                <input
-                  type="url"
-                  placeholder="https://storage.example.com/video.mp4"
-                  value={createForm.videoUrl}
-                  onChange={(e) => setCreateForm(prev => ({ ...prev, videoUrl: e.target.value }))}
+                <label>Video</label>
+                <MediaUpload
+                  uploadType="video"
+                  label="Upload Video"
+                  accept="video/mp4,video/webm,video/quicktime"
+                  onUploadComplete={(result) => {
+                    setCreateForm(prev => ({ ...prev, videoUrl: result.url }));
+                  }}
                 />
-                <span className="form-hint">External URL to MP4 video (S3, R2, Vercel Blob)</span>
+                {createForm.videoUrl && (
+                  <div className="uploaded-url">
+                    <span>Video URL:</span>
+                    <input
+                      type="url"
+                      value={createForm.videoUrl}
+                      onChange={(e) => setCreateForm(prev => ({ ...prev, videoUrl: e.target.value }))}
+                    />
+                    <button
+                      type="button"
+                      className="clear-btn"
+                      onClick={() => setCreateForm(prev => ({ ...prev, videoUrl: '' }))}
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+                <span className="form-hint">Upload MP4 video or paste URL directly</span>
               </div>
 
               <div className="form-group">
-                <label>Poster URL</label>
-                <input
-                  type="url"
-                  placeholder="https://storage.example.com/poster.jpg"
-                  value={createForm.posterUrl}
-                  onChange={(e) => setCreateForm(prev => ({ ...prev, posterUrl: e.target.value }))}
+                <label>Poster Image</label>
+                <MediaUpload
+                  uploadType="poster"
+                  label="Upload Poster"
+                  accept="image/jpeg,image/png,image/webp"
+                  onUploadComplete={(result) => {
+                    setCreateForm(prev => ({ ...prev, posterUrl: result.url }));
+                  }}
                 />
-                <span className="form-hint">Image shown before video plays or as fallback</span>
+                {createForm.posterUrl && (
+                  <div className="uploaded-url">
+                    <span>Poster URL:</span>
+                    <input
+                      type="url"
+                      value={createForm.posterUrl}
+                      onChange={(e) => setCreateForm(prev => ({ ...prev, posterUrl: e.target.value }))}
+                    />
+                    <button
+                      type="button"
+                      className="clear-btn"
+                      onClick={() => setCreateForm(prev => ({ ...prev, posterUrl: '' }))}
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+                <span className="form-hint">Upload poster image or paste URL directly</span>
               </div>
 
               <div className="form-group">
