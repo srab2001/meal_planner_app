@@ -177,7 +177,7 @@ export default function SwitchboardNext({
       description: 'Workout planning & tracking',
       icon: '💪',
       color: '#27ae60',
-      externalUrl: 'https://frontend-six-topaz-27.vercel.app'
+      externalUrl: import.meta.env.VITE_FITNESS_URL || null
     },
     {
       id: 'coaching',

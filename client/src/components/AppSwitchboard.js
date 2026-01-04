@@ -110,7 +110,7 @@ export default function AppSwitchboard({ onSelectApp, user, onLogout, onLogin })
       color: '#27ae60',
       available: true,
       comingSoon: false,
-      externalUrl: 'https://frontend-six-topaz-27.vercel.app'
+      externalUrl: process.env.REACT_APP_FITNESS_URL || null
     },
     {
       id: 'local-store-finder',
