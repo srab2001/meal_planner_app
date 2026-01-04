@@ -105,22 +105,7 @@ export default function FitnessDashboard({
         </button>
         <button
           className="fitness-nav-btn ai-btn"
-          onClick={() => {
-            // Get auth token and user info from localStorage
-            const token = localStorage.getItem('auth_token');
-            const userStr = localStorage.getItem('user');
-            const user = userStr ? JSON.parse(userStr) : null;
-            
-            if (token && user) {
-              // Build URL with token and user as query params
-              const vercelUrl = new URL('https://client-hqpdn7to6-stus-projects-458dd35a.vercel.app');
-              vercelUrl.hash = `auth=token=${token}&user=${JSON.stringify(user)}`;
-              window.location.href = vercelUrl.toString();
-            } else {
-              // Fallback: show modal if not authenticated
-              setShowAIInterview(true);
-            }
-          }}
+          onClick={() => setShowAIInterview(true)}
           title="AI Workout Coach"
         >
           🤖 AI Coach
