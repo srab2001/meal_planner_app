@@ -176,8 +176,7 @@ export default function SwitchboardNext({
       name: 'Fitness Coach',
       description: 'Workout planning & tracking',
       icon: '💪',
-      color: '#27ae60',
-      externalUrl: import.meta.env.VITE_FITNESS_URL || null
+      color: '#27ae60'
     },
     {
       id: 'coaching',
