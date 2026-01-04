@@ -7,6 +7,10 @@
     {
       "source": "/auth/:path*",
       "destination": "https://meal-planner-app-mve2.onrender.com/auth/:path*"
+    },
+    {
+      "source": "/((?!api|auth|_next|static|favicon).*)",
+      "destination": "/index.html"
     }
   ],
   "headers": [
