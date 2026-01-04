@@ -113,7 +113,7 @@ export default function FitnessDashboard({
             
             if (token && user) {
               // Build URL with token and user as query params
-              const vercelUrl = new URL('https://frontend-six-topaz-27.vercel.app');
+              const vercelUrl = new URL('https://client-hqpdn7to6-stus-projects-458dd35a.vercel.app');
               vercelUrl.hash = `auth=token=${token}&user=${JSON.stringify(user)}`;
               window.location.href = vercelUrl.toString();
             } else {
