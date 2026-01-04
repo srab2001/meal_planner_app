@@ -231,7 +231,7 @@ router.post('/send/:workoutId', requireAuth, async (req, res) => {
     logLinkCreated(userId, workoutId);
 
     // Build share URL
-    const baseUrl = process.env.FRONTEND_URL || 'https://frontend-six-topaz-27.vercel.app';
+    const baseUrl = process.env.FITNESS_FRONTEND_URL || process.env.FRONTEND_URL || process.env.FRONTEND_BASE;
     const shareUrl = getShareUrl(token, baseUrl);
 
     // Extract workout name from workout_data if available
