@@ -24,7 +24,15 @@
     "lint": "echo 'Linting...' || true",
     "setup:test": "docker-compose up -d postgres-test && sleep 5 && npm run db:migrate",
     "seed:fitness": "node scripts/seed-fitness-interview.js",
-    "seed:all": "npm run seed:fitness"
+    "seed:all": "npm run seed:fitness",
+    "deploy": "node scripts/deploy.js",
+    "deploy:git": "node scripts/deploy.js git-push",
+    "deploy:db": "node scripts/deploy.js db-migrate",
+    "deploy:seed": "node scripts/deploy.js db-seed",
+    "deploy:status": "node scripts/deploy.js db-status",
+    "deploy:env": "node scripts/deploy.js env-check",
+    "deploy:urls": "node scripts/deploy.js urls",
+    "deploy:all": "node scripts/deploy.js deploy"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
