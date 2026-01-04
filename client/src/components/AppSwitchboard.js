@@ -109,8 +109,7 @@ export default function AppSwitchboard({ onSelectApp, user, onLogout, onLogin })
       icon: '💪',
       color: '#27ae60',
       available: true,
-      comingSoon: false,
-      externalUrl: process.env.REACT_APP_FITNESS_URL || null
+      comingSoon: false
     },
     {
       id: 'local-store-finder',
