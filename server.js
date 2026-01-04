@@ -680,6 +680,13 @@ const fitnessInterviewRoutes = require('./routes/fitness-interview');
 // Protect submissions with AI rate limiter
 app.use('/api/fitness-interview', requireAuth, fitnessInterviewRoutes);
 
+// ============================================================================
+// ADMIN FITNESS INTERVIEW ROUTES
+// - Admin CRUD for fitness interview questions and options
+// ============================================================================
+const adminFitnessInterviewRoutes = require('./routes/admin-fitness-interview');
+app.use('/api/admin/fitness-interview', requireAuth, adminFitnessInterviewRoutes);
+
 // Fitness plans retrieval (latest plan) - mount at /api/fitness/plan
 const fitnessPlansRoutes = require('./routes/fitness-plans');
 app.use('/api/fitness/plan', requireAuth, fitnessPlansRoutes);

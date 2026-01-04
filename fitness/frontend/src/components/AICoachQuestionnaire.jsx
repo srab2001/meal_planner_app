@@ -3,12 +3,67 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { API_BASE, ENDPOINTS } from '../config/api';
 import './AICoachQuestionnaire.css';
 
+// Default fallback questions if API fetch fails
+const DEFAULT_QUESTIONS = [
+  {
+    key: 'fitness_objective',
+    label: '1. What is your fitness objective?',
+    help_text: 'e.g., Build strength, improve endurance, lose weight, train for a competition...',
+    input_type: 'text',
+    options: [],
+  },
+  {
+    key: 'workout_location',
+    label: '2. Where will you work out? (Gym, pool, or both)',
+    help_text: 'e.g., Gym only, Pool only, Both gym and pool, Home gym...',
+    input_type: 'text',
+    options: [],
+  },
+  {
+    key: 'intensity',
+    label: '3. How intense should the workout be?',
+    help_text: 'e.g., Low (recovery), Moderate (maintenance), High (pushing limits)...',
+    input_type: 'text',
+    options: [],
+  },
+  {
+    key: 'days_per_week',
+    label: '4. How many days per week can you work out?',
+    help_text: 'e.g., 3 days, 4-5 days, 6 days...',
+    input_type: 'text',
+    options: [],
+  },
+  {
+    key: 'overall_goal',
+    label: '5. What is your overall goal?',
+    help_text: 'e.g., Get stronger, feel healthier, prepare for an event, build muscle mass...',
+    input_type: 'text',
+    options: [],
+  },
+  {
+    key: 'injuries',
+    label: '6. Do you have any injured muscles or limitations?',
+    help_text: 'e.g., Lower back pain, knee injury, shoulder impingement, none...',
+    input_type: 'text',
+    options: [],
+  },
+  {
+    key: 'focus_type',
+    label: '7. What is your focus: strength, ability, or weight loss?',
+    help_text: 'e.g., Strength training, Athletic ability, Weight loss, Combination...',
+    input_type: 'text',
+    options: [],
+  },
+];
+
 /**
  * Screen B - AI Coach Questionnaire (Enhanced)
  * Features:
- * - 7 questions that feed into ChatGPT
+ * - Dynamic questions fetched from database
+ * - Support for different input types (text, single_select, multi_select, number)
  * - Support for regeneration with tweaks
  * - Pre-fills answers when regenerating
+ * - Falls back to default questions if API fails
  */
 function AICoachQuestionnaire({ user, token }) {
   const navigate = useNavigate();
@@ -21,63 +76,74 @@ function AICoachQuestionnaire({ user, token }) {
     tweakRequest,
   } = location.state || {};
 
-  const [answers, setAnswers] = useState({
-    fitness_objective: '',
-    workout_location: '',
-    intensity: '',
-    days_per_week: '',
-    overall_goal: '',
-    injuries: '',
-    focus_type: '',
-  });
-
+  const [questions, setQuestions] = useState([]);
+  const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(false);
+  const [loadingQuestions, setLoadingQuestions] = useState(true);
   const [error, setError] = useState(null);
+
+  // Fetch questions from database on mount
+  useEffect(() => {
+    const fetchQuestions = async () => {
+      try {
+        setLoadingQuestions(true);
+        const response = await fetch(`${API_BASE}${ENDPOINTS.INTERVIEW_QUESTIONS}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.ok && data.data?.questions && data.data.questions.length > 0) {
+            setQuestions(data.data.questions);
+            // Initialize answers with empty values based on question keys
+            const initialAnswers = {};
+            data.data.questions.forEach(q => {
+              initialAnswers[q.key] = q.input_type === 'multi_select' ? [] : '';
+            });
+            setAnswers(prev => ({ ...initialAnswers, ...prev }));
+          } else {
+            // Use defaults if no questions returned
+            setQuestions(DEFAULT_QUESTIONS);
+            const initialAnswers = {};
+            DEFAULT_QUESTIONS.forEach(q => {
+              initialAnswers[q.key] = '';
+            });
+            setAnswers(prev => ({ ...initialAnswers, ...prev }));
+          }
+        } else {
+          // Fall back to defaults on error
+          console.warn('Failed to fetch questions, using defaults');
+          setQuestions(DEFAULT_QUESTIONS);
+          const initialAnswers = {};
+          DEFAULT_QUESTIONS.forEach(q => {
+            initialAnswers[q.key] = '';
+          });
+          setAnswers(prev => ({ ...initialAnswers, ...prev }));
+        }
+      } catch (err) {
+        console.warn('Error fetching questions, using defaults:', err);
+        setQuestions(DEFAULT_QUESTIONS);
+        const initialAnswers = {};
+        DEFAULT_QUESTIONS.forEach(q => {
+          initialAnswers[q.key] = '';
+        });
+        setAnswers(prev => ({ ...initialAnswers, ...prev }));
+      } finally {
+        setLoadingQuestions(false);
+      }
+    };
+
+    fetchQuestions();
+  }, [token]);
 
   // Pre-fill answers if regenerating
   useEffect(() => {
     if (previousAnswers) {
-      setAnswers(previousAnswers);
+      setAnswers(prev => ({ ...prev, ...previousAnswers }));
     }
   }, [previousAnswers]);
-
-  const questions = [
-    {
-      key: 'fitness_objective',
-      label: '1. What is your fitness objective?',
-      placeholder: 'e.g., Build strength, improve endurance, lose weight, train for a competition...',
-    },
-    {
-      key: 'workout_location',
-      label: '2. Where will you work out? (Gym, pool, or both)',
-      placeholder: 'e.g., Gym only, Pool only, Both gym and pool, Home gym...',
-    },
-    {
-      key: 'intensity',
-      label: '3. How intense should the workout be?',
-      placeholder: 'e.g., Low (recovery), Moderate (maintenance), High (pushing limits)...',
-    },
-    {
-      key: 'days_per_week',
-      label: '4. How many days per week can you work out?',
-      placeholder: 'e.g., 3 days, 4-5 days, 6 days...',
-    },
-    {
-      key: 'overall_goal',
-      label: '5. What is your overall goal?',
-      placeholder: 'e.g., Get stronger, feel healthier, prepare for an event, build muscle mass...',
-    },
-    {
-      key: 'injuries',
-      label: '6. Do you have any injured muscles or limitations?',
-      placeholder: 'e.g., Lower back pain, knee injury, shoulder impingement, none...',
-    },
-    {
-      key: 'focus_type',
-      label: '7. What is your focus: strength, ability, or weight loss?',
-      placeholder: 'e.g., Strength training, Athletic ability, Weight loss, Combination...',
-    },
-  ];
 
   const handleChange = (key, value) => {
     setAnswers((prev) => ({
@@ -371,37 +437,99 @@ function AICoachQuestionnaire({ user, token }) {
 
         {error && <div className="ai-coach__error">{error}</div>}
 
-        <form onSubmit={handleSubmit} className="ai-coach__form">
-          {questions.map((q) => (
-            <div key={q.key} className="ai-coach__field">
-              <label htmlFor={q.key} className="ai-coach__label">
-                {q.label}
-              </label>
-              <textarea
-                id={q.key}
-                className="ai-coach__textarea"
-                placeholder={q.placeholder}
-                value={answers[q.key]}
-                onChange={(e) => handleChange(q.key, e.target.value)}
-                disabled={loading}
-                rows={2}
-              />
-            </div>
-          ))}
+        {loadingQuestions ? (
+          <div className="ai-coach__loading">
+            <span className="ai-coach__spinner"></span>
+            Loading questions...
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="ai-coach__form">
+            {questions.map((q, index) => (
+              <div key={q.key} className="ai-coach__field">
+                <label htmlFor={q.key} className="ai-coach__label">
+                  {q.label.startsWith(`${index + 1}.`) ? q.label : `${index + 1}. ${q.label}`}
+                  {q.is_required && <span className="ai-coach__required">*</span>}
+                </label>
+                {q.help_text && (
+                  <p className="ai-coach__help-text">{q.help_text}</p>
+                )}
 
-          <button type="submit" className="ai-coach__button" disabled={loading}>
-            {loading ? (
-              <>
-                <span className="ai-coach__spinner"></span>
-                {tweakRequest ? 'Regenerating Plan...' : 'Generating Workout Plan...'}
-              </>
-            ) : tweakRequest ? (
-              'Regenerate Modified Plan'
-            ) : (
-              'Generate AI Workout Plan'
-            )}
-          </button>
-        </form>
+                {/* Render different input types */}
+                {q.input_type === 'single_select' && q.options && q.options.length > 0 ? (
+                  <select
+                    id={q.key}
+                    className="ai-coach__select"
+                    value={answers[q.key] || ''}
+                    onChange={(e) => handleChange(q.key, e.target.value)}
+                    disabled={loading}
+                  >
+                    <option value="">Select an option...</option>
+                    {q.options.map((opt) => (
+                      <option key={opt.value || opt.label} value={opt.value || opt.label}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : q.input_type === 'multi_select' && q.options && q.options.length > 0 ? (
+                  <div className="ai-coach__multi-select">
+                    {q.options.map((opt) => (
+                      <label key={opt.value || opt.label} className="ai-coach__checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={(answers[q.key] || []).includes(opt.value || opt.label)}
+                          onChange={(e) => {
+                            const val = opt.value || opt.label;
+                            const current = answers[q.key] || [];
+                            if (e.target.checked) {
+                              handleChange(q.key, [...current, val]);
+                            } else {
+                              handleChange(q.key, current.filter(v => v !== val));
+                            }
+                          }}
+                          disabled={loading}
+                        />
+                        {opt.label}
+                      </label>
+                    ))}
+                  </div>
+                ) : q.input_type === 'number' ? (
+                  <input
+                    type="number"
+                    id={q.key}
+                    className="ai-coach__input"
+                    placeholder={q.help_text || 'Enter a number...'}
+                    value={answers[q.key] || ''}
+                    onChange={(e) => handleChange(q.key, e.target.value)}
+                    disabled={loading}
+                  />
+                ) : (
+                  <textarea
+                    id={q.key}
+                    className="ai-coach__textarea"
+                    placeholder={q.help_text || q.placeholder || 'Enter your answer...'}
+                    value={answers[q.key] || ''}
+                    onChange={(e) => handleChange(q.key, e.target.value)}
+                    disabled={loading}
+                    rows={2}
+                  />
+                )}
+              </div>
+            ))}
+
+            <button type="submit" className="ai-coach__button" disabled={loading || loadingQuestions}>
+              {loading ? (
+                <>
+                  <span className="ai-coach__spinner"></span>
+                  {tweakRequest ? 'Regenerating Plan...' : 'Generating Workout Plan...'}
+                </>
+              ) : tweakRequest ? (
+                'Regenerate Modified Plan'
+              ) : (
+                'Generate AI Workout Plan'
+              )}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );

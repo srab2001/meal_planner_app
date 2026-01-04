@@ -65,8 +65,11 @@ const ENDPOINTS = {
   // Goals and targets
   GOALS: '/api/fitness/goals',
 
-  // AI Workout Coach - Interview questions management
-  INTERVIEW_QUESTIONS: '/api/fitness/admin/interview-questions',
+  // AI Workout Coach - Interview questions (user-facing)
+  INTERVIEW_QUESTIONS: '/api/fitness-interview/questions',
+
+  // AI Workout Coach - Admin interview questions management
+  ADMIN_INTERVIEW_QUESTIONS: '/api/admin/fitness-interview/questions',
 
   // AI Workout Plan generation
   AI_WORKOUT_PLAN: '/api/fitness/ai-interview',
