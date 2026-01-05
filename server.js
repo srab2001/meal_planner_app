@@ -677,7 +677,46 @@ app.use('/api/workouts', workoutTrackingRoutes);
 // - User plan listing and retrieval
 // ============================================================================
 const fitnessInterviewRoutes = require('./routes/fitness-interview');
-// Protect submissions with AI rate limiter
+// Public endpoint for questions (no auth required - just static prompts)
+app.get('/api/fitness-interview/questions', async (req, res) => {
+  try {
+    const { Pool } = require('pg');
+    const dbUrl = process.env.FITNESS_DATABASE_URL || process.env.DATABASE_URL;
+    if (!dbUrl) return res.status(500).json({ ok: false, error_code: 'config_error', message: 'Database not configured' });
+    const pool = new Pool({ connectionString: dbUrl, ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false });
+    const client = await pool.connect();
+    try {
+      const qRes = await client.query(`SELECT id, key, label, help_text, input_type, is_required, sort_order, is_enabled FROM fitness_interview_questions WHERE is_enabled = true ORDER BY sort_order, id`);
+      const questions = qRes.rows;
+      if (questions.length === 0) {
+        client.release();
+        await pool.end();
+        return res.json({ ok: true, data: { questions: [] } });
+      }
+      const qIds = questions.map(q => q.id);
+      const optsRes = await client.query(`SELECT id, question_id, value, label, sort_order, is_enabled FROM fitness_interview_options WHERE question_id = ANY($1) AND is_enabled = true ORDER BY sort_order, id`, [qIds]);
+      const opts = optsRes.rows;
+      const byQuestion = {};
+      for (const o of opts) {
+        if (!byQuestion[o.question_id]) byQuestion[o.question_id] = [];
+        byQuestion[o.question_id].push({ value: o.value, label: o.label, sort_order: o.sort_order });
+      }
+      const out = questions.map(q => ({ key: q.key, label: q.label, help_text: q.help_text, input_type: q.input_type, is_required: q.is_required, sort_order: q.sort_order, options: byQuestion[q.id] || [] }));
+      client.release();
+      await pool.end();
+      return res.json({ ok: true, data: { questions: out } });
+    } catch (err) {
+      client.release();
+      await pool.end();
+      console.error('[Fitness Interview] GET /questions error', err);
+      return res.status(500).json({ ok: false, error_code: 'server_error', message: 'Failed to load questions' });
+    }
+  } catch (err) {
+    console.error('[Fitness Interview] GET /questions unexpected', err);
+    return res.status(500).json({ ok: false, error_code: 'server_error', message: 'Unexpected error' });
+  }
+});
+// Protected routes for submission and plan generation
 app.use('/api/fitness-interview', requireAuth, fitnessInterviewRoutes);
 
 // ============================================================================
