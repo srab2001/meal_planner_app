@@ -41,6 +41,7 @@ export default function AIWorkoutInterview({ user, onWorkoutGenerated, onClose }
 
         // Fetch admin questions
         const token = localStorage.getItem('auth_token');
+        console.log('[AIWorkoutInterview] Fetching questions from:', `${API_URL}/api/fitness-interview/questions`);
         const response = await fetch(`${API_URL}/api/fitness-interview/questions`, {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -53,8 +54,10 @@ export default function AIWorkoutInterview({ user, onWorkoutGenerated, onClose }
         }
 
         const data = await response.json();
+        console.log('[AIWorkoutInterview] Raw API response:', data);
         // Backend returns { ok: true, data: { questions: [...] } }
         const rawQuestions = data.data?.questions || data.questions || [];
+        console.log('[AIWorkoutInterview] Raw questions count:', rawQuestions.length);
 
         // Map backend input_type to frontend question_type
         const mapInputType = (inputType) => {
@@ -82,6 +85,7 @@ export default function AIWorkoutInterview({ user, onWorkoutGenerated, onClose }
           help_text: q.help_text,
           is_multi_select: q.input_type === 'multi_select'
         }));
+        console.log('[AIWorkoutInterview] Mapped questions:', fetchedQuestions);
 
         if (fetchedQuestions.length === 0) {
           // Fallback to default question if none configured
