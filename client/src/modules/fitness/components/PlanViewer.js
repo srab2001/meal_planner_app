@@ -11,12 +11,18 @@ export default function PlanViewer({ onClose, planId }) {
       try {
         setLoading(true);
         const token = localStorage.getItem('auth_token');
-        const url = (process.env.REACT_APP_API_URL || '') + (planId ? `/api/fitness/plan/${planId}` : '/api/fitness/plan/latest');
+        const API_URL = process.env.REACT_APP_API_URL || 'https://meal-planner-app-mve2.onrender.com';
+        const url = API_URL + (planId ? `/api/fitness/plan/${planId}` : '/api/fitness/plan/latest');
         const resp = await fetch(url, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (!resp.ok) throw new Error('Failed to fetch latest plan');
         const data = await resp.json();
+        // Handle case when no plan exists yet
+        if (!data.data && data.ok) {
+          setError('No workout plan yet. Use AI Coach to generate one!');
+          return;
+        }
         setPlan(data.data || data);
       } catch (err) {
         console.error('Error fetching plan:', err);
