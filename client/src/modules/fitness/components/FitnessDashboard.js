@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import '../styles/FitnessDashboard.css';
 import AIWorkoutInterview from './AIWorkoutInterview';
 import WorkoutTracking from './WorkoutTracking';
+import PlanViewer from './PlanViewer';
 
 /**
  * FitnessDashboard - Main dashboard for fitness tracking
- * 
+ *
  * Shows:
  * - User fitness profile
  * - Recent workouts
@@ -27,6 +28,7 @@ export default function FitnessDashboard({
   const [logging, setLogging] = useState(false);
   const [showProfileForm, setShowProfileForm] = useState(false);
   const [showAIInterview, setShowAIInterview] = useState(false);
+  const [showPlanViewer, setShowPlanViewer] = useState(false);
 
   // Handle workout form submission
   const handleWorkoutSubmit = async (e) => {
@@ -109,6 +111,13 @@ export default function FitnessDashboard({
           title="AI Workout Coach"
         >
           🤖 AI Coach
+        </button>
+        <button
+          className="fitness-nav-btn"
+          onClick={() => setShowPlanViewer(true)}
+          title="View Latest AI Workout Plan"
+        >
+          📄 My Plan
         </button>
         <button
           className={`fitness-nav-btn ${currentView === 'saved-workouts' ? 'active' : ''}`}
@@ -421,15 +430,21 @@ export default function FitnessDashboard({
         <AIWorkoutInterview
           user={user}
           onWorkoutGenerated={(workout) => {
-            // Workout is already saved by the AI Interview backend
-            // Just close the modal and return to dashboard
+            // Workout is saved by the AI Interview backend
+            // Close interview and show the plan viewer
             setShowAIInterview(false);
+            setShowPlanViewer(true);
             setCurrentView('dashboard');
-            // Reload the page to show the new workout in history
-            window.location.reload();
           }}
           onClose={() => setShowAIInterview(false)}
         />
+      )}
+
+      {/* Plan Viewer Modal */}
+      {showPlanViewer && (
+        <div className="modal-overlay">
+          <PlanViewer onClose={() => setShowPlanViewer(false)} />
+        </div>
       )}
     </div>
   );
