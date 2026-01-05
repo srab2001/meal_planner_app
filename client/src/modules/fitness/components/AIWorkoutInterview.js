@@ -56,17 +56,31 @@ export default function AIWorkoutInterview({ user, onWorkoutGenerated, onClose }
         // Backend returns { ok: true, data: { questions: [...] } }
         const rawQuestions = data.data?.questions || data.questions || [];
 
+        // Map backend input_type to frontend question_type
+        const mapInputType = (inputType) => {
+          switch (inputType) {
+            case 'single_select':
+            case 'multi_select':
+              return 'multiple_choice';
+            case 'number':
+            case 'text':
+            default:
+              return 'text';
+          }
+        };
+
         // Map backend fields to frontend expected fields
         const fetchedQuestions = rawQuestions.map(q => ({
           id: q.key || q.id,
           question_text: q.label || q.question_text,
-          question_type: q.input_type || q.question_type || 'text',
+          question_type: mapInputType(q.input_type) || q.question_type || 'text',
           options: (q.options || []).map(opt => ({
             value: opt.value,
             label: opt.label
           })),
           order_position: q.sort_order || q.order_position || 0,
-          help_text: q.help_text
+          help_text: q.help_text,
+          is_multi_select: q.input_type === 'multi_select'
         }));
 
         if (fetchedQuestions.length === 0) {
