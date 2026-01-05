@@ -128,16 +128,18 @@ export default function AIWorkoutInterview({ user, onWorkoutGenerated, onClose }
     const currentQuestion = questions[currentQuestionIndex];
     if (!currentQuestion) return;
 
-    // Record answer
-    setAnswers(prev => ({
-      ...prev,
+    // Record answer - include in updated answers object
+    const updatedAnswers = {
+      ...answers,
       [currentQuestion.id]: answer
-    }));
+    };
+    setAnswers(updatedAnswers);
 
     // Add user message
+    const displayAnswer = Array.isArray(answer) ? answer.join(', ') : String(answer);
     const userMessage = {
       role: 'user',
-      content: typeof answer === 'string' ? answer : String(answer)
+      content: displayAnswer
     };
     setMessages(prev => [...prev, userMessage]);
 
@@ -146,8 +148,8 @@ export default function AIWorkoutInterview({ user, onWorkoutGenerated, onClose }
       // Show next question
       setCurrentQuestionIndex(prev => prev + 1);
     } else {
-      // All questions answered - send to ChatGPT
-      generateWorkout(answers);
+      // All questions answered - send to ChatGPT with updated answers
+      generateWorkout(updatedAnswers);
     }
   };
 
@@ -166,12 +168,27 @@ export default function AIWorkoutInterview({ user, onWorkoutGenerated, onClose }
 
       const token = localStorage.getItem('auth_token');
 
-      // Build interview answers object with question text as key
+      // Map frontend question keys to backend expected keys
+      const keyMapping = {
+        'main_goal': 'overall_goal',
+        'primary_objectives': 'focus_type',
+        'fitness_level': 'intensity',
+        'days_per_week': 'days_per_week',
+        'location': 'workout_location',
+        'session_length': 'session_duration',
+        'injuries': 'injuries',
+        'training_style': 'fitness_objective'
+      };
+
+      // Build interview answers with backend-expected keys
       const interviewAnswers = {};
-      questions.forEach((q, idx) => {
-        const questionKey = `q${idx + 1}_${q.question_text.toLowerCase().substring(0, 20).replace(/\s+/g, '_')}`;
-        interviewAnswers[questionKey] = collectedAnswers[q.id];
+      Object.entries(collectedAnswers).forEach(([questionKey, answer]) => {
+        const backendKey = keyMapping[questionKey] || questionKey;
+        // Handle array answers (multi-select) - join as comma-separated string
+        interviewAnswers[backendKey] = Array.isArray(answer) ? answer.join(', ') : answer;
       });
+
+      console.log('[AIWorkoutInterview] Mapped answers for backend:', interviewAnswers);
 
       // Call AI interview endpoint with structured answers
       const response = await fetch(`${API_URL}/api/fitness/ai-interview`, {
