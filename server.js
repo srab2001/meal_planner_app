@@ -145,6 +145,72 @@ async function runMigrationsSync() {
       }
     }
 
+    // Setup fitness interview tables in Neon (FITNESS_DATABASE_URL)
+    const fitnessDbUrl = process.env.FITNESS_DATABASE_URL;
+    if (fitnessDbUrl) {
+      console.log('[NEON FITNESS] 🏋️  Setting up fitness interview tables...');
+      try {
+        const { Pool: FitnessPool } = require('pg');
+        const fitnessPool = new FitnessPool({ connectionString: fitnessDbUrl, ssl: { rejectUnauthorized: false } });
+        const fc = await fitnessPool.connect();
+
+        // Create tables
+        await fc.query(`CREATE TABLE IF NOT EXISTS fitness_interview_questions (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), key VARCHAR(100) UNIQUE NOT NULL, label VARCHAR(255) NOT NULL, help_text TEXT, input_type VARCHAR(50) NOT NULL, is_required BOOLEAN DEFAULT true, sort_order INTEGER DEFAULT 0, is_enabled BOOLEAN DEFAULT true, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW())`);
+        await fc.query(`CREATE TABLE IF NOT EXISTS fitness_interview_options (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), question_id UUID NOT NULL REFERENCES fitness_interview_questions(id) ON DELETE CASCADE, value VARCHAR(255) NOT NULL, label VARCHAR(255) NOT NULL, sort_order INTEGER DEFAULT 0, is_enabled BOOLEAN DEFAULT true, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW())`);
+        await fc.query(`CREATE TABLE IF NOT EXISTS fitness_interview_responses (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID NOT NULL, submitted_at TIMESTAMPTZ DEFAULT NOW(), response_json JSONB NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW())`);
+        await fc.query(`CREATE TABLE IF NOT EXISTS workout_plans (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID NOT NULL, created_from_response_id UUID, plan_json JSONB NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW())`);
+
+        // Check if questions already seeded
+        const qCount = await fc.query(`SELECT COUNT(*) FROM fitness_interview_questions`);
+        if (parseInt(qCount.rows[0].count) === 0) {
+          console.log('[NEON FITNESS] Seeding interview questions...');
+          const qs = [
+            ['main_goal','Main goal','single_select','Primary goal for your training',1,true],
+            ['primary_objectives','Primary objectives','multi_select','Choose all that apply',2,true],
+            ['fitness_level','Fitness level','single_select','How would you rate your current fitness?',3,true],
+            ['days_per_week','Days per week','single_select','How many days can you train per week?',4,true],
+            ['location','Training location','single_select','Where will you primarily train?',5,true],
+            ['session_length','Session length (minutes)','single_select','How long is a typical training session?',6,true],
+            ['injuries','Injuries or limitations','text','List any injuries or physical limitations',7,false],
+            ['training_style','Training style','single_select','Preferred training style',8,true]
+          ];
+          for (const [k,l,t,h,s,r] of qs) {
+            await fc.query(`INSERT INTO fitness_interview_questions (key,label,input_type,help_text,sort_order,is_required) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (key) DO NOTHING`, [k,l,t,h,s,r]);
+          }
+
+          // Seed options
+          const opts = {
+            main_goal: [['lose_weight','Lose weight'],['gain_muscle','Gain muscle'],['improve_fitness','Improve overall fitness'],['sports_performance','Sports performance'],['maintain_health','Maintain health'],['increase_strength','Increase strength']],
+            primary_objectives: [['cardio','Cardiovascular endurance'],['strength','Strength training'],['flexibility','Flexibility & mobility'],['balance','Balance & coordination'],['core','Core stability'],['power','Power & explosiveness'],['endurance','Muscular endurance']],
+            fitness_level: [['beginner','Beginner'],['intermediate','Intermediate'],['advanced','Advanced'],['professional','Professional']],
+            days_per_week: [['1','1 day'],['2','2 days'],['3','3 days'],['4','4 days'],['5','5 days'],['6','6 days'],['7','7 days']],
+            location: [['gym','Gym (with equipment)'],['home','Home (minimal equipment)'],['outdoors','Outdoors'],['pool','Pool'],['mixed','Mixed locations']],
+            session_length: [['15','15 minutes'],['30','30 minutes'],['45','45 minutes'],['60','60 minutes'],['90','90 minutes']],
+            training_style: [['strength','Strength-focused'],['cardio','Cardio-focused'],['functional','Functional fitness'],['yogapilates','Yoga/Pilates'],['sports','Sports-specific'],['hiit','HIIT'],['circuit','Circuit training'],['mixed','Mixed modalities']]
+          };
+          for (const [qk, os] of Object.entries(opts)) {
+            const qr = await fc.query('SELECT id FROM fitness_interview_questions WHERE key=$1',[qk]);
+            if (qr.rows[0]) {
+              for (let i=0; i<os.length; i++) {
+                await fc.query(`INSERT INTO fitness_interview_options (question_id,value,label,sort_order) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`,[qr.rows[0].id,os[i][0],os[i][1],i]);
+              }
+            }
+          }
+          console.log('[NEON FITNESS] ✅ Questions and options seeded');
+        } else {
+          console.log('[NEON FITNESS] ✅ Tables exist, ' + qCount.rows[0].count + ' questions found');
+        }
+
+        fc.release();
+        await fitnessPool.end();
+      } catch (neonErr) {
+        console.error('[NEON FITNESS] ⚠️  Setup failed (non-fatal):', neonErr.message);
+        console.log('[NEON FITNESS] ℹ️  Server will continue starting...');
+      }
+    } else {
+      console.log('[NEON FITNESS] ℹ️  FITNESS_DATABASE_URL not set, skipping Neon fitness setup');
+    }
+
     return true;
   } catch (error) {
     console.error('[MIGRATIONS] ❌ Migration execution failed:', error.message);
@@ -677,7 +743,46 @@ app.use('/api/workouts', workoutTrackingRoutes);
 // - User plan listing and retrieval
 // ============================================================================
 const fitnessInterviewRoutes = require('./routes/fitness-interview');
-// Protect submissions with AI rate limiter
+// Public endpoint for questions (no auth required - just static prompts)
+app.get('/api/fitness-interview/questions', async (req, res) => {
+  try {
+    const { Pool } = require('pg');
+    const dbUrl = process.env.FITNESS_DATABASE_URL || process.env.DATABASE_URL;
+    if (!dbUrl) return res.status(500).json({ ok: false, error_code: 'config_error', message: 'Database not configured' });
+    const pool = new Pool({ connectionString: dbUrl, ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false });
+    const client = await pool.connect();
+    try {
+      const qRes = await client.query(`SELECT id, key, label, help_text, input_type, is_required, sort_order, is_enabled FROM fitness_interview_questions WHERE is_enabled = true ORDER BY sort_order, id`);
+      const questions = qRes.rows;
+      if (questions.length === 0) {
+        client.release();
+        await pool.end();
+        return res.json({ ok: true, data: { questions: [] } });
+      }
+      const qIds = questions.map(q => q.id);
+      const optsRes = await client.query(`SELECT id, question_id, value, label, sort_order, is_enabled FROM fitness_interview_options WHERE question_id = ANY($1) AND is_enabled = true ORDER BY sort_order, id`, [qIds]);
+      const opts = optsRes.rows;
+      const byQuestion = {};
+      for (const o of opts) {
+        if (!byQuestion[o.question_id]) byQuestion[o.question_id] = [];
+        byQuestion[o.question_id].push({ value: o.value, label: o.label, sort_order: o.sort_order });
+      }
+      const out = questions.map(q => ({ key: q.key, label: q.label, help_text: q.help_text, input_type: q.input_type, is_required: q.is_required, sort_order: q.sort_order, options: byQuestion[q.id] || [] }));
+      client.release();
+      await pool.end();
+      return res.json({ ok: true, data: { questions: out } });
+    } catch (err) {
+      client.release();
+      await pool.end();
+      console.error('[Fitness Interview] GET /questions error', err);
+      return res.status(500).json({ ok: false, error_code: 'server_error', message: 'Failed to load questions' });
+    }
+  } catch (err) {
+    console.error('[Fitness Interview] GET /questions unexpected', err);
+    return res.status(500).json({ ok: false, error_code: 'server_error', message: 'Unexpected error' });
+  }
+});
+// Protected routes for submission and plan generation
 app.use('/api/fitness-interview', requireAuth, fitnessInterviewRoutes);
 
 // ============================================================================
