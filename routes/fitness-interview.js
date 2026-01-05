@@ -25,8 +25,9 @@ let getDb = function() {
       throw new Error('Postgres client not available in this environment');
     }
   }
-  const dbUrl = process.env.DATABASE_URL;
-  if (!dbUrl) throw new Error('DATABASE_URL is not set');
+  // Use FITNESS_DATABASE_URL (Neon) for fitness interview questions, fallback to DATABASE_URL
+  const dbUrl = process.env.FITNESS_DATABASE_URL || process.env.DATABASE_URL;
+  if (!dbUrl) throw new Error('FITNESS_DATABASE_URL or DATABASE_URL is not set');
   return new Pool({ connectionString: dbUrl, ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false });
 }
 
