@@ -53,7 +53,21 @@ export default function AIWorkoutInterview({ user, onWorkoutGenerated, onClose }
         }
 
         const data = await response.json();
-        const fetchedQuestions = data.questions || [];
+        // Backend returns { ok: true, data: { questions: [...] } }
+        const rawQuestions = data.data?.questions || data.questions || [];
+
+        // Map backend fields to frontend expected fields
+        const fetchedQuestions = rawQuestions.map(q => ({
+          id: q.key || q.id,
+          question_text: q.label || q.question_text,
+          question_type: q.input_type || q.question_type || 'text',
+          options: (q.options || []).map(opt => ({
+            value: opt.value,
+            label: opt.label
+          })),
+          order_position: q.sort_order || q.order_position || 0,
+          help_text: q.help_text
+        }));
 
         if (fetchedQuestions.length === 0) {
           // Fallback to default question if none configured
